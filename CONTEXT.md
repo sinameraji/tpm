@@ -4,7 +4,7 @@
 
 ## Current State
 
-- **Current milestone:** M3 complete. Next up: M4 (Workers AI Proxy).
+- **Current milestone:** M4 complete. Next up: M5 (Static Parser).
 - **Last updated:** 2026-04-18
 - **Overall status:** on-track
 - **Total scope:** 20 milestones for v1.
@@ -93,6 +93,24 @@
 
 - **Deviations from spec:** No deploy to `api.usetpm.dev` yet — that requires the user to run `wrangler d1 create`, `wrangler kv namespace create SESSIONS`, `wrangler kv namespace create RATE_LIMITS`, `wrangler r2 bucket create tpm-artifacts`, then fill the IDs in `wrangler.toml`, then `wrangler secret put JWT_SECRET` + `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`, then `wrangler deploy`. Recorded as a handoff item in "Handoffs Required."
 
+### Milestone 4: Workers AI Proxy (`/infer`)
+
+- **Completed:** 2026-04-18
+- **Summary:** Backend endpoint `POST /infer` now proxies all Workers AI calls. Authenticated via Bearer (same middleware as `/license/validate`). Validates `model` against a small allowlist (gpt-oss-120b, qwen3-30b-a3b-fp8, llama-4-scout-17b). Enforces tier quota: free = 1 lifetime full audit, pro = 20/month (soft overage logged, not blocked — metered billing in M15), team = 50/seat/month (hard limit). Logs every call to `usage_log` with input/output tokens, approximated neurons (0.01/token until upstream returns exact), latency, and status. CLI-side `WorkersAIGateway` is real now: auto-registers the device on first use (persisting `~/.tpm/tokens.json`), retries once on 401 by re-registering, returns `{text, usage: {inputTokens, outputTokens, neurons, latencyMs}}`.
+
+- **Key files:**
+  - `packages/backend/src/routes/infer.ts` — quota check, AI call, usage_log insert (ok or failed)
+  - `packages/cli/src/auth/tokens.ts` — `loadTokens`, `saveTokens`, `isExpiringSoon` for `~/.tpm/tokens.json`
+  - `packages/cli/src/gateway/workers-ai.ts` — `ensureToken()` → `registerDevice()` ↔ `complete()` with 401-retry
+
+- **Decisions made:**
+  - **Quota is counted via distinct `audit_id` in `usage_log`**, not the backend `audits` table. Simpler — every model call already writes to usage_log. M16 fills in the audits table on completion; quota calc still works either way.
+  - **Approximate neurons via `0.01 × total_tokens`** until we have a production invoice to calibrate against. Explicit comment in code says M18 dogfood recalibrates.
+  - **Pro overage is soft** — log and let through; bill at $2/audit via metered Stripe line item in M15. Team is hard-capped because M15 team billing is per-seat flat.
+  - **`session_id` defaults to `call_id`** if the client doesn't pass one. Keeps log lines joinable even when upstream callers forget to thread session.
+
+- **Deviations from spec:** spec says `/infer` streams the response. Not implemented for M4 because (a) Workers AI's `env.AI.run()` returns a resolved response not a stream in the allowlisted models' current JSON mode, and (b) stages A, C, D, F all use single-shot completions — streaming would matter for Stage B navigator steps but those are small and latency-tolerant. Revisit in M18 dogfood if latency warrants.
+
 ## Open Questions for Sina
 
 _(none pending)_
@@ -117,7 +135,7 @@ _(none pending)_
 
 ## Next Milestone
 
-**M4 — Workers AI Proxy (`/infer`).** Backend endpoint that: (1) requires a valid access JWT, (2) checks per-month quota by tier (free 1 lifetime, pro 20/month, team 50/seat/month), (3) logs every call to `usage_log` with `neurons`, (4) streams the response from `env.AI.run(model, ...)`. CLI side: `WorkersAIGateway.complete()` replaces the M2 stub with real HTTPS calls to `api.usetpm.dev/infer`, handles the access/refresh token lifecycle with `/device/register` + local `~/.tpm/token.json` storage, parses usage headers, returns `CompletionResult`. First wired model: `@cf/openai/gpt-oss-120b`.
+**M5 — Static Parser.** tree-sitter-based code walker for JS/TS/JSX/TSX/Vue/Svelte/Python/Ruby. Extracts: routes (file-based and programmatic), components, user-facing strings, forms, navigation structure, auth-gated areas, tracking events (mixpanel.track, amplitude.logEvent, segment.track, etc.), package metadata. Emits `map.yaml` with a schema_version and a stable hash. This becomes the codebase input to Stage A in M7.
 
 ## Architecture Notes
 

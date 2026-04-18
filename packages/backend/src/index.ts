@@ -3,6 +3,7 @@ import { HttpError, notFound } from "./lib/errors.js";
 import { health } from "./routes/health.js";
 import { registerDevice } from "./routes/device.js";
 import { validateLicense } from "./routes/license.js";
+import { infer } from "./routes/infer.js";
 
 type RouteHandler = (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response>;
 
@@ -16,6 +17,7 @@ const ROUTES: Route[] = [
   { method: "GET", pattern: /^\/health\/?$/, handler: health },
   { method: "POST", pattern: /^\/device\/register\/?$/, handler: registerDevice },
   { method: "GET", pattern: /^\/license\/validate\/?$/, handler: validateLicense },
+  { method: "POST", pattern: /^\/infer\/?$/, handler: infer },
 ];
 
 async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
