@@ -12,10 +12,9 @@ import {
 
 describe("schema stubs — every stage schema exposes schema_version=1 and parses", () => {
   // Stubs still carry just schema_version. The filled-in schemas (lean-canvas,
-  // paths) have dedicated tests in their stage packages; this test only asserts
-  // the SCHEMA_VERSION constant is pinned at 1 for every pipeline artifact.
+  // paths, delta) have dedicated tests in their stage packages; this test only
+  // asserts the SCHEMA_VERSION constant is pinned at 1 for every artifact.
   const cases = [
-    ["delta", Delta.DeltaSchema, Delta.SCHEMA_VERSION],
     ["problems", Problems.ProblemsSchema, Problems.SCHEMA_VERSION],
     ["solutions", Solutions.SolutionsSchema, Solutions.SCHEMA_VERSION],
     ["patterns", Patterns.PatternsSchema, Patterns.SCHEMA_VERSION],
