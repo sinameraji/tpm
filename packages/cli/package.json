@@ -1,0 +1,27 @@
+{
+  "name": "@tpm/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TPM — Technical Product Manager CLI.",
+  "type": "module",
+  "bin": {
+    "tpm": "./dist/bin/tpm.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "start": "node ./dist/bin/tpm.js"
+  },
+  "dependencies": {
+    "@tpm/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
+  }
+}

@@ -1,0 +1,26 @@
+name = "tpm-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# M3 wires up D1 (metadata), KV (session tokens), R2 (audit artifacts),
+# AI (Workers AI binding), and secrets (STRIPE_SECRET, JWT_SECRET).
+
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "tpm-prod"
+# database_id = "TBD"
+
+# [[kv_namespaces]]
+# binding = "SESSIONS"
+# id = "TBD"
+
+# [[r2_buckets]]
+# binding = "ARTIFACTS"
+# bucket_name = "tpm-artifacts"
+
+# [ai]
+# binding = "AI"
+
+[observability]
+enabled = true

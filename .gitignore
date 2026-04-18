@@ -1,0 +1,34 @@
+node_modules/
+dist/
+.env
+.env.*
+*.log
+
+# pnpm
+.pnpm-store/
+
+# TypeScript incremental build
+*.tsbuildinfo
+
+# TPM-specific
+.tpm/
+artifacts/
+
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+
+# Astro
+.astro/
+
+# Test coverage
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp

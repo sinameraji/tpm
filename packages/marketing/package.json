@@ -1,0 +1,11 @@
+{
+  "name": "@tpm/marketing",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TPM marketing site (usetpm.dev) — Astro on Cloudflare Pages. M17 fills this in; M1 scaffold only.",
+  "scripts": {
+    "build": "echo \"marketing: deferred to M17\" && exit 0",
+    "typecheck": "echo \"marketing: deferred to M17\" && exit 0",
+    "test": "echo \"marketing: deferred to M17\" && exit 0"
+  }
+}
