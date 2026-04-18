@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  LeanCanvas,
   Paths,
   Delta,
   Problems,
@@ -8,12 +7,14 @@ import {
   Patterns,
   Config,
   License,
+  LeanCanvas,
 } from "./index.js";
 
 describe("schema stubs — every stage schema exposes schema_version=1 and parses", () => {
+  // Stubs still carry just schema_version. The filled-in schemas (lean-canvas,
+  // paths) have dedicated tests in their stage packages; this test only asserts
+  // the SCHEMA_VERSION constant is pinned at 1 for every pipeline artifact.
   const cases = [
-    ["lean-canvas", LeanCanvas.LeanCanvasSchema, LeanCanvas.SCHEMA_VERSION],
-    ["paths", Paths.PathsSchema, Paths.SCHEMA_VERSION],
     ["delta", Delta.DeltaSchema, Delta.SCHEMA_VERSION],
     ["problems", Problems.ProblemsSchema, Problems.SCHEMA_VERSION],
     ["solutions", Solutions.SolutionsSchema, Solutions.SCHEMA_VERSION],
@@ -33,6 +34,19 @@ describe("schema stubs — every stage schema exposes schema_version=1 and parse
       expect(() => schema.parse({ schema_version: 999 })).toThrow();
     });
   }
+});
+
+describe("SCHEMA_VERSION constants across all stage schemas", () => {
+  it("all pipeline artifacts pin schema_version at 1", () => {
+    expect(LeanCanvas.SCHEMA_VERSION).toBe(1);
+    expect(Paths.SCHEMA_VERSION).toBe(1);
+    expect(Delta.SCHEMA_VERSION).toBe(1);
+    expect(Problems.SCHEMA_VERSION).toBe(1);
+    expect(Solutions.SCHEMA_VERSION).toBe(1);
+    expect(Patterns.SCHEMA_VERSION).toBe(1);
+    expect(Config.SCHEMA_VERSION).toBe(1);
+    expect(License.SCHEMA_VERSION).toBe(1);
+  });
 });
 
 describe("fixed enums — pipeline classification taxonomies", () => {

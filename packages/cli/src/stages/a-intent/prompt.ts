@@ -56,23 +56,7 @@ function compactMap(map: MapNs.Map): TruncatedMap {
   };
 }
 
-interface TruncatedSurface {
-  url: string;
-  kind: string;
-  meta_title: string | undefined;
-  meta_description: string | undefined;
-  h1: string[];
-  h2: string[];
-  hero_copy: string | undefined;
-  subhero_copy: string | undefined;
-  ctas: ScrapedNs.CTA[];
-  pricing_tiers: ScrapedNs.PricingTier[];
-  nav_labels: string[];
-  testimonials: Array<{ quote: string; attribution?: string }>;
-  text_excerpt: string;
-}
-
-function compactSurfaces(scraped: ScrapedNs.ScrapedSurfaces): TruncatedSurface[] {
+function compactSurfaces(scraped: ScrapedNs.ScrapedSurfaces): unknown[] {
   return scraped.surfaces.map((s) => ({
     url: s.url,
     kind: s.kind,

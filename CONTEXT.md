@@ -4,7 +4,7 @@
 
 ## Current State
 
-- **Current milestone:** M7 complete. Next up: M8 (Stage B — Multi-Persona Navigator).
+- **Current milestone:** M8 complete. Next up: M9 (Stage C — Delta Analysis).
 - **Last updated:** 2026-04-18
 - **Overall status:** on-track
 - **Total scope:** 20 milestones for v1.
@@ -150,6 +150,20 @@
   - **Both YAML and JSON artifacts written.** YAML for the human-in-the-loop editor session; JSON for mechanical replay in later stages (cheaper parse, no yaml loss-of-quoting ambiguity).
   - **Prompt compaction** keeps routes ≤80, tracking events ≤50, visible strings per context ≤30, surface text excerpt ≤2000 chars. Target ~40k input tokens per spec; actual will be measured in M18 dogfood.
 
+### Milestone 8: Stage B — Multi-Persona Navigator
+
+- **Completed:** 2026-04-18
+- **Summary:** Full Playwright-backed navigator. For each persona in the lean canvas, launches a page, runs up to `stepBudget` (default 25) steps. Each step: snapshot DOM state (URL, title, H1/H2, visible_text, clickables with stable selectors, forms with fields + required-ness, html_hash), ask `qwen3-30b-a3b-fp8` for next decision (click / fill_form / navigate / scroll / wait / go_back / stuck / value_reached), validate the JSON with Zod, execute the action, record the step with friction_flags. Detects cycles via URL + DOM-hash repetition (3×). On value_reached → outcome.status=value_reached + loop_closed=true. Writes `paths.yaml` + `.json`. The `BrowserFactory`/`BrowserPage` interfaces decouple real Playwright from tests — tests run deterministic scripted pages + scripted gateway responses.
+- **Key files:** `packages/shared/src/schemas/paths.ts` (expanded), `packages/cli/src/stages/b-navigate/browser.ts` (Playwright wrapper + interface), `prompt.ts`, `navigator.ts` (the loop + cycle detection), `stage-b.ts` (per-persona orchestration)
+- **Decisions:**
+  - **Selectors use `data-tpm-click-id` / `data-tpm-form-id` attributes** stamped into the DOM during snapshot. Stable across DOM reshuffle, no fragile CSS/xpath. Playwright clicks/fills via those selectors.
+  - **Navigator records step BEFORE executing the action.** If the action throws (e.g. click missed a transient overlay), the step is still in `paths.yaml` with `action_error` populated — debuggability trumps cleanliness.
+  - **Cycle detection = URL+DOM-hash seen ≥ 3 times together.** URL alone is too noisy (SPA re-renders), DOM alone is too noisy (timestamps tick). Both together is a decent proxy for "not making progress."
+  - **Step budget default 25.** Spec mandates.
+  - **Playwright installed as `playwright-core`** (no bundled browsers). M18 dogfood will instruct the user to run `npx playwright install chromium` before first real audit; CI doesn't need browsers.
+  - **Auth support is a prompt hook, not code.** `testCredsNote` string flows into the navigator prompt. If the user has put creds in `~/.tpm/test-creds.yaml` (M14 adds the reader), the navigator knows how to sign up / log in.
+- **Deviations from spec:** none material. Stage B's "DOM summarization via model call" from the spec is handled by the main navigator call (DOM→decision in one step); we don't have a separate summarization model pass since qwen3 handles the combined task within budget.
+
 ## Open Questions for Sina
 
 _(none pending)_
@@ -174,7 +188,7 @@ _(none pending)_
 
 ## Next Milestone
 
-**M8 — Stage B: Multi-Persona Navigator.** For each persona in `lean-canvas.yaml`'s `intended_jtbd_per_segment`, run a Playwright-driven navigator through the deployed site. 25-step budget per persona, full auth support (signup/login with test creds), friction-flag self-tagging per step using the fixed 12-value enum from spec. DOM summaries fed to `qwen3-30b-a3b-fp8` for the decide-next-step loop. Emits `paths.yaml` with one path per persona and outcome status (succeeded / stuck / looped / value_moment_reached).
+**M9 — Stage C: Delta Analysis.** Given `lean-canvas.yaml` + `paths.yaml` + (built-in pattern library from M13), produce `delta.yaml`. For every step in every observed path, classify it against the fixed 7-value taxonomy (`necessary` / `cuttable` / `cuttable_with_care` / `intentional_friction_working` / `intentional_friction_broken` / `cargo_culted` / `broken`), answer the necessity test explicitly ("if I skipped this step, what would break?"), record intent mismatches, and compute per-persona delta (value moment reached?, observed vs. intended steps-to-value, implicit-vs-stated-job alignment). Model: `gpt-oss-120b` single call.
 
 ## Architecture Notes
 
