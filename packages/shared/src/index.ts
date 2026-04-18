@@ -9,4 +9,4 @@ export * as Patterns from "./schemas/patterns.js";
 export * as Config from "./schemas/config.js";
 export * as License from "./schemas/license.js";
 
-export const TPM_VERSION = "0.0.0";
+export const TPM_VERSION = "1.0.0";

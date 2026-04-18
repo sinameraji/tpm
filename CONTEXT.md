@@ -4,7 +4,7 @@
 
 ## Current State
 
-- **Current milestone:** M19 complete. Next up: M20 (launch).
+- **Current milestone:** **v1 COMPLETE.** M20 code-complete. The remaining launch acts (npm publish, DNS cutover, announce) are a single `scripts/release.sh <version>` run by Sina with the right credentials in place.
 - **Last updated:** 2026-04-18
 - **Overall status:** on-track
 - **Total scope:** 20 milestones for v1.

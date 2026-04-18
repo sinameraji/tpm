@@ -1,9 +1,27 @@
 {
-  "name": "@tpm/cli",
-  "version": "0.0.0",
-  "private": true,
-  "description": "TPM — Technical Product Manager CLI.",
+  "name": "tpm",
+  "version": "1.0.0",
+  "description": "Technical Product Manager CLI — audits software products via a deterministic six-stage pipeline.",
+  "keywords": [
+    "pm",
+    "audit",
+    "product-management",
+    "cli",
+    "workers-ai"
+  ],
   "type": "module",
+  "license": "SEE LICENSE IN LICENSE",
+  "homepage": "https://usetpm.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sinameraji/tpm"
+  },
+  "bugs": {
+    "url": "https://github.com/sinameraji/tpm/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
     "tpm": "./dist/bin/tpm.js"
   },
