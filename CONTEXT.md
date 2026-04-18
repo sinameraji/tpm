@@ -4,7 +4,7 @@
 
 ## Current State
 
-- **Current milestone:** M5 complete. Next up: M6 (Marketing Surface Scraper).
+- **Current milestone:** M6 complete. Next up: M7 (Stage A — Intent Extraction).
 - **Last updated:** 2026-04-18
 - **Overall status:** on-track
 - **Total scope:** 20 milestones for v1.
@@ -131,6 +131,14 @@
 
 - **Deviations from spec:** regex vs tree-sitter (documented above). Vue/Svelte/Python/Ruby extraction is shallow (component name from filename, framework detection from deps/files) — good enough to tell the pipeline "this is a Rails app with these routes" but not for deep AST analysis. Revisit if a Jinba dogfood case demands it.
 
+### Milestone 6: Marketing Surface Scraper
+
+- **Completed:** 2026-04-18
+- **Summary:** `scrapeMarketingSurfaces(url, opts)` seeds a queue with the start URL + common surface paths (pricing, plans, features, product, docs, about, faq, blog), fetches each with a polite UA and 15s timeout, and emits a validated `ScrapedSurfaces` object. `parseSurfaceHtml` extracts per page: title + description + OG tags, h1/h2/h3, hero/subhero copy, CTAs with primary/secondary/tertiary prominence, nav links, schema.org JSON-LD entities, pricing tiers with features + CTA, FAQ, testimonials, 4KB text excerpt and word count. robots.txt handled correctly with most-specific-prefix-wins (Allow beats Disallow at equal specificity).
+- **Key files:** `packages/shared/src/schemas/scraped.ts`, `packages/cli/src/stages/a-intent/scraper.ts`, `.test.ts`
+- **Decisions:** cheerio for HTML parsing (industry standard, familiar API); 250ms inter-request delay (polite without being painfully slow); default 12-page cap matches Stage A prompt budget; classification prioritizes URL path, falls back to h1 content.
+- **Deviations from spec:** none.
+
 ## Open Questions for Sina
 
 _(none pending)_
@@ -155,7 +163,7 @@ _(none pending)_
 
 ## Next Milestone
 
-**M6 — Marketing Surface Scraper.** Given a deployed site URL, fetch landing page, pricing page, features pages, docs index, about. Extract: headings, hero/subhero copy, meta + OpenGraph + schema.org, CTA copy and targets, pricing tiers, social proof. Emit `scraped-surfaces.yaml`. Respects robots.txt, rate-limits, polite UA. This is Stage A's other input alongside the static map.
+**M7 — Stage A: Intent Extraction.** Given `map.yaml` + `scraped-surfaces.yaml`, call `gpt-oss-120b` with a carefully constructed prompt to fill the Lean Canvas schema (`packages/shared/src/schemas/lean-canvas.ts` currently a stub — this milestone fleshes it out). Also derives: intended JTBD per segment, intended value moment per persona, intended critical path per persona. Writes `lean-canvas.yaml` to the project's `.tpm/artifacts/{audit_id}/` directory. Human-in-the-loop: opens `$EDITOR` on the file so the user can correct extractions before the pipeline proceeds.
 
 ## Architecture Notes
 
