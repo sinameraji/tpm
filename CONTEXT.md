@@ -4,7 +4,7 @@
 
 ## Current State
 
-- **Current milestone:** M15 complete. Next up: M16 (Audit History Sync — R2).
+- **Current milestone:** M16 complete. Next up: M17 (Marketing site).
 - **Last updated:** 2026-04-18
 - **Overall status:** on-track
 - **Total scope:** 20 milestones for v1.

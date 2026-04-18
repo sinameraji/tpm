@@ -12,6 +12,13 @@ import {
   deviceStatus,
 } from "./routes/billing.js";
 import { stripeWebhook } from "./routes/stripe-webhook.js";
+import {
+  createAudit,
+  downloadArtifact,
+  finishAudit,
+  listAudits,
+  uploadArtifact,
+} from "./routes/audits.js";
 
 type RouteHandler = (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response>;
 
@@ -32,6 +39,12 @@ const ROUTES: Route[] = [
   { method: "POST", pattern: /^\/billing\/activate\/?$/, handler: activateCode },
   { method: "GET", pattern: /^\/device\/[0-9a-f-]+\/status\/?$/, handler: deviceStatus },
   { method: "POST", pattern: /^\/billing\/webhook\/?$/, handler: stripeWebhook },
+
+  { method: "POST", pattern: /^\/audits\/?$/, handler: createAudit },
+  { method: "GET", pattern: /^\/audits\/?$/, handler: listAudits },
+  { method: "PATCH", pattern: /^\/audits\/[0-9a-f-]+\/?$/, handler: finishAudit },
+  { method: "PUT", pattern: /^\/audits\/[0-9a-f-]+\/artifacts\/.+$/, handler: uploadArtifact },
+  { method: "GET", pattern: /^\/audits\/[0-9a-f-]+\/artifacts\/.+$/, handler: downloadArtifact },
 ];
 
 async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
