@@ -4,7 +4,7 @@
 
 ## Current State
 
-- **Current milestone:** M16 complete. Next up: M17 (Marketing site).
+- **Current milestone:** M18 code-complete (full pipeline wired; live dogfood is a handoff to Sina). Next up: M19 (launch readiness).
 - **Last updated:** 2026-04-18
 - **Overall status:** on-track
 - **Total scope:** 20 milestones for v1.
