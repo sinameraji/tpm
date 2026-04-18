@@ -35,9 +35,12 @@ export async function checkQuota(request: Request, env: Env): Promise<Response> 
       ? null
       : Math.max(0, quota.full_audits_monthly - monthly);
 
+  // For free tier, full_audits_monthly is 0 meaning "not monthly-metered" —
+  // only the lifetime cap applies. For pro/team, both caps apply.
+  const monthlyCapApplies = quota.full_audits_monthly !== Infinity && quota.full_audits_monthly > 0;
   const fullAuditAllowed =
     (quota.full_audits_lifetime === Infinity || lifetime < quota.full_audits_lifetime) &&
-    (quota.full_audits_monthly === Infinity || monthly < quota.full_audits_monthly);
+    (!monthlyCapApplies || monthly < quota.full_audits_monthly);
 
   return Response.json({
     ok: true,
