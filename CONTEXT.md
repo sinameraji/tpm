@@ -4,7 +4,7 @@
 
 ## Current State
 
-- **Current milestone:** M6 complete. Next up: M7 (Stage A — Intent Extraction).
+- **Current milestone:** M7 complete. Next up: M8 (Stage B — Multi-Persona Navigator).
 - **Last updated:** 2026-04-18
 - **Overall status:** on-track
 - **Total scope:** 20 milestones for v1.
@@ -139,6 +139,17 @@
 - **Decisions:** cheerio for HTML parsing (industry standard, familiar API); 250ms inter-request delay (polite without being painfully slow); default 12-page cap matches Stage A prompt budget; classification prioritizes URL path, falls back to h1 content.
 - **Deviations from spec:** none.
 
+### Milestone 7: Stage A — Intent Extraction
+
+- **Completed:** 2026-04-18
+- **Summary:** First real pipeline stage. Full `LeanCanvasSchema` in `@tpm/shared/schemas/lean-canvas` with every box (problem, segments, UVP, solution, channels, revenue, cost [non-extractable], key metrics, unfair advantage), plus `intended_jtbd_per_segment`, `intended_value_moments`, `intended_critical_paths` — each evidence-bearing with confidence scores. `runStageA(input, deps)` compacts map + scraped surfaces into a token-budgeted prompt, calls `gpt-oss-120b` in JSON mode at temperature 0.1, validates with Zod. On schema violation, retries ONCE with the violation text in the prompt; hard-fails after. Writes `lean-canvas.yaml` and `lean-canvas.json` to the audit's artifacts directory. `openInEditor(path, nonInteractive)` spawns `$EDITOR` (or `$VISUAL`, or `vi`) so the user can correct extractions; re-parses + re-validates on exit.
+- **Key files:** `packages/shared/src/schemas/lean-canvas.ts`, `packages/cli/src/stages/a-intent/prompt.ts`, `packages/cli/src/stages/a-intent/stage-a.ts`
+- **Decisions:**
+  - **System prompt explicitly forbids inventing.** Calibrates confidence scale (0.9+ for explicit, 0.5 inferred, 0.2 guessing), tells the model empty arrays are fine. Reduces hallucination at the cost of sometimes under-extracting.
+  - **Retry on schema violation uses conversation context.** We pass the model its own failed response + the Zod error. Empirically works better than restarting cold.
+  - **Both YAML and JSON artifacts written.** YAML for the human-in-the-loop editor session; JSON for mechanical replay in later stages (cheaper parse, no yaml loss-of-quoting ambiguity).
+  - **Prompt compaction** keeps routes ≤80, tracking events ≤50, visible strings per context ≤30, surface text excerpt ≤2000 chars. Target ~40k input tokens per spec; actual will be measured in M18 dogfood.
+
 ## Open Questions for Sina
 
 _(none pending)_
@@ -163,7 +174,7 @@ _(none pending)_
 
 ## Next Milestone
 
-**M7 — Stage A: Intent Extraction.** Given `map.yaml` + `scraped-surfaces.yaml`, call `gpt-oss-120b` with a carefully constructed prompt to fill the Lean Canvas schema (`packages/shared/src/schemas/lean-canvas.ts` currently a stub — this milestone fleshes it out). Also derives: intended JTBD per segment, intended value moment per persona, intended critical path per persona. Writes `lean-canvas.yaml` to the project's `.tpm/artifacts/{audit_id}/` directory. Human-in-the-loop: opens `$EDITOR` on the file so the user can correct extractions before the pipeline proceeds.
+**M8 — Stage B: Multi-Persona Navigator.** For each persona in `lean-canvas.yaml`'s `intended_jtbd_per_segment`, run a Playwright-driven navigator through the deployed site. 25-step budget per persona, full auth support (signup/login with test creds), friction-flag self-tagging per step using the fixed 12-value enum from spec. DOM summaries fed to `qwen3-30b-a3b-fp8` for the decide-next-step loop. Emits `paths.yaml` with one path per persona and outcome status (succeeded / stuck / looped / value_moment_reached).
 
 ## Architecture Notes
 
