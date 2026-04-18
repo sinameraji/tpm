@@ -1,42 +1,69 @@
 # TPM — Technical Product Manager
 
-Terminal-based AI auditor for software products. Reconstructs what the builders intended, walks the product as real users, computes the delta between intent and reality, ranks problems by leverage, and specifies solutions with low-fi prototypes.
-
-**Status:** v1 in active build. Not yet shipped. See [`CONTEXT.md`](./CONTEXT.md) for build state.
-
-## Monorepo layout
-
-```
-packages/
-  shared/     # Zod schemas and TS types — single source of truth
-  cli/        # `tpm` command-line tool (Node 20+, local)
-  backend/    # Cloudflare Worker — auth, quota, Stripe, Workers AI proxy
-  marketing/  # usetpm.dev (Astro on Cloudflare Pages) — filled in M17
-```
-
-## Dev setup
+A senior PM in your terminal. TPM audits software products via a deterministic six-stage pipeline — reconstructs what you intended, walks the product as real users, computes the delta between intent and reality, ranks problems by leverage, and specifies fixes with low-fi prototypes.
 
 ```bash
-pnpm install
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
+npm install -g tpm
+cd your-project
+tpm init
+tpm audit https://your-product.com
 ```
 
-Requires Node 20+ and pnpm 9+.
+Artifacts land in `.tpm/artifacts/{audit_id}/`:
+
+- `lean-canvas.yaml` — what the builder intended
+- `paths.yaml` — what actually happens per persona
+- `delta.yaml` — structured delta, step-by-step classification
+- `problems.yaml` — ranked with explicit leverage argument
+- `solutions.yaml` + `prototypes/*.html` — top-5 fixes with working HTML mockups
+- `spec.md` + `spec.pdf` — the PM deliverable
 
 ## The method
 
-Six-stage deterministic pipeline, each stage a validated YAML artifact:
+See [docs/the-method.md](./docs/the-method.md). Six stages, fixed enums, replayable per-stage.
+
+## Architecture
+
+See [docs/architecture.md](./docs/architecture.md). CLI on your machine, thin Cloudflare Worker backend, Workers AI exclusively — no third-party LLMs.
+
+## Pricing
+
+- **Free** — 1 lifetime audit, unlimited quick audits on repos you've already audited.
+- **Pro** — $20/month, 20 audits, PDF, audit history sync.
+- **Team** — $49/seat/month, 50 audits/seat, shared patterns.
+
+See [usetpm.dev/pricing](https://usetpm.dev/pricing).
+
+## Repo layout
 
 ```
-A: Intent Extraction        → lean-canvas.yaml
-B: Observed Critical Path   → paths.yaml (one per persona)
-C: Delta Analysis           → delta.yaml
-D: Leverage Prioritization  → problems.yaml
-E: Solution Specification   → solutions.yaml + prototypes/*.html
-F: Artifact Assembly        → spec.md + spec.pdf
+packages/
+  shared/     Zod schemas + TS types — single source of truth
+  cli/        the `tpm` command-line tool
+  backend/    Cloudflare Worker (api.usetpm.dev)
+  marketing/  usetpm.dev (Astro on Cloudflare Pages)
 ```
 
-Each stage is independently replayable against the previous stage's artifact.
+## Development
+
+```bash
+pnpm install
+pnpm build
+pnpm test
+pnpm lint
+```
+
+Node 20+ and pnpm 9+ required.
+
+## Docs
+
+- [The method](./docs/the-method.md)
+- [Architecture](./docs/architecture.md)
+- [Models](./docs/models.md)
+- [Authoring patterns](./docs/patterns-authoring.md)
+- [Jinba dogfood protocol](./docs/jinba-dogfood-protocol.md)
+- [Launch checklist](./docs/launch-checklist.md)
+
+## License
+
+Commercial — see [LICENSE](./LICENSE) (TBD before M20 publish).
