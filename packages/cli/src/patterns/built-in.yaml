@@ -1,0 +1,924 @@
+schema_version: 1
+patterns:
+  - id: qualification_form_pretending_to_be_signup
+    title: "Qualification form disguised as signup"
+    category: forms_data_collection
+    body:
+      summary: "A 'Start trial' / 'Sign up' CTA routes to a multi-field lead-qualification form (use case, team size, timeline, role) before any product is shown."
+      works_when:
+        - "Product genuinely requires an implementation consult before use (complex enterprise integrations, >1-week deploy)."
+        - "Sales-led motion is the deliberate GTM and self-serve would burn sales capacity on unqualified leads."
+      fails_when:
+        - "The product's UVP is 'start in under N minutes' or 'self-serve.'"
+        - "The form's first 3 fields are not needed to show the product."
+        - "Removing the form would not break any downstream code path."
+      exemplars_good:
+        - "Palantir-style enterprise sales flows where implementation is the product."
+      exemplars_bad:
+        - "SaaS products that collect company/role/use-case before showing a dashboard that any cold user could have tried."
+      detection_signals:
+        - "Hero CTA copy says Start / Try / Free but lands on a form with ≥4 fields."
+        - "Form fields include team_size, timeline, use_case, role — none technically required to provision an account."
+        - "No self-serve signup link visible anywhere on the marketing site."
+      recommendation: "Replace the form gate with a 2-field signup (email+password) that lands on the real product. Move qualification to a post-first-value opt-in."
+
+  - id: demo_gate_on_self_serve_product
+    title: "Demo-only entry for a product that could run self-serve"
+    category: entry
+    body:
+      summary: "Every top-level CTA routes to 'Book a demo.' No trial or self-serve path."
+      works_when:
+        - "Product literally cannot run without infrastructure setup by a human."
+        - "The buyer and user are different people (enterprise procurement)."
+      fails_when:
+        - "The product has a templates system, sample data, or sandbox that is hidden from pre-auth users."
+        - "Competitors in the same category do offer self-serve."
+      exemplars_good:
+        - "Databricks before their free-tier launch — infrastructure genuinely needed setup."
+      exemplars_bad:
+        - "Any no-code / workflow / analytics product where the templates and sandbox exist in the codebase but aren't surfaced."
+      detection_signals:
+        - "All primary CTAs route to /demo, /contact, /book, or a calendar URL."
+        - "Codebase has a templates route but it's behind auth."
+        - "No /signup, /trial, or /free route exists."
+      recommendation: "Add a self-serve path with pre-populated templates. Keep demo as a secondary CTA for enterprise."
+
+  - id: email_verification_before_value
+    title: "Email verification required before first use"
+    category: activation
+    body:
+      summary: "User completes signup, then is blocked at 'check your email' before they can use the product."
+      works_when:
+        - "Product involves real money, identity, or third-party access that would cost you if the account is fake."
+        - "Abuse economics demand it (spam, scraping, invite exploits)."
+      fails_when:
+        - "Users can proceed without verification in the interim (e.g. sandbox mode)."
+        - "The product has no identity risk — e.g. a public analytics dashboard or a template preview."
+      exemplars_good:
+        - "Stripe account — verification tied to real-money flows."
+      exemplars_bad:
+        - "Todo app, note taker, or feature-flag toy where verification just delays time-to-value for no reason."
+      detection_signals:
+        - "Signup success page reads 'Check your email to continue.'"
+        - "No 'continue without verification' or 'skip' affordance."
+      recommendation: "Let users into the product immediately. Verify email asynchronously; gate only the specific actions that need identity (billing, publishing)."
+
+  - id: blank_canvas_no_templates
+    title: "Blank canvas when templates would serve the user"
+    category: first_value
+    body:
+      summary: "User lands in a builder / editor with no starter content, despite the product's templates being its value prop."
+      works_when:
+        - "The product is generic enough that templates would be wrong for most users (e.g. IDE, word processor)."
+      fails_when:
+        - "Marketing promises 'templates out of the box' but the canvas is empty."
+        - "The templates exist in the codebase but are hidden behind 'create first' flows."
+      exemplars_good:
+        - "Figma file with a Blank + Start from Template side-by-side choice."
+      exemplars_bad:
+        - "Workflow builders that require you to know their trigger taxonomy before showing an example."
+      detection_signals:
+        - "First post-signup screen has 0 user-created items and 0 suggested templates."
+        - "Templates route exists in code but isn't linked from the empty state."
+      recommendation: "Land the user on a template gallery or pre-populated example. Let them experience the value BEFORE building from scratch."
+
+  - id: forced_product_tour
+    title: "Forced product tour blocking the thing the user came to do"
+    category: activation
+    body:
+      summary: "On first entry the product overlays a forced tour (modal, coach marks, spotlight) that the user must click through."
+      works_when:
+        - "The product's main interface is so non-obvious that a tour is genuinely needed (e.g. a 3D modeling tool)."
+        - "The tour teaches the specific thing the user is about to attempt."
+      fails_when:
+        - "The tour is a generic feature walk, not tied to the user's stated goal."
+        - "The user clicks 'skip' / 'close' before reading."
+        - "Same tour shows on every login."
+      exemplars_good:
+        - "Dropbox's first-run that specifically teaches file syncing because that's the one unique thing."
+      exemplars_bad:
+        - "SaaS apps that force-tour 6 sidebar items before you can click anything."
+      detection_signals:
+        - "Modal or overlay that covers >30% of the viewport on first entry."
+        - "Has 'next' / 'skip' controls."
+        - "Same tour code appears on second/third visits without a dismissal."
+      recommendation: "Replace with contextual hints that appear when the user hovers/focuses on something they might need help with."
+
+  - id: premature_use_case_question
+    title: "Asking the user's use case before showing the product"
+    category: forms_data_collection
+    body:
+      summary: "Signup asks 'what will you use this for?' before the user has any basis for answering."
+      works_when:
+        - "The answer routes the user to a materially different experience (e.g. personal vs business provisioning)."
+        - "There is a visible personalization payoff later."
+      fails_when:
+        - "The answer is only used for analytics or CSM briefing."
+        - "Selections don't affect what the user sees next."
+      exemplars_good:
+        - "Notion's 'personal' vs 'team' choice at signup — changes what workspace is provisioned."
+      exemplars_bad:
+        - "Dropdown with 10 use-cases that all route to the same dashboard."
+      detection_signals:
+        - "Post-signup step asks use case / industry / role with a required field."
+        - "Same dashboard/flow regardless of selection."
+      recommendation: "Remove the field OR tie it to a visible branching in the next screen."
+
+  - id: pricing_page_without_prices
+    title: "Pricing page with no prices"
+    category: pricing_paywall
+    body:
+      summary: "Pricing page shows tiers with 'Contact us' on all of them."
+      works_when:
+        - "Product is complex enterprise software where every customer lands differently."
+        - "All customers negotiate anyway."
+      fails_when:
+        - "The category has standard per-seat or per-usage pricing that every competitor publishes."
+        - "'Contact us' hides that the product is in a commodity price range."
+      exemplars_good:
+        - "Cloud datawarehouses with true per-query custom pricing."
+      exemplars_bad:
+        - "Team chat / notes / dashboards where 'contact sales' loses you to transparent competitors."
+      detection_signals:
+        - "All tiers show 'Contact us' / 'Custom' / 'Talk to sales.'"
+        - "No numeric price or usage unit shown anywhere."
+      recommendation: "Publish prices for at least the starter and pro tiers. Keep 'contact us' only for the largest enterprise tier."
+
+  - id: feature_tour_without_context
+    title: "Feature list as a tour without tying to user goals"
+    category: activation
+    body:
+      summary: "Onboarding walks through a feature list ('here's sharing, here's comments, here's admin') without knowing why the user came."
+      works_when: []
+      fails_when:
+        - "The user has a specific goal they stated at signup that is ignored."
+        - "Tour doesn't mention the very thing the user wanted to try."
+      exemplars_good:
+        - "Feature tours that are triggered only when the user opens an unfamiliar feature."
+      exemplars_bad:
+        - "Linear progress bar of features on first login."
+      detection_signals:
+        - "Tour order is driven by feature catalog, not user input."
+        - "User's signup use-case doesn't affect tour content."
+      recommendation: "Trigger feature education contextually when the user reaches that feature for the first time."
+
+  - id: cta_fork_without_signal
+    title: "Multiple primary CTAs with no signal which one the user should pick"
+    category: entry
+    body:
+      summary: "Homepage shows 'Free trial' and 'Book demo' and 'See pricing' as equal-weight CTAs. User doesn't know which fits them."
+      works_when:
+        - "Audiences are clearly distinct and the CTAs are labeled for them (e.g. 'For individuals' / 'For teams')."
+      fails_when:
+        - "All CTAs look the same size/color/weight."
+        - "No copy explains who each one is for."
+      exemplars_good:
+        - "Figma: 'Try for free' primary, 'Contact sales' secondary under 'Enterprise' heading."
+      exemplars_bad:
+        - "Equal-weight 'Start free' / 'Book demo' / 'Buy' row in the hero with no targeting copy."
+      detection_signals:
+        - "Homepage hero has 3+ CTAs of equal visual prominence."
+        - "No copy under or near each CTA specifying audience."
+      recommendation: "Pick a primary. Demote others to secondary with audience-targeting labels."
+
+  - id: credit_card_required_for_free_trial
+    title: "Credit card required to start a 'free' trial"
+    category: pricing_paywall
+    body:
+      summary: "'Free trial' CTA lands on a form that requires credit card before the product is shown."
+      works_when:
+        - "The product has high per-user infrastructure cost (compute, storage) that abuse would pay for."
+      fails_when:
+        - "Competitors offer no-CC free trials."
+        - "Product is lightweight — the CC ask is purely a conversion tactic."
+      exemplars_good:
+        - "Cloud compute services where every trial consumes $ in metered infrastructure."
+      exemplars_bad:
+        - "SaaS tools where the trial costs pennies to host."
+      detection_signals:
+        - "'Free trial' CTA → form with card required."
+        - "No alternative 'try without card' path."
+      recommendation: "Offer a CC-free tier (feature-limited or time-limited). Keep CC-required for tiers that genuinely consume infra."
+
+  - id: verification_required_before_onboarding
+    title: "Phone or SMS verification before first use"
+    category: activation
+    body:
+      summary: "Signup requires SMS/phone verification before any feature is accessible."
+      works_when:
+        - "Fraud/abuse economics justify it (crypto, money movement, identity)."
+      fails_when:
+        - "Product is no-money-movement SaaS where SMS gate is just friction."
+        - "Users in certain countries can't complete it."
+      exemplars_good:
+        - "Banking apps that require identity to comply with regulation."
+      exemplars_bad:
+        - "B2B productivity tool that asks for a phone number to 'keep your account secure.'"
+      detection_signals:
+        - "Mandatory phone_number field at signup."
+        - "No skip option."
+      recommendation: "Remove SMS from signup; require it later only for account recovery or money-touching actions."
+
+  - id: sparse_empty_state
+    title: "Empty state with no suggested next action"
+    category: empty_states
+    body:
+      summary: "List view shows '0 items' and no call to create, import, or try an example."
+      works_when: []
+      fails_when:
+        - "Every time. Empty states always benefit from a guided next action."
+      exemplars_good:
+        - "GitHub empty repo pages with 'Quick setup' instructions for clone/create."
+      exemplars_bad:
+        - "Dashboards that show '0 metrics' with no link to create one."
+      detection_signals:
+        - "Empty list has no button or link."
+        - "No illustration or copy explaining how to get first item."
+      recommendation: "Every empty state needs at least one primary action, ideally context-aware."
+
+  - id: login_required_to_see_marketing_features
+    title: "Marketing pages hidden behind login"
+    category: trust_security
+    body:
+      summary: "Feature/product pages are behind auth — you have to sign up to read what the product does."
+      works_when:
+        - "Product is heavily enterprise-confidential (e.g. actual government contracts)."
+      fails_when:
+        - "Most SaaS."
+      exemplars_good:
+        - "Palantir-style product pages behind NDAs for defense contracts."
+      exemplars_bad:
+        - "Consumer/B2B SaaS 'what we do' pages that 302 to /login."
+      detection_signals:
+        - "/features or /pricing routes 302 to /login when unauthenticated."
+      recommendation: "Make marketing surfaces public."
+
+  - id: dead_end_after_error
+    title: "Error state with no recovery path"
+    category: navigation
+    body:
+      summary: "On error the app shows a message but no way to go back, retry, or contact support."
+      works_when: []
+      fails_when:
+        - "Every time."
+      exemplars_good:
+        - "GitHub 404 with 'go home' + search."
+      exemplars_bad:
+        - "Generic 500 with only a stack trace."
+      detection_signals:
+        - "Error page has no 'home' / 'retry' / 'contact' link."
+      recommendation: "Every error state should offer at least one forward action."
+
+  - id: onboarding_without_skip
+    title: "Multi-step onboarding with no skip"
+    category: activation
+    body:
+      summary: "First-run wizard forces N steps with no 'skip for now' option, even when every step is optional."
+      works_when:
+        - "Each step genuinely gates a capability the user will hit immediately."
+      fails_when:
+        - "The user can dismiss via a hidden 'x' in the corner — the skip affordance exists but is hidden."
+        - "Steps don't change downstream experience."
+      exemplars_good:
+        - "Slack's workspace setup where each step really does gate capability."
+      exemplars_bad:
+        - "5-step 'personalize your experience' flows where everything has a default."
+      detection_signals:
+        - "First-run wizard has no visible skip button."
+        - "Only dismissal is a subtle 'x' in the corner."
+      recommendation: "Make skip explicit and prominent. If a step is truly essential, document why in copy."
+
+  - id: late_paywall
+    title: "Paywall right after value preview"
+    category: pricing_paywall
+    body:
+      summary: "User reaches value moment, then gets a 'upgrade to save/export/publish' modal."
+      works_when:
+        - "The preview is meaningful enough that the paywall feels fair (commitment device)."
+        - "Upgrade path is clear and the ROI obvious."
+      fails_when:
+        - "The preview itself took too long to reach."
+        - "Upgrade path is confusing or hidden."
+      exemplars_good:
+        - "Grammarly — 100 suggestions free, 'upgrade for unlimited' after you've felt the value."
+      exemplars_bad:
+        - "Paywall after 20 seconds with no visible product experience."
+      detection_signals:
+        - "First visible paywall modal at the end of a task, not the start."
+      recommendation: "Keep the preview generous. Make upgrade path one click. Track conversion carefully."
+
+  - id: configuration_theater
+    title: "Configuration theater — setup that sets defaults you could have chosen"
+    category: configuration
+    body:
+      summary: "Setup wizard asks for region, timezone, color theme, etc. — all of which the product could infer or default safely."
+      works_when:
+        - "The setting is genuinely private and cannot be inferred (e.g. backup frequency for critical data)."
+      fails_when:
+        - "IP-based timezone is trivial."
+        - "Theme defaults to system — asking is friction."
+      exemplars_good:
+        - "Backup products that ask about recovery-point objectives — real consequence."
+      exemplars_bad:
+        - "SaaS asking for region / currency / locale that the browser already reveals."
+      detection_signals:
+        - "Setup step with ≥3 dropdowns that have sensible defaults."
+        - "Skipping them would not break the product."
+      recommendation: "Default everything. Expose settings in preferences for users who want to change them."
+
+  - id: no_product_search
+    title: "List-heavy product with no search"
+    category: navigation
+    body:
+      summary: "Product has many user-generated items (projects, files, tasks) but no search — only scroll + filter by category."
+      works_when:
+        - "The catalog is small and browsing is the point (e.g. a 10-item settings list)."
+      fails_when:
+        - "User has >20 items and searching is faster than browsing."
+      exemplars_good:
+        - "Settings pages with <15 items use sectioning, not search."
+      exemplars_bad:
+        - "Project list with hundreds of items and no search box."
+      detection_signals:
+        - "List view has no search input."
+        - "Items are paginated or infinite-scrolled."
+      recommendation: "Add a prominent search when any list can exceed ~20 items."
+
+  - id: copy_paste_friction
+    title: "Copy/paste requires extra clicks in a tool that should just work"
+    category: misc
+    body:
+      summary: "Sharing a link requires a modal, a dropdown, and then a 'copy' button, when a single-click copy would do."
+      works_when: []
+      fails_when:
+        - "Every time."
+      exemplars_good:
+        - "Notion's share button: 1 click, link is copied."
+      exemplars_bad:
+        - "Open sharing dialog → Choose access → Copy URL."
+      detection_signals:
+        - "Sharing involves ≥3 clicks from the item to a copied URL."
+      recommendation: "Collapse to one click when possible. Expose advanced controls secondarily."
+
+  - id: onboarding_asks_for_team_invite_too_early
+    title: "Forced team-invite step before solo value"
+    category: activation
+    body:
+      summary: "First-run wizard forces 'invite your team' before the solo user has experienced value."
+      works_when:
+        - "Product has no meaningful solo mode (e.g. multiplayer-only game)."
+      fails_when:
+        - "Product works solo AND most new accounts start solo."
+      exemplars_good:
+        - "Slack — solo is meaningless."
+      exemplars_bad:
+        - "Project management tools that demand teammates on day 1."
+      detection_signals:
+        - "Signup wizard step titled 'invite your team' with required emails."
+      recommendation: "Default to solo. Offer invite as optional in a sidebar or after first solo value."
+
+  - id: export_hidden_behind_upgrade
+    title: "Data export hidden behind a paid tier"
+    category: pricing_paywall
+    body:
+      summary: "Free tier lets you use the product, but you can't export your data without upgrading."
+      works_when:
+        - "Export is genuinely expensive (compute, storage, compliance)."
+      fails_when:
+        - "Export is cheap and the only reason to gate it is to create upgrade pressure."
+      exemplars_good:
+        - "Analytics products where exports include raw event data."
+      exemplars_bad:
+        - "Note-taking apps that won't let you export your own notes."
+      detection_signals:
+        - "Free tier has no /export or 'download data' button."
+        - "Export is listed as a 'Pro' feature."
+      recommendation: "Give free-tier users at least basic export (CSV / JSON of their own content). It's trust, not revenue."
+
+  - id: cargo_culted_loading_states
+    title: "Loading spinners that never resolve or resolve to errors"
+    category: misc
+    body:
+      summary: "Long-running spinner with no progress indicator or timeout, leaving the user to guess if it's stuck."
+      works_when:
+        - "Operation is genuinely fast (<2s)."
+      fails_when:
+        - "Operation takes >5s."
+      exemplars_good:
+        - "GitHub Actions: explicit progress with log streaming."
+      exemplars_bad:
+        - "Generic spinners on operations that can take minutes."
+      detection_signals:
+        - "Screen has a spinner for >10s with no updates."
+      recommendation: "Show progress, log output, or estimated time. Provide cancel."
+
+  - id: auth_redirect_loop
+    title: "Auth redirect loop"
+    category: auth
+    body:
+      summary: "After login the user is redirected back to login, or bounced between /login and /dashboard."
+      works_when: []
+      fails_when:
+        - "Every time."
+      exemplars_good: []
+      exemplars_bad:
+        - "Session misconfigurations where cookies don't persist."
+      detection_signals:
+        - "Navigator visits /login → /dashboard → /login within 3 steps."
+      recommendation: "Fix the underlying session handling. Add server-side redirect guards."
+
+  - id: too_many_nav_items
+    title: "Primary navigation has >8 items"
+    category: navigation
+    body:
+      summary: "Top-level nav has too many items to decide where to go."
+      works_when:
+        - "Rare — very few products earn wide top-level nav."
+      fails_when:
+        - "Most products. Hick's law applies."
+      exemplars_good:
+        - "Amazon-scale sites where every shopper knows the department they want."
+      exemplars_bad:
+        - "SaaS with 12 top-level links including 'Enterprise,' 'Customers,' 'Blog,' 'Changelog,' etc."
+      detection_signals:
+        - ">8 links in the primary top nav."
+      recommendation: "Consolidate into ≤6 groups. Push less-used items to footer."
+
+  - id: marketing_jargon_hero
+    title: "Hero copy is abstract business jargon, not a specific promise"
+    category: intent_mismatch
+    body:
+      summary: "Hero says 'Transform your operations with AI-powered solutions.'"
+      works_when: []
+      fails_when:
+        - "The user can't tell what the product DOES from the hero."
+      exemplars_good:
+        - "Stripe: 'Payments infrastructure for the internet.'"
+      exemplars_bad:
+        - "Any 'transform / optimize / empower' + 'AI / platform / solutions' string."
+      detection_signals:
+        - "Hero contains ≥2 of: transform, optimize, empower, solutions, platform, AI-powered."
+        - "Hero doesn't name a concrete user action or outcome."
+      recommendation: "Name the job, the user, and the outcome in plain language."
+
+  - id: fake_social_proof
+    title: "Logo wall with no real stories"
+    category: social_proof
+    body:
+      summary: "Homepage shows a Google / Microsoft / Stripe logo wall with no case study, quote, or specific outcome."
+      works_when:
+        - "Logos are recognizable enough that their presence is itself the signal."
+      fails_when:
+        - "Logos are small / of obscure companies; users don't trust them."
+        - "Savvy users remember that every SaaS homepage has this."
+      exemplars_good:
+        - "Specific customer stories with named people and quantified outcomes."
+      exemplars_bad:
+        - "Generic 'trusted by' strip with no links or quotes."
+      detection_signals:
+        - "Logo strip with no clickable detail."
+      recommendation: "Replace logo wall with 2-3 specific named case studies."
+
+  - id: unclear_primary_user_action
+    title: "No single 'main thing' users do"
+    category: navigation
+    body:
+      summary: "Dashboard has 6 equal-weight panels and no visual hierarchy pointing to the primary action."
+      works_when:
+        - "Product truly is a dashboard (pure information display)."
+      fails_when:
+        - "Product has a primary user action (create, send, publish) but nothing on screen emphasizes it."
+      exemplars_good:
+        - "Gmail: compose button is visually dominant."
+      exemplars_bad:
+        - "CRM that shows 20 panels with no 'add contact' prominence."
+      detection_signals:
+        - "All primary actions same size/color."
+        - "No clear default cursor position after load."
+      recommendation: "Pick the primary action. Make it visually dominant."
+
+  - id: hidden_critical_settings
+    title: "Critical settings buried three levels deep"
+    category: configuration
+    body:
+      summary: "A setting users need often (notifications, timezone, sharing defaults) is nested inside a menu inside a menu."
+      works_when:
+        - "Setting really is rarely-used (e.g. SAML configuration for 5 customers)."
+      fails_when:
+        - "Users ask about it frequently."
+      exemplars_good: []
+      exemplars_bad: []
+      detection_signals:
+        - "Common settings require ≥3 clicks from the main product."
+      recommendation: "Surface frequently-used settings in the primary preferences page."
+
+  - id: forced_upsell_before_first_save
+    title: "Upsell modal before first save"
+    category: pricing_paywall
+    body:
+      summary: "Just as the user tries to save their first piece of work, an upsell modal appears."
+      works_when: []
+      fails_when:
+        - "Every time. This loses the user's goodwill at exactly the wrong moment."
+      exemplars_good: []
+      exemplars_bad:
+        - "Drawing apps that paywall first save."
+      detection_signals:
+        - "Save/publish action triggers upgrade modal before any value is delivered."
+      recommendation: "Let the user save. Surface paid tiers on a later action (second save, team share)."
+
+  - id: notifications_about_the_product_itself
+    title: "Product notifications pitching the product's own features"
+    category: notifications
+    body:
+      summary: "Push or in-app notifications tell users about new features they haven't asked about."
+      works_when:
+        - "User has expressed interest in updates."
+        - "Feature is genuinely relevant to their current work."
+      fails_when:
+        - "Notifications feel like marketing, not utility."
+      exemplars_good:
+        - "Linear's changelog surfaced in-app only when it affects your current project."
+      exemplars_bad:
+        - "Daily 'have you tried X?' notifications."
+      detection_signals:
+        - "Notification center has >50% product-marketing messages."
+      recommendation: "Notifications should be about the user's work, not about the product."
+
+  - id: inconsistent_auth_state
+    title: "UI shows logged-in state when user is actually logged out"
+    category: auth
+    body:
+      summary: "Header shows user avatar but clicking anything redirects to login."
+      works_when: []
+      fails_when:
+        - "Every time."
+      exemplars_good: []
+      exemplars_bad: []
+      detection_signals:
+        - "Avatar + username visible but actions redirect to /login."
+      recommendation: "Keep auth state consistent between header and routes."
+
+  - id: undo_missing_for_destructive_actions
+    title: "Destructive action with no undo and no confirmation"
+    category: misc
+    body:
+      summary: "Delete / unpublish / leave-team is a single-click destructive action with no confirmation or undo."
+      works_when:
+        - "Action is genuinely reversible through history (e.g. trash folder with clear recovery)."
+      fails_when:
+        - "Action is immediately destructive with no trash."
+      exemplars_good:
+        - "Gmail undo-send toast."
+      exemplars_bad:
+        - "'Leave workspace' with no confirmation."
+      detection_signals:
+        - "Destructive icon or menu with no confirm or toast."
+      recommendation: "Add confirmation OR an undo toast (10-15s window)."
+
+  - id: slow_perceived_first_render
+    title: "Blank screen for >2s on first render"
+    category: activation
+    body:
+      summary: "After login the page is blank for multiple seconds before any content appears."
+      works_when:
+        - "Product is doing a real one-time bootstrap (e.g. initializing offline DB)."
+      fails_when:
+        - "Normal SaaS load."
+      exemplars_good:
+        - "Shell + skeleton UI that shows structure immediately."
+      exemplars_bad:
+        - "White page + spinner."
+      detection_signals:
+        - "First meaningful paint >2s on typical network."
+      recommendation: "Render skeleton immediately. Stream content in."
+
+  - id: confusing_billing_transitions
+    title: "Upgrade/downgrade paths that are confusing or hidden"
+    category: billing
+    body:
+      summary: "User can upgrade in one click but downgrading or canceling requires an email to support."
+      works_when:
+        - "Never. Asymmetric friction is a dark pattern."
+      fails_when:
+        - "Always."
+      exemplars_good:
+        - "Stripe billing portal — symmetric up/down."
+      exemplars_bad:
+        - "SaaS that hide the cancel flow behind 'email us.'"
+      detection_signals:
+        - "Cancel button not present in billing UI."
+        - "Cancel requires email / phone."
+      recommendation: "Symmetric up/down. Let users cancel in one flow."
+
+  - id: orphaned_features
+    title: "Features the user can find but doesn't know why they'd use"
+    category: misc
+    body:
+      summary: "Menus expose features with no documentation or contextual explanation."
+      works_when:
+        - "Feature is self-evident (e.g. a bold button)."
+      fails_when:
+        - "Feature has a domain-specific name (e.g. 'Data lineage graph') but no in-app explanation."
+      exemplars_good:
+        - "Linear's feature discovery — hover tooltips + docs links."
+      exemplars_bad:
+        - "Enterprise products with 40 menu items and no help."
+      detection_signals:
+        - "Menu items lack any hover/tooltip/help."
+      recommendation: "Every non-obvious feature needs a one-sentence explanation next to or in the item."
+
+  - id: copy_lies_about_price
+    title: "Pricing copy that says 'free' but requires payment details"
+    category: pricing_paywall
+    body:
+      summary: "'Start for free' actually requires a credit card and implies you'll be charged after a trial."
+      works_when: []
+      fails_when:
+        - "Every time. This is a trust-eroding dark pattern."
+      exemplars_good: []
+      exemplars_bad: []
+      detection_signals:
+        - "'Free' CTA lands on a checkout form."
+      recommendation: "Call it a trial, not free, if a card is required."
+
+  - id: intent_mismatch_self_serve_to_demo
+    title: "Marketing says self-serve; product is demo-gated"
+    category: intent_mismatch
+    body:
+      summary: "Homepage says 'Start automating in 10 minutes' but every CTA leads to a demo request form."
+      works_when: []
+      fails_when:
+        - "Every time. Marketing/product alignment is a trust marker."
+      exemplars_good: []
+      exemplars_bad: []
+      detection_signals:
+        - "Hero copy mentions a time-to-value."
+        - "All CTAs are demo-booking."
+      recommendation: "Align the product to the marketing promise (add self-serve) or the marketing to the product (drop the time claim)."
+
+  - id: session_timeout_no_warning
+    title: "Session expires silently mid-work"
+    category: auth
+    body:
+      summary: "User loses data because session expired during a long task and was auto-logged-out."
+      works_when:
+        - "Banks / regulated industries — timeout is required."
+      fails_when:
+        - "Any workflow tool where users draft for a long time."
+      exemplars_good:
+        - "Gmail — 'still here?' warning before expiry."
+      exemplars_bad:
+        - "Silent expiry with data loss."
+      detection_signals:
+        - "Session cookie TTL short with no warning modal."
+      recommendation: "Warn before expiry. Save drafts locally. Offer re-auth without data loss."
+
+  - id: email_first_signup_then_google
+    title: "Google/SSO buttons buried below email signup"
+    category: auth
+    body:
+      summary: "Signup form prominently asks for email + password; SSO options are hidden below."
+      works_when:
+        - "Most users literally want email/password (rare in SaaS)."
+      fails_when:
+        - "Typical SaaS where SSO converts better."
+      exemplars_good:
+        - "Apps that lead with 'Continue with Google' and show email below."
+      exemplars_bad:
+        - "Email-first layout with a tiny 'or SSO' below."
+      detection_signals:
+        - "Email+password prominent, SSO buttons smaller / below."
+      recommendation: "Put SSO equal-or-more prominent than email."
+
+  - id: unlabeled_icons
+    title: "Icon-only navigation with no labels"
+    category: navigation
+    body:
+      summary: "Sidebar is all icons, no text, no tooltips. Users hunt for functions."
+      works_when:
+        - "Professional tools where users are expected to memorize (Figma, CAD)."
+      fails_when:
+        - "Consumer / new-user contexts."
+      exemplars_good:
+        - "Figma's unlabeled sidebar for known users."
+      exemplars_bad:
+        - "Random SaaS sidebars with ambiguous icons."
+      detection_signals:
+        - "Sidebar items have no visible text and no hover tooltip."
+      recommendation: "Add labels or at minimum hover tooltips."
+
+  - id: tier_feature_lottery
+    title: "Tier feature table that hides the specific feature the user cares about"
+    category: pricing_paywall
+    body:
+      summary: "Pricing table lists 'Standard features,' 'Advanced features,' 'Enterprise features' without specifics."
+      works_when: []
+      fails_when:
+        - "User can't tell which tier includes the feature they need."
+      exemplars_good:
+        - "Linear pricing — explicit per-feature rows."
+      exemplars_bad:
+        - "'Contact sales for full comparison.'"
+      detection_signals:
+        - "Pricing table has generic tier-level bullets, no per-feature rows."
+      recommendation: "Publish a per-feature comparison."
+
+  - id: cancel_requires_reason
+    title: "Cancel flow forces user to pick a reason"
+    category: billing
+    body:
+      summary: "Cancelling requires filling a 'why are you leaving?' form."
+      works_when:
+        - "Optional exit survey — skippable."
+      fails_when:
+        - "Mandatory field blocks cancel."
+      exemplars_good:
+        - "Netflix — optional survey after cancel confirmation."
+      exemplars_bad:
+        - "Required reason with other field requiring 100 chars."
+      detection_signals:
+        - "Cancel form has required 'reason' field."
+      recommendation: "Make it optional. Cancel first, survey second."
+
+  - id: multiple_disconnected_nav_systems
+    title: "Multiple navigation systems that don't cross-reference"
+    category: navigation
+    body:
+      summary: "Top nav, sidebar, and breadcrumbs tell different stories about where the user is."
+      works_when: []
+      fails_when:
+        - "Every time. Confuses the user's mental model."
+      exemplars_good: []
+      exemplars_bad: []
+      detection_signals:
+        - "Top nav and sidebar highlight different items."
+      recommendation: "Unify. One source of truth for current location."
+
+  - id: overspec_api_for_simple_tasks
+    title: "API requires 5 fields when 1 is obvious"
+    category: misc
+    body:
+      summary: "Public API endpoint requires fields that could be defaulted (locale, timezone, version, client_id, source)."
+      works_when:
+        - "Multi-tenant contexts where every field is load-bearing."
+      fails_when:
+        - "Everyone copies the example and the fields never actually vary."
+      exemplars_good:
+        - "Stripe — sensible defaults everywhere."
+      exemplars_bad:
+        - "APIs with 10-field minimum POST bodies."
+      detection_signals:
+        - "SDK examples show most fields unchanged from sample."
+      recommendation: "Default everything that has a sane default."
+
+  - id: mobile_web_gated_to_app
+    title: "Mobile web gates the user to install the app"
+    category: entry
+    body:
+      summary: "Mobile browser users see 'Install the app' blocker instead of a usable mobile experience."
+      works_when:
+        - "The app genuinely provides capabilities the web can't (camera, offline, deep OS integration)."
+      fails_when:
+        - "Simple content / forms that mobile web could handle."
+      exemplars_good:
+        - "Uber — app genuinely needed for real-time location + notifications."
+      exemplars_bad:
+        - "Blog / docs sites that push app installs."
+      detection_signals:
+        - "Mobile web shows install CTA blocking content."
+      recommendation: "Build mobile web that works. Reserve app-install CTAs for experiences that truly need it."
+
+  - id: inconsistent_destructive_action_labels
+    title: "Destructive buttons labeled ambiguously"
+    category: misc
+    body:
+      summary: "Buttons say 'Yes' / 'OK' instead of 'Delete' / 'Archive' / 'Leave.'"
+      works_when: []
+      fails_when:
+        - "Every time. Generic labels lose context."
+      exemplars_good:
+        - "macOS: 'Don't Save' / 'Cancel' / 'Save.'"
+      exemplars_bad:
+        - "'Yes' / 'No' on destructive confirmations."
+      detection_signals:
+        - "Confirm modal buttons labeled Yes/OK/Confirm."
+      recommendation: "Label buttons with the verb of the action."
+
+  - id: password_complexity_overkill
+    title: "Password rules that block users without meaningful security gain"
+    category: auth
+    body:
+      summary: "Password must contain uppercase + lowercase + symbol + 12 chars + rotate every 30 days."
+      works_when:
+        - "Regulated environments (banking, healthcare)."
+      fails_when:
+        - "Most SaaS. NIST guidance is: length is what matters, rotation hurts."
+      exemplars_good:
+        - "Sites that require min 8-12 chars, no rotation, check against haveibeenpwned."
+      exemplars_bad:
+        - "Rotation policies + symbol requirements."
+      detection_signals:
+        - "Password policy mentions symbol/case + rotation."
+      recommendation: "Follow NIST: long passwords, no forced rotation, check against known-breach lists."
+
+  - id: invite_required_to_try
+    title: "Product requires an invite to try"
+    category: entry
+    body:
+      summary: "User hits '/signup' and sees 'request invite' with no public signup."
+      works_when:
+        - "Product is in closed beta and invite scarcity is part of the marketing."
+        - "Product requires careful ramp (e.g. abuse-prone marketplaces)."
+      fails_when:
+        - "Product is GA but still invite-gating for no reason."
+      exemplars_good:
+        - "Clubhouse early days — invite scarcity = signal."
+      exemplars_bad:
+        - "Products claiming GA while still running an invite waitlist."
+      detection_signals:
+        - "/signup routes to a 'request access' form."
+      recommendation: "Drop the invite gate once you're GA. Keep waitlists only when scarcity is genuine."
+
+  - id: unreachable_support
+    title: "Support flow buried under account verification"
+    category: misc
+    body:
+      summary: "User can't reach support without first logging in — and the login is broken."
+      works_when: []
+      fails_when:
+        - "Login/account issues — exactly when support is needed."
+      exemplars_good:
+        - "Public support page with a pre-auth email form."
+      exemplars_bad:
+        - "'Contact support' links require login."
+      detection_signals:
+        - "Support page requires auth."
+      recommendation: "Support should be reachable without login."
+
+  - id: data_loss_on_back_button
+    title: "Back button loses in-progress form data"
+    category: misc
+    body:
+      summary: "User navigates forward, realizes they missed a field, hits back, and loses everything they typed."
+      works_when: []
+      fails_when:
+        - "Every time."
+      exemplars_good:
+        - "Products that auto-save drafts (Notion, Google Docs)."
+      exemplars_bad:
+        - "Multi-step forms with no state persistence on back."
+      detection_signals:
+        - "Back after form submit returns a cleared form."
+      recommendation: "Persist form state across navigation. Save drafts locally."
+
+  - id: permission_ask_at_wrong_time
+    title: "OS permission ask (notifications, camera) on first load"
+    category: activation
+    body:
+      summary: "Site asks for notification permission before the user has done anything."
+      works_when:
+        - "Rare. User must have explicit intent."
+      fails_when:
+        - "First-load notification prompts kill trust."
+      exemplars_good:
+        - "Products that ask only after a specific action that needs the permission."
+      exemplars_bad:
+        - "News sites that ask for notifications on landing."
+      detection_signals:
+        - "Notification prompt appears within 3s of first load."
+      recommendation: "Ask permission only after the user takes an action that clearly benefits from it."
+
+  - id: lost_in_tabs
+    title: "App uses tabs but no state persists across tabs"
+    category: navigation
+    body:
+      summary: "User opens two tabs of the same app; actions in one affect the other inconsistently."
+      works_when:
+        - "Product is stateless enough that it doesn't matter."
+      fails_when:
+        - "Editing apps where the second tab shows stale data."
+      exemplars_good:
+        - "Google Docs — collaborative state syncs across tabs."
+      exemplars_bad:
+        - "Dashboards where a save in tab A doesn't update tab B."
+      detection_signals:
+        - "Two tabs show divergent state after an action in one."
+      recommendation: "Sync state via storage events or live channels. Surface a 'content changed, refresh' banner as a minimum."
+
+  - id: dashboard_without_defaults
+    title: "Dashboard showing zeros for a new account"
+    category: empty_states
+    body:
+      summary: "Analytics dashboard displays '0 events / 0 users / 0 revenue' immediately post-signup."
+      works_when:
+        - "Product sends a tutorial pointing at how to get data in."
+      fails_when:
+        - "Zeros just sit there with no context."
+      exemplars_good:
+        - "Products that render a 'sample data' toggle until real data arrives."
+      exemplars_bad:
+        - "Flat 0s with no guidance."
+      detection_signals:
+        - "Dashboard loads with 0 data, no setup prompt, no sample toggle."
+      recommendation: "Show sample data + an unambiguous 'connect your data' path."
