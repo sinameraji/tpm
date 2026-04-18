@@ -4,9 +4,10 @@
 
 ## Current State
 
-- **Current milestone:** M1 complete. Next up: M2 (CLI Skeleton).
+- **Current milestone:** M2 complete. Next up: M3 (Backend Foundation).
 - **Last updated:** 2026-04-18
 - **Overall status:** on-track
+- **Total scope:** 20 milestones for v1.
 
 ## Completed Milestones
 
@@ -39,23 +40,53 @@
 
 - **Deviations from spec:** none material. Spec says "shared Zod schemas in packages/shared" — interpreted as establishing the package and conventions (file-per-stage, `SCHEMA_VERSION`, fixed enums), with per-stage object fields filled in during their stage milestones (M7–M13).
 
+### Milestone 2: CLI Skeleton
+
+- **Completed:** 2026-04-18
+- **Summary:** Full `tpm` command tree. 8 commands registered (`init`, `audit`, `report`, `config`, `upgrade`, `activate`, `account`, `cost`) — `chat` intentionally omitted per spec (v2-only). `init` is the one command that does real work in M2: creates `.tpm/` with `tpm.sqlite` (Postgres-compatible schema: `audits`, `stage_runs`, `model_calls`, `schema_meta`), `artifacts/` dir, and `config.yaml` stub. Other commands are skeletons that emit `{ok: false, skeleton: true, message}` on `--json` and a friendly one-liner on TTY, returning exit code 2 so CI / pipe consumers can distinguish "not implemented" from "succeeded." Every invocation is wrapped in `bootstrap()` which creates a session id (UUID v4), loads or creates the device record (`~/.tpm/device.json`), and attaches a pino structured logger to stderr so stdout stays clean for `--json` consumers.
+
+- **Key files:**
+  - `packages/cli/src/index.ts` — `buildProgram()` wires all commands and global flags
+  - `packages/cli/src/commands/_runtime.ts` — `bootstrap()`, `emit()`, `emitText()` — the glue every command shares
+  - `packages/cli/src/commands/{init,audit,report,config,upgrade,activate,account,cost}.ts`
+  - `packages/cli/src/core/logger.ts` — pino to stderr, session_id in every line, pretty mode when stderr is a TTY and `--json` is off
+  - `packages/cli/src/core/session.ts` — `newSession()` returns UUID v4 + ISO timestamp
+  - `packages/cli/src/core/paths.ts` — `userPaths()`, `projectPaths()`, `ensureDir()`
+  - `packages/cli/src/core/orchestrator.ts` — stub; real pipeline dispatch lands in M7–M12
+  - `packages/cli/src/auth/device.ts` — `loadOrCreateDevice()`; writes `~/.tpm/device.json` with fingerprint hash
+  - `packages/cli/src/gateway/index.ts` — `ModelGateway` interface (complete + Usage + Message types)
+  - `packages/cli/src/gateway/workers-ai.ts` — `WorkersAIGateway` stub that throws pointing at M4
+  - `packages/cli/src/db/schema.ts` — schema SQL inlined as a TS string (no file-resolution magic post-build)
+  - `packages/cli/src/db/init.ts` — `openDatabase()`: WAL mode, foreign_keys on, idempotent schema
+  - `packages/cli/src/utils/opts.ts` — `mergedOpts<T>()` wraps `cmd.optsWithGlobals()` to sidestep the parent/child `--json` collision
+
+- **Decisions made:**
+  - **`chat` command omitted.** Spec lists it in the directory layout but also lists it in "Things NOT to Build in v1." Simpler to not register it at all than to register a stub that errors "v2 feature" — the CLI surface is a product signal.
+  - **SQL schema inlined as a TS string** (`schema.ts`) rather than a `.sql` file. Avoids needing a post-build copy step to ship the file into `dist/`. The trade-off is slightly less "SQL-y" look in the source; the benefit is that the published npm package just works.
+  - **Skeleton exit code = 2** for not-yet-implemented commands. Distinguishes "not done" from "failed" (exit 1) and "success" (exit 0), helpful for CI and shell scripts.
+  - **Stderr logs + stdout clean separation** enforced via pino destination `fd: 2`. `emit()` writes JSON to stdout only when `--json` is set; `emitText()` writes to stdout only when `--json` is NOT set. This keeps pipe-friendly usage (`tpm foo --json | jq`) clean.
+  - **Fingerprint hash** in device.json is a SHA-256 of `hostname|platform|arch|cpu_count|cpu_model`. Stored so the backend can flag duplicate-device abuse without needing the raw components.
+
+- **Deviations from spec:** the spec's directory layout includes a `src/patterns/built-in.yaml` path. That's M13's work (Pattern Library); not touched in M2. Similarly `src/billing/` is M15's scope.
+
 ## Open Questions for Sina
 
-- **Test runner choice** — vitest added for M1. OK, or prefer node:test / jest?
-- **GitHub repo + CI:** CI workflow exists but this repo isn't pushed to GitHub yet. Should I set up `usetpm/tpm` on GitHub now or defer to a later milestone?
-- **Node version in `engines`:** set to `>=20`; should we pin to `20.x` specifically for reproducibility?
-- **License:** root `package.json` has `"license": "UNLICENSED"`. Confirm — or should it be proprietary/commercial string?
+_(none pending — M1 questions resolved 2026-04-18. M2 introduced no new blockers.)_
 
 ## Next Milestone
 
-**M2 — CLI Skeleton.** All `tpm` commands stubbed (`init`, `audit`, `report`, `chat`, `config`, `upgrade`, `activate`, `account`, `cost`), device ID generation writing to `~/.tpm/device.json`, SQLite init via better-sqlite3, pino structured logger to stderr (stdout stays clean for `--json` piping), `ModelGateway` interface + `WorkersAIGateway` stub implementation. No real model calls yet — M4 wires those in once the proxy Worker exists.
+**M3 — Backend Foundation.** Wrangler project in `packages/backend` (already scaffolded in M1). Real D1 schema for the backend (devices, licenses, subscriptions, audits, usage_log, patterns). KV namespace for short-lived session tokens. R2 bucket binding for future audit artifacts. JWT-based auth middleware. Endpoints: `/health` (exists), `/device/register` (generates device JWT bound to the device_id the CLI sends), `/license/validate` (reads D1, returns tier + quota). Deploy to `api.usetpm.dev`. Stripe webhook route can be a stub in M3; real Stripe lands in M15.
+
+The CLI already has a `WorkersAIGateway` stub pointed at `api.usetpm.dev/infer` — M3 doesn't wire that up yet (that's M4). M3 is just: "there's a Worker at api.usetpm.dev that answers /health, /device/register, /license/validate, and stores what it needs in D1."
 
 ## Architecture Notes
 
 - **Monorepo layout** — `packages/shared` (Zod schemas + TS types, workspace dependency for both cli and backend), `packages/cli` (local CLI), `packages/backend` (Cloudflare Worker), `packages/marketing` (Astro, M17).
 - **Schema provenance** — all YAML artifacts carry `schema_version`. Zod schemas validate everything that enters the pipeline. Models emit JSON; we serialize to YAML for on-disk artifacts. Never let models emit YAML directly.
-- **Session ID** — every log line, every D1 row, every artifact will carry a session_id (not yet wired; M2 adds it via pino child logger).
-- **Workers AI only** — single `ModelGateway` interface, `WorkersAIGateway` sole implementation. No third-party LLMs, no AI Gateway.
+- **Session ID** — wired at M2. Every pino log line has `session_id`. The local SQLite schema (`audits`, `stage_runs`, `model_calls`) has a `session_id NOT NULL` column on every row, and `ensure()` indexes on it.
+- **Workers AI only** — single `ModelGateway` interface, `WorkersAIGateway` sole implementation. No third-party LLMs, no AI Gateway. M2 wires the interface; M4 wires the transport.
+- **Stdout/stderr discipline** — pino writes to `fd: 2` (stderr). Commands use `emit(runtime, {...})` to put JSON on stdout (only when `--json` is set) and `emitText(runtime, "...")` for human text (only when `--json` is not set). This keeps `tpm foo --json | jq` clean for scripting.
+- **Exit codes** — 0 = success, 1 = real failure, 2 = skeleton / not-yet-implemented (most M2 commands). Script consumers can branch on this cleanly.
 
 ## Method Notes
 

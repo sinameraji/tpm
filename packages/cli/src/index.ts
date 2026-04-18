@@ -1,6 +1,42 @@
+import { Command } from "commander";
 import { TPM_VERSION } from "@tpm/shared";
+import { register as registerInit } from "./commands/init.js";
+import { register as registerAudit } from "./commands/audit.js";
+import { register as registerReport } from "./commands/report.js";
+import { register as registerConfig } from "./commands/config.js";
+import { register as registerUpgrade } from "./commands/upgrade.js";
+import { register as registerActivate } from "./commands/activate.js";
+import { register as registerAccount } from "./commands/account.js";
+import { register as registerCost } from "./commands/cost.js";
 
-export async function run(_argv: string[]): Promise<void> {
-  // M2 fills in Commander.js command tree. M1 scaffold only.
-  process.stdout.write(`tpm ${TPM_VERSION}\n`);
+export function buildProgram(): Command {
+  const program = new Command();
+  program
+    .name("tpm")
+    .description(
+      "TPM — Technical Product Manager. Audits software products via a deterministic six-stage pipeline.",
+    )
+    .version(TPM_VERSION)
+    .option("--json", "Emit structured JSON on stdout; logs remain on stderr.")
+    .option("--verbose", "Enable debug-level logs.")
+    .option(
+      "--session-id <id>",
+      "Override the session id (default: fresh UUID v4 per invocation).",
+    );
+
+  registerInit(program);
+  registerAudit(program);
+  registerReport(program);
+  registerConfig(program);
+  registerUpgrade(program);
+  registerActivate(program);
+  registerAccount(program);
+  registerCost(program);
+
+  return program;
+}
+
+export async function run(argv: string[]): Promise<void> {
+  const program = buildProgram();
+  await program.parseAsync(argv, { from: "user" });
 }
