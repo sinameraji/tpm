@@ -4,7 +4,7 @@
 
 ## Current State
 
-- **Current milestone:** M2 complete. Next up: M3 (Backend Foundation).
+- **Current milestone:** M3 complete. Next up: M4 (Workers AI Proxy).
 - **Last updated:** 2026-04-18
 - **Overall status:** on-track
 - **Total scope:** 20 milestones for v1.
@@ -69,15 +69,55 @@
 
 - **Deviations from spec:** the spec's directory layout includes a `src/patterns/built-in.yaml` path. That's M13's work (Pattern Library); not touched in M2. Similarly `src/billing/` is M15's scope.
 
+### Milestone 3: Backend Foundation
+
+- **Completed:** 2026-04-18
+- **Summary:** Cloudflare Worker at `packages/backend` with real routes: `GET /health`, `POST /device/register`, `GET /license/validate`. D1 migration `0001_init.sql` defines 8 tables (devices, licenses, subscriptions, audits, usage_log, patterns, webhook_events, rate_limits, schema_meta) — all Postgres-compatible. HS256 JWT lib in `lib/jwt.ts` uses Web Crypto (no deps), with 24h access tokens and 30d refresh tokens. Auth middleware extracts Bearer token, rejects wrong typ / expired / malformed. Rate-limit middleware backed by KV with 5/day/IP cap on `/device/register`. `wrangler.toml` has all bindings declared (DB, SESSIONS, RATE_LIMITS, ARTIFACTS, AI) with placeholder IDs — user must run the listed wrangler commands to create the real resources and fill in the IDs before deploying.
+
+- **Key files:**
+  - `packages/backend/migrations/0001_init.sql` — D1 schema
+  - `packages/backend/wrangler.toml` — bindings + deploy config (IDs to be filled)
+  - `packages/backend/src/env.ts` — Env type for all bindings + secrets
+  - `packages/backend/src/index.ts` — router (table-driven, method+regex dispatch), top-level error handler serializes `HttpError` into standard JSON shape
+  - `packages/backend/src/routes/{health,device,license}.ts`
+  - `packages/backend/src/middleware/{auth,rate-limit}.ts`
+  - `packages/backend/src/lib/{jwt,errors,ids}.ts`
+  - `packages/backend/src/test-utils/d1-shim.ts` — minimal D1/KV shim over better-sqlite3, so route tests run with no Workers runtime required
+
+- **Decisions made:**
+  - **No `jose` library.** Web Crypto HS256 is ~40 lines and avoids a dep; keeps Worker bundle minimal.
+  - **Free-tier license stub created on first `/device/register`.** Simpler than a "no license row = implicit free" code path and means every device has a row that webhooks can mutate in M15.
+  - **Router = array of `{method, pattern, handler}`.** Hono/itty-router would work but adding a framework for 3 routes is premature. M4 adds `/infer`; even with the full v1 route set we expect <10 routes.
+  - **Rate limits are KV-backed.** D1 could work, but KV's per-key TTL is perfect for sliding windows. Accepted race risk at high QPS is fine for a public endpoint with a 5/day cap.
+  - **D1 shim uses better-sqlite3 for tests.** Lets route tests run in Node without miniflare/workerd overhead. Shim implements only the API surface we use (`prepare`, `bind`, `first`, `all`, `run`).
+
+- **Deviations from spec:** No deploy to `api.usetpm.dev` yet — that requires the user to run `wrangler d1 create`, `wrangler kv namespace create SESSIONS`, `wrangler kv namespace create RATE_LIMITS`, `wrangler r2 bucket create tpm-artifacts`, then fill the IDs in `wrangler.toml`, then `wrangler secret put JWT_SECRET` + `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`, then `wrangler deploy`. Recorded as a handoff item in "Handoffs Required."
+
 ## Open Questions for Sina
 
-_(none pending — M1 questions resolved 2026-04-18. M2 introduced no new blockers.)_
+_(none pending)_
+
+## Handoffs Required (credentials / external systems)
+
+- **M3 deploy of `api.usetpm.dev`** — needs Cloudflare account. Run:
+  ```bash
+  cd packages/backend
+  wrangler d1 create tpm-prod                    # copy database_id into wrangler.toml
+  wrangler kv namespace create SESSIONS          # copy id into wrangler.toml
+  wrangler kv namespace create RATE_LIMITS       # copy id into wrangler.toml
+  wrangler r2 bucket create tpm-artifacts
+  wrangler d1 migrations apply tpm-prod
+  wrangler secret put JWT_SECRET                 # long random string
+  wrangler deploy
+  ```
+  Then add a custom route to the `usetpm.dev` zone pointing `api.usetpm.dev/*` to this worker.
+- **M15 Stripe** — needs live Stripe account, products, prices, webhook secret. Documented when M15 lands.
+- **M17 marketing site** — needs a Cloudflare Pages project pointing at `packages/marketing/`.
+- **M20 npm publish** — needs npm auth on a publishing machine; `@tpm/cli` scoped or unscoped name.
 
 ## Next Milestone
 
-**M3 — Backend Foundation.** Wrangler project in `packages/backend` (already scaffolded in M1). Real D1 schema for the backend (devices, licenses, subscriptions, audits, usage_log, patterns). KV namespace for short-lived session tokens. R2 bucket binding for future audit artifacts. JWT-based auth middleware. Endpoints: `/health` (exists), `/device/register` (generates device JWT bound to the device_id the CLI sends), `/license/validate` (reads D1, returns tier + quota). Deploy to `api.usetpm.dev`. Stripe webhook route can be a stub in M3; real Stripe lands in M15.
-
-The CLI already has a `WorkersAIGateway` stub pointed at `api.usetpm.dev/infer` — M3 doesn't wire that up yet (that's M4). M3 is just: "there's a Worker at api.usetpm.dev that answers /health, /device/register, /license/validate, and stores what it needs in D1."
+**M4 — Workers AI Proxy (`/infer`).** Backend endpoint that: (1) requires a valid access JWT, (2) checks per-month quota by tier (free 1 lifetime, pro 20/month, team 50/seat/month), (3) logs every call to `usage_log` with `neurons`, (4) streams the response from `env.AI.run(model, ...)`. CLI side: `WorkersAIGateway.complete()` replaces the M2 stub with real HTTPS calls to `api.usetpm.dev/infer`, handles the access/refresh token lifecycle with `/device/register` + local `~/.tpm/token.json` storage, parses usage headers, returns `CompletionResult`. First wired model: `@cf/openai/gpt-oss-120b`.
 
 ## Architecture Notes
 

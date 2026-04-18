@@ -1,18 +1,44 @@
-import { TPM_VERSION } from "@tpm/shared";
+import type { Env } from "./env.js";
+import { HttpError, notFound } from "./lib/errors.js";
+import { health } from "./routes/health.js";
+import { registerDevice } from "./routes/device.js";
+import { validateLicense } from "./routes/license.js";
 
-export interface Env {
-  // M3 fills in D1, KV, R2, AI, STRIPE_SECRET bindings per wrangler.toml.
-  TPM_VERSION_TAG?: string;
+type RouteHandler = (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response>;
+
+interface Route {
+  method: string;
+  pattern: RegExp;
+  handler: RouteHandler;
+}
+
+const ROUTES: Route[] = [
+  { method: "GET", pattern: /^\/health\/?$/, handler: health },
+  { method: "POST", pattern: /^\/device\/register\/?$/, handler: registerDevice },
+  { method: "GET", pattern: /^\/license\/validate\/?$/, handler: validateLicense },
+];
+
+async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const url = new URL(request.url);
+  for (const r of ROUTES) {
+    if (r.method === request.method && r.pattern.test(url.pathname)) {
+      return r.handler(request, env, ctx);
+    }
+  }
+  throw notFound();
 }
 
 const worker = {
-  async fetch(request: Request, _env: Env, _ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url);
-    if (url.pathname === "/health") {
-      return Response.json({ ok: true, version: TPM_VERSION });
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    try {
+      return await route(request, env, ctx);
+    } catch (err) {
+      if (err instanceof HttpError) return err.toResponse();
+      const msg = err instanceof Error ? err.message : "internal error";
+      return Response.json({ error: { code: "internal", message: msg } }, { status: 500 });
     }
-    return new Response("Not Found", { status: 404 });
   },
 } satisfies ExportedHandler<Env>;
 
 export default worker;
+export type { Env };

@@ -1,26 +1,159 @@
 import { describe, it, expect } from "vitest";
 import worker from "./index.js";
+import type { Env } from "./env.js";
+import { baseEnv, makeD1, mockCtx, STUB_JWT_SECRET } from "./test-utils/d1-shim.js";
+import { issueAccessToken } from "./lib/jwt.js";
 
-function mockCtx(): ExecutionContext {
-  return {
-    waitUntil: () => {},
-    passThroughOnException: () => {},
-  } as unknown as ExecutionContext;
+function makeEnv(extras: Record<string, unknown> = {}): Env {
+  const { d1 } = makeD1();
+  return baseEnv({ DB: d1, ...extras }) as unknown as Env;
 }
 
-describe("backend worker (M1 scaffold)", () => {
-  it("GET /health → 200 { ok: true }", async () => {
-    const req = new Request("https://api.usetpm.dev/health");
-    const res = await worker.fetch(req, {}, mockCtx());
+const DEVICE_ID = "11111111-1111-4111-8111-111111111111";
+const FINGERPRINT = "a".repeat(64);
+
+describe("backend — health + 404", () => {
+  it("GET /health → 200 ok", async () => {
+    const env = makeEnv();
+    const res = await worker.fetch(new Request("https://api.usetpm.dev/health"), env, mockCtx());
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { ok: boolean; version: string };
+    const body = (await res.json()) as { ok: boolean; env: string; version: string };
     expect(body.ok).toBe(true);
-    expect(typeof body.version).toBe("string");
+    expect(body.env).toBe("test");
   });
 
-  it("GET /unknown → 404", async () => {
-    const req = new Request("https://api.usetpm.dev/unknown");
-    const res = await worker.fetch(req, {}, mockCtx());
+  it("GET /unknown → 404 not_found", async () => {
+    const env = makeEnv();
+    const res = await worker.fetch(new Request("https://api.usetpm.dev/unknown"), env, mockCtx());
     expect(res.status).toBe(404);
+  });
+});
+
+describe("backend — /device/register", () => {
+  it("accepts a well-formed device_id and returns access + refresh tokens", async () => {
+    const env = makeEnv();
+    const res = await worker.fetch(
+      new Request("https://api.usetpm.dev/device/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          device_id: DEVICE_ID,
+          fingerprint_hash: FINGERPRINT,
+          tpm_version: "0.0.0",
+        }),
+      }),
+      env,
+      mockCtx(),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: boolean;
+      tier: string;
+      access_token: string;
+      refresh_token: string;
+    };
+    expect(body.ok).toBe(true);
+    expect(body.tier).toBe("free");
+    expect(body.access_token.split(".")).toHaveLength(3);
+    expect(body.refresh_token.split(".")).toHaveLength(3);
+  });
+
+  it("rejects a non-uuid device_id", async () => {
+    const env = makeEnv();
+    const res = await worker.fetch(
+      new Request("https://api.usetpm.dev/device/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          device_id: "not-a-uuid",
+          fingerprint_hash: FINGERPRINT,
+          tpm_version: "0.0.0",
+        }),
+      }),
+      env,
+      mockCtx(),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("is idempotent — second register for same device does not create a second license", async () => {
+    const env = makeEnv();
+    const body = {
+      device_id: DEVICE_ID,
+      fingerprint_hash: FINGERPRINT,
+      tpm_version: "0.0.0",
+    };
+    const hit = () =>
+      worker.fetch(
+        new Request("https://api.usetpm.dev/device/register", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+        env,
+        mockCtx(),
+      );
+    await hit();
+    await hit();
+    const count = await (
+      env.DB as unknown as {
+        prepare: (s: string) => {
+          bind: (...a: unknown[]) => { first: <T>() => Promise<T | null> };
+        };
+      }
+    )
+      .prepare("SELECT COUNT(*) as c FROM licenses WHERE device_id = ?")
+      .bind(DEVICE_ID)
+      .first<{ c: number }>();
+    expect(count?.c).toBe(1);
+  });
+});
+
+describe("backend — /license/validate", () => {
+  it("401 without a bearer token", async () => {
+    const env = makeEnv();
+    const res = await worker.fetch(
+      new Request("https://api.usetpm.dev/license/validate"),
+      env,
+      mockCtx(),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("200 with quota shape when authed", async () => {
+    const env = makeEnv();
+    // register first so there's a license row
+    await worker.fetch(
+      new Request("https://api.usetpm.dev/device/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          device_id: DEVICE_ID,
+          fingerprint_hash: FINGERPRINT,
+          tpm_version: "0.0.0",
+        }),
+      }),
+      env,
+      mockCtx(),
+    );
+    const token = await issueAccessToken(DEVICE_ID, "free", STUB_JWT_SECRET);
+    const res = await worker.fetch(
+      new Request("https://api.usetpm.dev/license/validate", {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+      env,
+      mockCtx(),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: boolean;
+      tier: string;
+      quota: Record<string, unknown>;
+      usage: Record<string, unknown>;
+    };
+    expect(body.ok).toBe(true);
+    expect(body.tier).toBe("free");
+    expect(body.quota).toBeDefined();
+    expect(body.usage).toBeDefined();
   });
 });

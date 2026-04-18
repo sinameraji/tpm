@@ -3,24 +3,50 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# M3 wires up D1 (metadata), KV (session tokens), R2 (audit artifacts),
-# AI (Workers AI binding), and secrets (STRIPE_SECRET, JWT_SECRET).
+# Replace the empty "id" / "database_id" / "bucket_name" placeholders below
+# with real values after running:
+#   wrangler d1 create tpm-prod
+#   wrangler kv namespace create SESSIONS
+#   wrangler kv namespace create RATE_LIMITS
+#   wrangler r2 bucket create tpm-artifacts
+# Then push secrets:
+#   wrangler secret put JWT_SECRET
+#   wrangler secret put STRIPE_SECRET_KEY
+#   wrangler secret put STRIPE_WEBHOOK_SECRET
 
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "tpm-prod"
-# database_id = "TBD"
+[[d1_databases]]
+binding = "DB"
+database_name = "tpm-prod"
+database_id = ""
+migrations_dir = "migrations"
 
-# [[kv_namespaces]]
-# binding = "SESSIONS"
-# id = "TBD"
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = ""
 
-# [[r2_buckets]]
-# binding = "ARTIFACTS"
-# bucket_name = "tpm-artifacts"
+[[kv_namespaces]]
+binding = "RATE_LIMITS"
+id = ""
 
-# [ai]
-# binding = "AI"
+[[r2_buckets]]
+binding = "ARTIFACTS"
+bucket_name = "tpm-artifacts"
+
+[ai]
+binding = "AI"
 
 [observability]
 enabled = true
+
+[vars]
+TPM_API_VERSION = "v1"
+ENV = "production"
+
+[env.dev]
+[env.dev.vars]
+ENV = "dev"
+
+# Routes (wire up after domain is set):
+# routes = [
+#   { pattern = "api.usetpm.dev/*", zone_name = "usetpm.dev" }
+# ]
