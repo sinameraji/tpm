@@ -4,7 +4,7 @@
 
 ## Current State
 
-- **Current milestone:** M8 complete. Next up: M9 (Stage C — Delta Analysis).
+- **Current milestone:** M10 complete. Next up: M11 (Stage E — Solutions + Prototypes).
 - **Last updated:** 2026-04-18
 - **Overall status:** on-track
 - **Total scope:** 20 milestones for v1.

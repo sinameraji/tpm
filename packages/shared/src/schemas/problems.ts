@@ -20,8 +20,32 @@ export type Effort = z.infer<typeof Effort>;
 export const Confidence = z.enum(["high", "medium", "low"]);
 export type Confidence = z.infer<typeof Confidence>;
 
-export const ProblemsSchema = z.object({
-  schema_version: z.literal(SCHEMA_VERSION),
+export const SourceFinding = z.object({
+  delta_ref: z.string(),
 });
 
+export const Problem = z.object({
+  id: z.string(),
+  rank: z.number().int().positive(),
+  title: z.string(),
+  source_findings: z.array(SourceFinding),
+  severity: Severity,
+  reach: Reach,
+  funnel_position: FunnelPosition,
+  blast_radius: BlastRadius,
+  effort_estimate: Effort,
+  confidence: Confidence,
+  leverage_argument: z.string(),
+  unblocks: z.array(z.string()),
+  related_patterns: z.array(z.string()),
+});
+export type Problem = z.infer<typeof Problem>;
+
+export const ProblemsSchema = z.object({
+  schema_version: z.literal(SCHEMA_VERSION),
+  audit_id: z.string(),
+  generated_at: z.string(),
+  model: z.string(),
+  problems: z.array(Problem),
+});
 export type Problems = z.infer<typeof ProblemsSchema>;
