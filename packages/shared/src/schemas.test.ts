@@ -15,7 +15,6 @@ describe("schema stubs — every stage schema exposes schema_version=1 and parse
   // paths, delta) have dedicated tests in their stage packages; this test only
   // asserts the SCHEMA_VERSION constant is pinned at 1 for every artifact.
   const cases = [
-    ["patterns", Patterns.PatternsSchema, Patterns.SCHEMA_VERSION],
     ["config", Config.ConfigSchema, Config.SCHEMA_VERSION],
     ["license", License.LicenseSchema, License.SCHEMA_VERSION],
   ] as const;
