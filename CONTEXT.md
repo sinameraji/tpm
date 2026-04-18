@@ -4,7 +4,7 @@
 
 ## Current State
 
-- **Current milestone:** M10 complete. Next up: M11 (Stage E — Solutions + Prototypes).
+- **Current milestone:** M12 complete. All six pipeline stages now have real implementations. Next up: M13 (Pattern Library — 50+ built-in patterns).
 - **Last updated:** 2026-04-18
 - **Overall status:** on-track
 - **Total scope:** 20 milestones for v1.
