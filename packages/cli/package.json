@@ -20,6 +20,7 @@
   "dependencies": {
     "@tpm/shared": "workspace:*",
     "better-sqlite3": "^12.9.0",
+    "cheerio": "^1.2.0",
     "commander": "^14.0.3",
     "js-yaml": "^4.1.1",
     "pino": "^10.3.1",
