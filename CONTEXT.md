@@ -4,7 +4,7 @@
 
 ## Current State
 
-- **Current milestone:** M4 complete. Next up: M5 (Static Parser).
+- **Current milestone:** M5 complete. Next up: M6 (Marketing Surface Scraper).
 - **Last updated:** 2026-04-18
 - **Overall status:** on-track
 - **Total scope:** 20 milestones for v1.
@@ -111,6 +111,26 @@
 
 - **Deviations from spec:** spec says `/infer` streams the response. Not implemented for M4 because (a) Workers AI's `env.AI.run()` returns a resolved response not a stream in the allowlisted models' current JSON mode, and (b) stages A, C, D, F all use single-shot completions — streaming would matter for Stage B navigator steps but those are small and latency-tolerant. Revisit in M18 dogfood if latency warrants.
 
+### Milestone 5: Static Parser (codebase → map.yaml)
+
+- **Completed:** 2026-04-18
+- **Summary:** `buildStaticMap(projectRoot)` walks a project and emits a validated `Map` object (Zod schema in `packages/shared/src/schemas/map.ts`). Extracts: framework (next / remix / nuxt / astro / svelte / vue / react / rails / django / flask / express / fastify / hono / unknown), package metadata, routes (file-based + programmatic + middleware), components (default exports), forms (fields, required-ness, submit label, action), visible strings (h1/h2/h3/button/link with context labels), navigation items, tracking events (mixpanel / amplitude / segment / posthog / gtag / dataLayer / heap / generic track()), auth providers (nextauth / clerk / auth0 / supabase / firebase / devise / passport / custom_middleware). Stable content hash over the structural facts so Stage A knows when to re-run vs replay. `writeMapYaml()` serializes via js-yaml.
+
+- **Key files:**
+  - `packages/shared/src/schemas/map.ts` — full Zod schema + fixed enums (`Framework`, `TrackingPlatform`, `AuthProvider`, `RouteKind`)
+  - `packages/cli/src/stages/a-intent/walker.ts` — fast directory walker with ignore list (node_modules, .git, .next, etc.), max-file-bytes + max-files guards
+  - `packages/cli/src/stages/a-intent/extractors.ts` — route/form/component/tracking/visible-string/navigation extractors
+  - `packages/cli/src/stages/a-intent/static-map.ts` — orchestration + hash + YAML writer
+  - `packages/cli/src/stages/a-intent/static-map.test.ts` — Next.js fixture + framework-detection smoke
+
+- **Decisions made:**
+  - **Regex-based extraction, not tree-sitter.** Spec lists tree-sitter but native builds fail on Node 24 and WASM adds bundle complexity. Regex extractors cover 100% of what Stage A needs (the method is "find these facts" not "build an AST"); the extraction quality degrades gracefully on exotic syntax (a component TPM can't parse is a component Stage A doesn't know about, which Stage B still discovers at runtime via Playwright). Logged as deviation.
+  - **Stable content hash** over `{routes, component names, form count, sorted tracking events, framework}`. Deliberately excludes file paths and line numbers so cosmetic churn (renaming a component file) doesn't bust the hash.
+  - **Output caps**: 500 visible_strings, 200 navigation items. Keeps map.yaml under ~100KB even on large apps — Stage A's prompt budget matters.
+  - **Middleware emitted as a separate route kind** so the analyzer can distinguish "this is an auth gate" from "this is a page."
+
+- **Deviations from spec:** regex vs tree-sitter (documented above). Vue/Svelte/Python/Ruby extraction is shallow (component name from filename, framework detection from deps/files) — good enough to tell the pipeline "this is a Rails app with these routes" but not for deep AST analysis. Revisit if a Jinba dogfood case demands it.
+
 ## Open Questions for Sina
 
 _(none pending)_
@@ -135,7 +155,7 @@ _(none pending)_
 
 ## Next Milestone
 
-**M5 — Static Parser.** tree-sitter-based code walker for JS/TS/JSX/TSX/Vue/Svelte/Python/Ruby. Extracts: routes (file-based and programmatic), components, user-facing strings, forms, navigation structure, auth-gated areas, tracking events (mixpanel.track, amplitude.logEvent, segment.track, etc.), package metadata. Emits `map.yaml` with a schema_version and a stable hash. This becomes the codebase input to Stage A in M7.
+**M6 — Marketing Surface Scraper.** Given a deployed site URL, fetch landing page, pricing page, features pages, docs index, about. Extract: headings, hero/subhero copy, meta + OpenGraph + schema.org, CTA copy and targets, pricing tiers, social proof. Emit `scraped-surfaces.yaml`. Respects robots.txt, rate-limits, polite UA. This is Stage A's other input alongside the static map.
 
 ## Architecture Notes
 
