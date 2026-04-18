@@ -1,0 +1,41 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Docs — TPM">
+  <section style="padding: 3rem 0 2rem;">
+    <h1>Docs</h1>
+
+    <h2>Quick start</h2>
+    <pre><code>npm install -g tpm
+cd your-project
+tpm init
+tpm audit https://your-product.com</code></pre>
+
+    <h2>The six-stage method</h2>
+    <p>TPM runs a deterministic pipeline. Each stage checkpoints to disk and can be replayed independently. The artifacts live in <code>.tpm/artifacts/&lbrace;audit_id&rbrace;/</code>:</p>
+    <ul>
+      <li><code>lean-canvas.yaml</code> — Stage A: what the builder intended</li>
+      <li><code>paths.yaml</code> — Stage B: what actually happens per persona</li>
+      <li><code>delta.yaml</code> — Stage C: the structured difference</li>
+      <li><code>problems.yaml</code> — Stage D: ranked by leverage argument</li>
+      <li><code>solutions.yaml</code> + <code>prototypes/*.html</code> — Stage E: top-5 fixes</li>
+      <li><code>spec.md</code> + <code>spec.pdf</code> — Stage F: the PM deliverable</li>
+    </ul>
+
+    <h2>Commands</h2>
+    <ul>
+      <li><code>tpm init</code> — initialize <code>.tpm/</code> in the current project</li>
+      <li><code>tpm audit [target]</code> — run a full audit</li>
+      <li><code>tpm report [audit_id]</code> — show a prior spec.md (or open its PDF with <code>--pdf</code>)</li>
+      <li><code>tpm config get/set/show</code> — inspect or change config</li>
+      <li><code>tpm upgrade</code> — open Stripe checkout</li>
+      <li><code>tpm account</code> — open the Stripe Customer Portal</li>
+      <li><code>tpm activate &lt;code&gt;</code> — activate a license code if polling missed</li>
+      <li><code>tpm cost</code> — show Neuron spend per audit / per stage / per model</li>
+    </ul>
+
+    <h2>Privacy &amp; security</h2>
+    <p>TPM runs on your machine. Only prompts necessary to the current pipeline step are sent to the Workers AI proxy at <code>api.usetpm.dev/infer</code>. Prompts are logged as metadata (tokens, model, session id) — not content — unless you explicitly opt into debug mode.</p>
+    <p>Source code never leaves your machine.</p>
+  </section>
+</Base>

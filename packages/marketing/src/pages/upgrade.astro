@@ -1,0 +1,39 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Upgrade — TPM">
+  <section style="padding: 3rem 0 2rem;">
+    <h1>Upgrade</h1>
+    <p id="status" style="color: #4d4d4d;">Starting checkout…</p>
+    <noscript>
+      <p>This page requires JavaScript to complete checkout. Alternatively, run <code>tpm upgrade</code> from the CLI.</p>
+    </noscript>
+  </section>
+
+  <script is:inline>
+    (async () => {
+      const status = document.getElementById("status");
+      const params = new URLSearchParams(window.location.search);
+      const device = params.get("device");
+      const token = params.get("token");
+      const tier = (params.get("tier") || "pro");
+      if (!device || !token) {
+        status.textContent = "Open this page from the TPM CLI by running: tpm upgrade";
+        return;
+      }
+      try {
+        const res = await fetch("https://api.usetpm.dev/billing/checkout", {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: "Bearer " + token },
+          body: JSON.stringify({ tier }),
+        });
+        if (!res.ok) throw new Error("checkout failed: " + res.status);
+        const data = await res.json();
+        status.textContent = "Redirecting to Stripe…";
+        window.location.href = data.url;
+      } catch (err) {
+        status.textContent = "Checkout failed — try `tpm activate <code>` fallback. Error: " + err.message;
+      }
+    })();
+  </script>
+</Base>

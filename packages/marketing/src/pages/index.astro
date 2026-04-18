@@ -1,0 +1,47 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="TPM — A Technical Product Manager in your terminal">
+  <section style="padding: 3rem 0 2rem;">
+    <h1 style="font-size: 2.8rem; line-height: 1.15; margin: 0 0 1rem;">
+      A Technical Product Manager, in your terminal.
+    </h1>
+    <p style="font-size: 1.2rem; color: #4d4d4d; max-width: 40rem;">
+      TPM audits your software product the way a senior PM would. It reconstructs what you intended,
+      walks the product as real users, computes the delta, and specs the highest-leverage fixes —
+      deterministic, auditable, fast.
+    </p>
+    <p style="margin-top: 2rem;">
+      <a href="/upgrade" class="button">Get started — $20/month</a>
+      <a href="/docs" class="button secondary" style="margin-left: 0.5rem;">Read the method</a>
+    </p>
+    <pre style="margin-top: 2rem; max-width: 40rem;"><code>npm install -g tpm
+tpm init
+tpm audit https://yoursaas.com</code></pre>
+  </section>
+
+  <section style="padding: 2rem 0; border-top: 1px solid #e4e4e0;">
+    <h2 style="margin-bottom: 1.5rem;">The method is the product.</h2>
+    <p style="max-width: 40rem;">
+      Every TPM audit runs the same six-stage pipeline. Each stage produces a validated YAML artifact.
+      The method is fixed; only the inputs change.
+    </p>
+    <ol style="max-width: 40rem; margin-top: 1rem;">
+      <li><strong>Intent extraction</strong> — Lean Canvas reconstructed from code + marketing surfaces.</li>
+      <li><strong>Observed critical path</strong> — Playwright walks the product as each persona.</li>
+      <li><strong>Delta analysis</strong> — classifies every step and names the intent mismatches.</li>
+      <li><strong>Leverage prioritization</strong> — ranks problems with an explicit argument, not a formula.</li>
+      <li><strong>Solution specs + prototypes</strong> — the top 5 fixes, each with a working HTML prototype.</li>
+      <li><strong>Artifact assembly</strong> — spec.md + spec.pdf, PM-grade.</li>
+    </ol>
+  </section>
+
+  <section style="padding: 2rem 0; border-top: 1px solid #e4e4e0;">
+    <h2>Built for product owners who know what they're looking at.</h2>
+    <p style="max-width: 40rem;">
+      TPM won't tell you to add confetti animations or rainbow gradients. It finds the step in your signup that
+      every honest user abandons, the page where your marketing copy contradicts the product, and the feature
+      whose code exists but no user can reach it. Then it gives you a structured fix with a prototype.
+    </p>
+  </section>
+</Base>

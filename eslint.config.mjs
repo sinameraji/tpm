@@ -11,6 +11,7 @@ export default tseslint.config(
       "**/.wrangler/**",
       "**/coverage/**",
       "**/*.tsbuildinfo",
+      "packages/marketing/**",
     ],
   },
   js.configs.recommended,
