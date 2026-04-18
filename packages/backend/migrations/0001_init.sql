@@ -128,6 +128,16 @@ CREATE TABLE IF NOT EXISTS rate_limits (
   PRIMARY KEY (key, window_start)
 );
 
+CREATE TABLE IF NOT EXISTS activation_codes (
+  code                      TEXT PRIMARY KEY,        -- random string issued by /upgrade success
+  tier                      TEXT NOT NULL,
+  created_at                TEXT NOT NULL,
+  used_at                   TEXT,
+  used_by_device_id         TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_activation_codes_used ON activation_codes (used_at);
+
 CREATE TABLE IF NOT EXISTS schema_meta (
   key                       TEXT PRIMARY KEY,
   value                     TEXT NOT NULL

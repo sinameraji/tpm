@@ -5,6 +5,13 @@ import { registerDevice } from "./routes/device.js";
 import { validateLicense } from "./routes/license.js";
 import { infer } from "./routes/infer.js";
 import { checkQuota } from "./routes/quota.js";
+import {
+  activateCode,
+  createCheckoutSession,
+  createPortalSession,
+  deviceStatus,
+} from "./routes/billing.js";
+import { stripeWebhook } from "./routes/stripe-webhook.js";
 
 type RouteHandler = (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response>;
 
@@ -20,6 +27,11 @@ const ROUTES: Route[] = [
   { method: "GET", pattern: /^\/license\/validate\/?$/, handler: validateLicense },
   { method: "POST", pattern: /^\/infer\/?$/, handler: infer },
   { method: "GET", pattern: /^\/quota\/check\/?$/, handler: checkQuota },
+  { method: "POST", pattern: /^\/billing\/checkout\/?$/, handler: createCheckoutSession },
+  { method: "POST", pattern: /^\/billing\/portal\/?$/, handler: createPortalSession },
+  { method: "POST", pattern: /^\/billing\/activate\/?$/, handler: activateCode },
+  { method: "GET", pattern: /^\/device\/[0-9a-f-]+\/status\/?$/, handler: deviceStatus },
+  { method: "POST", pattern: /^\/billing\/webhook\/?$/, handler: stripeWebhook },
 ];
 
 async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
