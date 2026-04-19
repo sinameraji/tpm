@@ -16,11 +16,13 @@ import Base from "../layouts/Base.astro";
       <a href="https://github.com/sinameraji/tpm" class="button">View on GitHub</a>
       <a href="/docs" class="button secondary" style="margin-left: 0.5rem;">Read the method</a>
     </p>
-    <pre style="margin-top: 2rem; max-width: 40rem;"><code>npm install -g @sinameraji/tpm
-
-cd your-product-repo
-tpm init
-tpm audit</code></pre>
+    <pre style="margin-top: 2rem; max-width: 40rem;"><code>cd your-product-repo
+npx @sinameraji/tpm@latest init
+npx @sinameraji/tpm@latest audit</code></pre>
+    <p style="color: #4d4d4d; font-size: 0.85rem; max-width: 40rem; margin-top: 0.5rem;">
+      Prefer a shorter command? <code>npm install -g @sinameraji/tpm</code>, then just
+      <code>tpm init</code> / <code>tpm audit</code>.
+    </p>
     <p style="color: #4d4d4d; font-size: 0.9rem; max-width: 40rem; margin-top: 1rem;">
       First run prompts you for an optional marketing URL. Skip with Enter for a code-only audit.
       Every new device gets one free audit on our hosted Cloudflare Workers AI credits. After

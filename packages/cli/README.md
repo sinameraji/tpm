@@ -3,12 +3,17 @@
 **Technical Product Manager CLI.** A senior PM in your terminal. TPM audits software products by reading the **codebase** (primary source of truth) and, optionally, your public **marketing site** (auxiliary context). It never runs your product — no browser automation, no fake signups, no logins to your live app.
 
 ```bash
-npm install -g @sinameraji/tpm
-# or run without installing:
+cd your-product-repo
+npx @sinameraji/tpm@latest init
 npx @sinameraji/tpm@latest audit
 ```
 
+`npx` downloads + caches + runs in one shot — no global install, no sudo, works on any machine with Node 20+.
+
+**For a shorter command if you'll run this often:**
+
 ```bash
+npm install -g @sinameraji/tpm   # one-time install (may need npm prefix fix on macOS — see below)
 cd your-product-repo
 tpm init
 tpm audit
@@ -82,6 +87,18 @@ See [the method doc](https://github.com/sinameraji/tpm/blob/main/docs/the-method
 ## Privacy
 
 TPM runs on your machine. In hosted-trial mode, prompts flow through a Cloudflare Worker proxy — logged server-side as token counts only, not content. In BYO mode, prompts go directly from your CLI to your own Cloudflare account; nothing touches TPM infrastructure. **Source code never leaves your machine.**
+
+## macOS: `npm install -g` EACCES fix (optional)
+
+If you want the shorter `tpm` command instead of `npx @sinameraji/tpm@latest`, and you hit `EACCES` on `npm install -g`, your npm prefix points at a root-owned directory (default macOS behavior). One-time fix:
+
+```bash
+mkdir -p ~/.npm-global
+npm config set prefix ~/.npm-global
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.zshrc && source ~/.zshrc
+```
+
+After this, `npm install -g <anything>` works without sudo forever.
 
 ## Links
 

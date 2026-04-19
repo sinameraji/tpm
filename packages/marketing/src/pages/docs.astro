@@ -6,11 +6,13 @@ import Base from "../layouts/Base.astro";
     <h1>Docs</h1>
 
     <h2>Quick start</h2>
-    <pre><code>npm install -g @sinameraji/tpm
-
-cd your-product-repo
-tpm init
-tpm audit</code></pre>
+    <pre><code>cd your-product-repo
+npx @sinameraji/tpm@latest init
+npx @sinameraji/tpm@latest audit</code></pre>
+    <p style="max-width: 44rem; color: #4d4d4d; font-size: 0.9rem;">
+      Or install globally for the shorter <code>tpm</code> command:
+      <code>npm install -g @sinameraji/tpm</code>.
+    </p>
     <p style="max-width: 44rem; color: #4d4d4d;">
       TPM runs on the source code in your current directory (primary source of truth). No
       browser automation, no fake signups. Step 2 of <code>tpm audit</code> optionally asks for

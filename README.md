@@ -3,12 +3,14 @@
 **Open source (MIT).** A senior PM in your terminal. TPM audits software products by reading the **codebase** (primary source of truth) and, optionally, your public **marketing site** (auxiliary context). It never runs your product — no browser automation, no fake signups, no logins to your live app.
 
 ```bash
-npm install -g @sinameraji/tpm
-
 cd your-product-repo
-tpm init
-tpm audit
+npx @sinameraji/tpm@latest init
+npx @sinameraji/tpm@latest audit
 ```
+
+No install, no sudo, no npm-prefix headaches. `npx` downloads + caches + runs.
+
+For a shorter command, `npm install -g @sinameraji/tpm` and use `tpm init` / `tpm audit`. On macOS you may need to [fix your npm prefix](./packages/cli/README.md#macos-npm-install--g-eacces-fix-optional) first.
 
 First run prompts you for an optional marketing URL. Skip with Enter, or pre-set with `--marketing-url https://yourproduct.com`. The URL is remembered for subsequent runs.
 

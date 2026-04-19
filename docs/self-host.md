@@ -39,8 +39,9 @@ The token is stored in `~/.tpm/config.yaml` with mode 0600 and is only read by t
 
 ```bash
 cd your-product-repo
-tpm init
-tpm audit
+npx @sinameraji/tpm@latest init
+npx @sinameraji/tpm@latest audit
+# or, if you installed globally:  tpm init && tpm audit
 ```
 
 TPM reads the source code in your current directory — that's the source of truth. Step 2 of `tpm audit` optionally prompts for your public marketing URL (landing/pricing/features) as auxiliary positioning context; skip with Enter or pre-set with `--marketing-url https://yourproduct.com`.
