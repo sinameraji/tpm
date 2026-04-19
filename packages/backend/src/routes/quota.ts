@@ -1,12 +1,14 @@
 import type { Env } from "../env.js";
 import { requireAuth } from "../middleware/auth.js";
-import { QUOTAS } from "./license.js";
+
+// Hosted-trial: every device gets 1 lifetime audit on Sina's Workers AI
+// credits. After that, the CLI is pointed at the self-host guide.
+export const HOSTED_TRIAL_LIMIT = 1;
+
+const SELF_HOST_URL = "https://usetpm.dev/self-host";
 
 export async function checkQuota(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
-
-  const tier = auth.tier;
-  const quota = QUOTAS[tier];
 
   const lifetimeRow = await env.DB.prepare(
     `SELECT COUNT(DISTINCT audit_id) as c FROM usage_log
@@ -16,57 +18,25 @@ export async function checkQuota(request: Request, env: Env): Promise<Response> 
     .first<{ c: number }>();
   const lifetime = lifetimeRow?.c ?? 0;
 
-  const monthStart = new Date(new Date().setDate(1)).toISOString();
-  const monthRow = await env.DB.prepare(
-    `SELECT COUNT(DISTINCT audit_id) as c FROM usage_log
-       WHERE device_id = ? AND audit_id IS NOT NULL AND status = 'ok'
-       AND request_at >= ?`,
-  )
-    .bind(auth.deviceId, monthStart)
-    .first<{ c: number }>();
-  const monthly = monthRow?.c ?? 0;
-
-  const remainingLifetime =
-    quota.full_audits_lifetime === Infinity
-      ? null
-      : Math.max(0, quota.full_audits_lifetime - lifetime);
-  const remainingMonthly =
-    quota.full_audits_monthly === Infinity || quota.full_audits_monthly === 0
-      ? null
-      : Math.max(0, quota.full_audits_monthly - monthly);
-
-  // For free tier, full_audits_monthly is 0 meaning "not monthly-metered" —
-  // only the lifetime cap applies. For pro/team, both caps apply.
-  const monthlyCapApplies = quota.full_audits_monthly !== Infinity && quota.full_audits_monthly > 0;
-  const fullAuditAllowed =
-    (quota.full_audits_lifetime === Infinity || lifetime < quota.full_audits_lifetime) &&
-    (!monthlyCapApplies || monthly < quota.full_audits_monthly);
+  const remaining = Math.max(0, HOSTED_TRIAL_LIMIT - lifetime);
+  const allowed = lifetime < HOSTED_TRIAL_LIMIT;
 
   return Response.json({
     ok: true,
-    tier,
-    quota: {
-      full_audits_lifetime:
-        quota.full_audits_lifetime === Infinity ? "unlimited" : quota.full_audits_lifetime,
-      full_audits_monthly:
-        quota.full_audits_monthly === Infinity ? "unlimited" : quota.full_audits_monthly,
-    },
-    usage: {
-      full_audits_lifetime: lifetime,
-      full_audits_this_period: monthly,
-      period_start: monthStart,
-    },
+    mode: "hosted_trial",
+    limit: HOSTED_TRIAL_LIMIT,
+    used: lifetime,
+    remaining,
     allowances: {
-      full_audit: fullAuditAllowed,
-      quick_audit: true, // always allowed
-      remaining_lifetime: remainingLifetime,
-      remaining_monthly: remainingMonthly,
+      full_audit: allowed,
+      quick_audit: true,
     },
-    upgrade_hint: fullAuditAllowed
+    self_host: allowed
       ? null
       : {
-          message: `${tier} tier has reached its full-audit limit. Run \`tpm upgrade\` to continue.`,
-          url: "https://usetpm.dev/upgrade",
+          message:
+            "You've used your free hosted audit. TPM is open source — run unlimited audits on your own Cloudflare Workers AI.",
+          url: SELF_HOST_URL,
         },
   });
 }

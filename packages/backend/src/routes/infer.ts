@@ -2,7 +2,7 @@ import type { Env } from "../env.js";
 import { requireAuth } from "../middleware/auth.js";
 import { badRequest, paymentRequired, serverError } from "../lib/errors.js";
 import { nowIso, uuidv4 } from "../lib/ids.js";
-import { QUOTAS } from "./license.js";
+import { HOSTED_TRIAL_LIMIT } from "./quota.js";
 
 export interface InferRequest {
   model: string;
@@ -23,56 +23,26 @@ const ALLOWED_MODELS = new Set<string>([
   "@cf/meta/llama-4-scout-17b-16e-instruct",
 ]);
 
-async function enforceQuota(
-  env: Env,
-  deviceId: string,
-  stage: string,
-  tier: string,
-): Promise<void> {
-  const quota = QUOTAS[tier as keyof typeof QUOTAS];
-  if (!quota) throw paymentRequired("unknown tier");
-
-  // meta-stage calls are billed but not quota-gated — that's an audit internal detail.
+async function enforceHostedTrialQuota(env: Env, deviceId: string, stage: string): Promise<void> {
+  // meta-stage calls aren't counted toward the trial.
   if (stage === "meta") return;
 
-  // Lifetime check (free tier only).
-  if (tier === "free") {
-    const liferow = await env.DB.prepare(
-      "SELECT COUNT(DISTINCT audit_id) as c FROM usage_log WHERE device_id = ? AND audit_id IS NOT NULL",
-    )
-      .bind(deviceId)
-      .first<{ c: number }>();
-    const lifetime = liferow?.c ?? 0;
-    if (lifetime >= quota.full_audits_lifetime) {
-      throw paymentRequired(
-        "free tier: 1 lifetime full audit used. Run `tpm upgrade` to continue.",
-        {
-          tier,
-          used: lifetime,
-          limit: quota.full_audits_lifetime,
-        },
-      );
-    }
-  }
-
-  // Monthly check (pro/team).
-  if (tier === "pro" || tier === "team") {
-    const monthStart = new Date(new Date().setDate(1)).toISOString();
-    const monthRow = await env.DB.prepare(
-      "SELECT COUNT(DISTINCT audit_id) as c FROM usage_log WHERE device_id = ? AND audit_id IS NOT NULL AND request_at >= ?",
-    )
-      .bind(deviceId, monthStart)
-      .first<{ c: number }>();
-    const monthly = monthRow?.c ?? 0;
-    const limit = quota.full_audits_monthly;
-    // Soft overage for pro — we log and let through; hard limit for team.
-    if (tier === "team" && monthly >= limit) {
-      throw paymentRequired(`${tier} tier: monthly audit cap reached.`, {
-        tier,
-        used: monthly,
-        limit,
-      });
-    }
+  const liferow = await env.DB.prepare(
+    "SELECT COUNT(DISTINCT audit_id) as c FROM usage_log WHERE device_id = ? AND audit_id IS NOT NULL AND status = 'ok'",
+  )
+    .bind(deviceId)
+    .first<{ c: number }>();
+  const lifetime = liferow?.c ?? 0;
+  if (lifetime >= HOSTED_TRIAL_LIMIT) {
+    throw paymentRequired(
+      "You've used your free hosted audit. TPM is open source — see https://usetpm.dev/self-host to run unlimited audits on your own Cloudflare Workers AI.",
+      {
+        mode: "hosted_trial",
+        used: lifetime,
+        limit: HOSTED_TRIAL_LIMIT,
+        self_host: "https://usetpm.dev/self-host",
+      },
+    );
   }
 }
 
@@ -119,7 +89,7 @@ export async function infer(request: Request, env: Env): Promise<Response> {
   }
 
   const stage = body.stage ?? "meta";
-  await enforceQuota(env, auth.deviceId, stage, auth.tier);
+  await enforceHostedTrialQuota(env, auth.deviceId, stage);
 
   const callId = uuidv4();
   const startedAt = Date.now();

@@ -48,32 +48,15 @@ export async function registerDevice(request: Request, env: Env): Promise<Respon
     .bind(body.device_id, body.fingerprint_hash, now, now, ip)
     .run();
 
-  // Every device gets a free-tier license stub on first register; upgrade
-  // webhooks (M15) mutate tier on the existing row.
-  await env.DB.prepare(
-    `INSERT INTO licenses (id, device_id, tier, status, created_at, updated_at)
-     SELECT lower(hex(randomblob(16))), ?, 'free', 'active', ?, ?
-     WHERE NOT EXISTS (SELECT 1 FROM licenses WHERE device_id = ?)`,
-  )
-    .bind(body.device_id, now, now, body.device_id)
-    .run();
-
-  const tierRow = await env.DB.prepare(
-    "SELECT tier FROM licenses WHERE device_id = ? ORDER BY created_at DESC LIMIT 1",
-  )
-    .bind(body.device_id)
-    .first<{ tier: "free" | "pro" | "team" }>();
-  const tier = tierRow?.tier ?? "free";
-
   const [accessToken, refreshToken] = await Promise.all([
-    issueAccessToken(body.device_id, tier, env.JWT_SECRET),
+    issueAccessToken(body.device_id, env.JWT_SECRET),
     issueRefreshToken(body.device_id, env.JWT_SECRET),
   ]);
 
   return Response.json({
     ok: true,
     device_id: body.device_id,
-    tier,
+    mode: "hosted_trial",
     access_token: accessToken,
     refresh_token: refreshToken,
     expires_in: 60 * 60 * 24,

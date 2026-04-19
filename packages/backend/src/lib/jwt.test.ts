@@ -6,14 +6,10 @@ const SECRET = "z".repeat(64);
 describe("jwt", () => {
   it("round-trips a payload", async () => {
     const now = Math.floor(Date.now() / 1000);
-    const tok = await signJwt(
-      { sub: "device-1", iat: now, exp: now + 60, typ: "access", tier: "pro" },
-      SECRET,
-    );
+    const tok = await signJwt({ sub: "device-1", iat: now, exp: now + 60, typ: "access" }, SECRET);
     const { valid, payload } = await verifyJwt(tok, SECRET);
     expect(valid).toBe(true);
     expect(payload?.sub).toBe("device-1");
-    expect(payload?.tier).toBe("pro");
   });
 
   it("fails verification under the wrong secret", async () => {
@@ -40,10 +36,9 @@ describe("jwt", () => {
 
   it("issueAccessToken sets typ=access and a 24h exp", async () => {
     const now = Math.floor(Date.now() / 1000);
-    const tok = await issueAccessToken("dev-1", "pro", SECRET, now);
+    const tok = await issueAccessToken("dev-1", SECRET, now);
     const { payload } = await verifyJwt(tok, SECRET);
     expect(payload?.typ).toBe("access");
-    expect(payload?.tier).toBe("pro");
     expect(payload?.exp).toBe(now + 60 * 60 * 24);
   });
 

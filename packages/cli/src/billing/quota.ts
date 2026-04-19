@@ -2,18 +2,12 @@ import * as os from "node:os";
 import { loadTokens } from "../auth/tokens.js";
 
 export interface QuotaStatus {
-  tier: "free" | "pro" | "team";
-  allowances: {
-    full_audit: boolean;
-    quick_audit: boolean;
-    remaining_lifetime: number | null;
-    remaining_monthly: number | null;
-  };
-  usage: {
-    full_audits_lifetime: number;
-    full_audits_this_period: number;
-  };
-  upgrade_hint: { message: string; url: string } | null;
+  mode: "hosted_trial";
+  limit: number;
+  used: number;
+  remaining: number;
+  allowances: { full_audit: boolean; quick_audit: boolean };
+  self_host: { message: string; url: string } | null;
 }
 
 export interface QuotaClientConfig {
@@ -32,7 +26,9 @@ export class QuotaClient {
 
   async check(): Promise<QuotaStatus> {
     const tokens = loadTokens(this.homeDir);
-    if (!tokens) throw new Error("no access token — run `tpm audit` once to register the device");
+    if (!tokens) {
+      throw new Error("no access token — run `tpm audit` once to register the device");
+    }
     const res = await this.fetchImpl(new URL("/quota/check", this.config.endpoint).toString(), {
       headers: { authorization: `Bearer ${tokens.access_token}` },
     });
@@ -44,16 +40,20 @@ export class QuotaClient {
   }
 }
 
-export function formatUpgradeMessage(status: QuotaStatus): string {
+export function formatSelfHostMessage(status: QuotaStatus): string {
   return [
-    "✗ Full-audit quota exhausted.",
+    "✗ Your free hosted audit has been used.",
     "",
-    "Upgrade to TPM Pro to continue:",
-    "  $ tpm upgrade",
+    "TPM is open source. Run unlimited audits on your own Cloudflare Workers AI:",
+    `  ${status.self_host?.url ?? "https://usetpm.dev/self-host"}`,
     "",
-    `Or visit: ${status.upgrade_hint?.url ?? "https://usetpm.dev/upgrade"}`,
+    "Once set up:",
+    "  $ tpm config set gateway byo",
+    "  $ tpm config set byo.account_id <your-account-id>",
+    "  $ tpm config set byo.api_token <your-api-token>",
     "",
-    "Pro   $20/month   20 audits, unlimited re-runs, PDF + prototypes",
-    "Team  $49/seat    50 audits/seat, shared patterns, audit history",
+    "Or see: $ tpm self-host",
   ].join("\n");
 }
+
+export { formatSelfHostMessage as formatUpgradeMessage };

@@ -20,11 +20,11 @@ async function register(env: Env): Promise<string> {
     env,
     mockCtx(),
   );
-  return issueAccessToken(DEVICE_ID, "free", STUB_JWT_SECRET);
+  return issueAccessToken(DEVICE_ID, STUB_JWT_SECRET);
 }
 
 describe("/quota/check", () => {
-  it("returns free-tier allowances", async () => {
+  it("returns hosted-trial allowances when unused", async () => {
     const { d1 } = makeD1();
     const env = baseEnv({ DB: d1 }) as unknown as Env;
     const token = await register(env);
@@ -37,14 +37,20 @@ describe("/quota/check", () => {
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      tier: string;
+      mode: string;
+      limit: number;
+      used: number;
       allowances: { full_audit: boolean };
+      self_host: unknown;
     };
-    expect(body.tier).toBe("free");
+    expect(body.mode).toBe("hosted_trial");
+    expect(body.limit).toBe(1);
+    expect(body.used).toBe(0);
     expect(body.allowances.full_audit).toBe(true);
+    expect(body.self_host).toBeNull();
   });
 
-  it("flags full_audit=false after lifetime cap is consumed", async () => {
+  it("flags full_audit=false + self_host link after the trial is consumed", async () => {
     const { d1, raw } = makeD1();
     const env = baseEnv({ DB: d1 }) as unknown as Env;
     const token = await register(env);
@@ -71,9 +77,9 @@ describe("/quota/check", () => {
     );
     const body = (await res.json()) as {
       allowances: { full_audit: boolean };
-      upgrade_hint: { url: string } | null;
+      self_host: { url: string } | null;
     };
     expect(body.allowances.full_audit).toBe(false);
-    expect(body.upgrade_hint?.url).toContain("upgrade");
+    expect(body.self_host?.url).toContain("self-host");
   });
 });

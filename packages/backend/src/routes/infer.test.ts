@@ -33,7 +33,7 @@ async function registerDevice(env: Env): Promise<string> {
     env,
     mockCtx(),
   );
-  return issueAccessToken(DEVICE_ID, "free", STUB_JWT_SECRET);
+  return issueAccessToken(DEVICE_ID, STUB_JWT_SECRET);
 }
 
 describe("backend — /infer", () => {

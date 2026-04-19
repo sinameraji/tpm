@@ -2,7 +2,6 @@
 
 export interface JwtPayload {
   sub: string; // device id
-  tier?: "free" | "pro" | "team";
   iat: number;
   exp: number;
   typ?: "access" | "refresh";
@@ -85,14 +84,12 @@ export const TOKEN_TTL_SECONDS = {
 
 export function issueAccessToken(
   deviceId: string,
-  tier: "free" | "pro" | "team",
   secret: string,
   nowSeconds: number = Math.floor(Date.now() / 1000),
 ): Promise<string> {
   return signJwt(
     {
       sub: deviceId,
-      tier,
       typ: "access",
       iat: nowSeconds,
       exp: nowSeconds + TOKEN_TTL_SECONDS.access,

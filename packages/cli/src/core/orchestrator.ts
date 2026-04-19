@@ -85,9 +85,11 @@ export class Orchestrator {
         const quota = new QuotaClient({ endpoint: this.deps.apiEndpoint });
         const status = await quota.check();
         if (!status.allowances.full_audit) {
-          log.warn({ tier: status.tier, usage: status.usage }, "quota exhausted");
+          log.warn({ mode: status.mode, used: status.used }, "hosted trial exhausted");
           process.stderr.write(formatUpgradeMessage(status) + "\n");
-          throw new Error("quota exhausted — run `tpm upgrade`");
+          throw new Error(
+            "hosted trial exhausted — see https://usetpm.dev/self-host or `tpm self-host`",
+          );
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

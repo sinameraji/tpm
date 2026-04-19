@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { formatUpgradeMessage, QuotaClient } from "./quota.js";
+import { formatSelfHostMessage, QuotaClient } from "./quota.js";
 import { saveTokens } from "../auth/tokens.js";
 
 function tempHome(): string {
@@ -29,16 +29,12 @@ describe("QuotaClient", () => {
       return new Response(
         JSON.stringify({
           ok: true,
-          tier: "free",
-          quota: { full_audits_lifetime: 1, full_audits_monthly: 0 },
-          usage: { full_audits_lifetime: 0, full_audits_this_period: 0 },
-          allowances: {
-            full_audit: true,
-            quick_audit: true,
-            remaining_lifetime: 1,
-            remaining_monthly: null,
-          },
-          upgrade_hint: null,
+          mode: "hosted_trial",
+          limit: 1,
+          used: 0,
+          remaining: 1,
+          allowances: { full_audit: true, quick_audit: true },
+          self_host: null,
         }),
         { status: 200 },
       );
@@ -49,7 +45,7 @@ describe("QuotaClient", () => {
       homeDir: home,
     });
     const status = await client.check();
-    expect(status.tier).toBe("free");
+    expect(status.mode).toBe("hosted_trial");
     expect(status.allowances.full_audit).toBe(true);
     const headers = seen && ((seen as RequestInit).headers as Record<string, string>);
     expect(headers?.authorization ?? headers?.Authorization).toBe("Bearer a");
@@ -62,21 +58,21 @@ describe("QuotaClient", () => {
   });
 });
 
-describe("formatUpgradeMessage", () => {
-  it("includes $20 and $49 pricing lines", () => {
-    const msg = formatUpgradeMessage({
-      tier: "free",
-      allowances: {
-        full_audit: false,
-        quick_audit: true,
-        remaining_lifetime: 0,
-        remaining_monthly: null,
+describe("formatSelfHostMessage", () => {
+  it("includes the self-host URL + byo config hints", () => {
+    const msg = formatSelfHostMessage({
+      mode: "hosted_trial",
+      limit: 1,
+      used: 1,
+      remaining: 0,
+      allowances: { full_audit: false, quick_audit: true },
+      self_host: {
+        message: "self-host TPM on your own Cloudflare account",
+        url: "https://usetpm.dev/self-host",
       },
-      usage: { full_audits_lifetime: 1, full_audits_this_period: 0 },
-      upgrade_hint: { message: "upgrade", url: "https://usetpm.dev/upgrade" },
     });
-    expect(msg).toContain("$20");
-    expect(msg).toContain("$49");
-    expect(msg).toContain("tpm upgrade");
+    expect(msg).toContain("self-host");
+    expect(msg).toContain("tpm config set gateway byo");
+    expect(msg).toContain("byo.api_token");
   });
 });

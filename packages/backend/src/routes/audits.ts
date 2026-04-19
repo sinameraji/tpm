@@ -1,13 +1,12 @@
 import type { Env } from "../env.js";
 import { requireAuth } from "../middleware/auth.js";
-import { badRequest, notFound, forbidden } from "../lib/errors.js";
+import { badRequest, notFound } from "../lib/errors.js";
 import { nowIso } from "../lib/ids.js";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function createAudit(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
-  if (auth.tier === "free") throw forbidden("audit sync requires Pro or Team");
 
   let body: { audit_id: string; target: string; tpm_version: string; session_id: string };
   try {
@@ -21,18 +20,10 @@ export async function createAudit(request: Request, env: Env): Promise<Response>
   const now = nowIso();
   await env.DB.prepare(
     `INSERT INTO audits (id, device_id, session_id, target, started_at, status, tier_at_run, tpm_version)
-     VALUES (?, ?, ?, ?, ?, 'running', ?, ?)
+     VALUES (?, ?, ?, ?, ?, 'running', 'hosted_trial', ?)
      ON CONFLICT(id) DO NOTHING`,
   )
-    .bind(
-      body.audit_id,
-      auth.deviceId,
-      body.session_id,
-      body.target,
-      now,
-      auth.tier,
-      body.tpm_version,
-    )
+    .bind(body.audit_id, auth.deviceId, body.session_id, body.target, now, body.tpm_version)
     .run();
 
   return Response.json({
@@ -100,7 +91,6 @@ export async function listAudits(request: Request, env: Env): Promise<Response> 
 // Upload/download a named artifact file. Key is scoped to device_id.
 export async function uploadArtifact(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
-  if (auth.tier === "free") throw forbidden("artifact upload requires Pro or Team");
   const url = new URL(request.url);
   const parts = url.pathname.split("/"); // /audits/{id}/artifacts/{name}
   const auditId = parts[2];

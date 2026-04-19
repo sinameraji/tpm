@@ -48,12 +48,12 @@ describe("backend — /device/register", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       ok: boolean;
-      tier: string;
+      mode: string;
       access_token: string;
       refresh_token: string;
     };
     expect(body.ok).toBe(true);
-    expect(body.tier).toBe("free");
+    expect(body.mode).toBe("hosted_trial");
     expect(body.access_token.split(".")).toHaveLength(3);
     expect(body.refresh_token.split(".")).toHaveLength(3);
   });
@@ -76,7 +76,7 @@ describe("backend — /device/register", () => {
     expect(res.status).toBe(400);
   });
 
-  it("is idempotent — second register for same device does not create a second license", async () => {
+  it("is idempotent — second register updates rather than duplicates the device row", async () => {
     const env = makeEnv();
     const body = {
       device_id: DEVICE_ID,
@@ -102,7 +102,7 @@ describe("backend — /device/register", () => {
         };
       }
     )
-      .prepare("SELECT COUNT(*) as c FROM licenses WHERE device_id = ?")
+      .prepare("SELECT COUNT(*) as c FROM devices WHERE id = ?")
       .bind(DEVICE_ID)
       .first<{ c: number }>();
     expect(count?.c).toBe(1);
@@ -136,7 +136,7 @@ describe("backend — /license/validate", () => {
       env,
       mockCtx(),
     );
-    const token = await issueAccessToken(DEVICE_ID, "free", STUB_JWT_SECRET);
+    const token = await issueAccessToken(DEVICE_ID, STUB_JWT_SECRET);
     const res = await worker.fetch(
       new Request("https://api.usetpm.dev/license/validate", {
         headers: { authorization: `Bearer ${token}` },
@@ -147,13 +147,12 @@ describe("backend — /license/validate", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       ok: boolean;
-      tier: string;
-      quota: Record<string, unknown>;
-      usage: Record<string, unknown>;
+      mode: string;
+      limit: number;
+      used: number;
     };
     expect(body.ok).toBe(true);
-    expect(body.tier).toBe("free");
-    expect(body.quota).toBeDefined();
-    expect(body.usage).toBeDefined();
+    expect(body.mode).toBe("hosted_trial");
+    expect(body.limit).toBe(1);
   });
 });

@@ -4,7 +4,6 @@ import { verifyJwt, type JwtPayload } from "../lib/jwt.js";
 
 export interface AuthedRequest {
   deviceId: string;
-  tier: "free" | "pro" | "team";
   payload: JwtPayload;
 }
 
@@ -16,6 +15,5 @@ export async function requireAuth(request: Request, env: Env): Promise<AuthedReq
   const { valid, payload, reason } = await verifyJwt(match[1], env.JWT_SECRET);
   if (!valid || !payload) throw unauthorized(reason ?? "invalid token");
   if (payload.typ !== "access") throw unauthorized("wrong token type");
-  const tier = (payload.tier as "free" | "pro" | "team" | undefined) ?? "free";
-  return { deviceId: payload.sub, tier, payload };
+  return { deviceId: payload.sub, payload };
 }
