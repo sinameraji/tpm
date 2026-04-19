@@ -44,7 +44,7 @@ echo "==> 3/5  build marketing"
 pnpm --filter @tpm/marketing run build
 
 echo "==> 4/5  publish CLI to npm (@latest)"
-pnpm --filter tpm publish --access public --no-git-checks
+pnpm --filter @sinameraji/tpm publish --access public --no-git-checks
 
 echo "==> 5/5  tag + push"
 git tag "v${VERSION}"

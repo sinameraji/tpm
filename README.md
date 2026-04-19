@@ -3,7 +3,7 @@
 **Open source (MIT).** A senior PM in your terminal. TPM audits software products by reading the **codebase** (primary source of truth) and, optionally, your public **marketing site** (auxiliary context). It never runs your product — no browser automation, no fake signups, no logins to your live app.
 
 ```bash
-npm install -g tpm
+npm install -g @sinameraji/tpm
 
 cd your-product-repo
 tpm init
