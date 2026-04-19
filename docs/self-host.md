@@ -38,8 +38,11 @@ The token is stored in `~/.tpm/config.yaml` with mode 0600 and is only read by t
 ## 4. Run audits
 
 ```bash
+cd your-product-repo
 tpm audit https://your-product.com
 ```
+
+TPM runs **from inside your repo** — the current directory is the codebase Stage A extracts the Lean Canvas from. The URL argument is the deployed product TPM walks with Playwright for Stage B. Use `--project /path/to/repo` if you need to override the codebase location.
 
 Cost is printed after every run. Expect ~$0.10–$0.50 per full audit depending on product complexity.
 

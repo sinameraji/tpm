@@ -4,6 +4,16 @@
 
 First public release. Open source under MIT.
 
+### Usage
+
+```bash
+cd your-product-repo          # codebase = cwd
+tpm init
+tpm audit https://your-product.com   # URL = the deployed site to walk
+```
+
+TPM runs from inside your repo. The codebase feeds Stage A's Lean Canvas reconstruction; the URL argument is the deployed product TPM walks with Playwright for Stage B. Use `--project /path/to/repo` to override the codebase location; omit the URL for a code-only audit.
+
 ### Model
 
 - **Hosted trial.** Every device gets one free audit on the maintainer's Cloudflare Workers AI credits via the optional hosted backend at tpm-api.sina-b35.workers.dev. Zero setup.

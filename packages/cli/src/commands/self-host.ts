@@ -16,9 +16,14 @@ that, run TPM on your own account:
        tpm config set byo.account_id <your-account-id>
        tpm config set byo.api_token <your-api-token>
 
-  4. Run audits as usual:
+  4. Run audits from inside your repo. The codebase (cwd) feeds Stage A's
+     Lean Canvas; the URL argument is the deployed product TPM walks:
 
+       cd your-product-repo
        tpm audit https://your-product.com
+
+     Omit the URL for a code-only audit (Stage A only, no browser walk).
+     Use --project /path/to/repo to override the codebase location.
 
 Docs: ${GUIDE_URL}
 Source: https://github.com/sinameraji/tpm
