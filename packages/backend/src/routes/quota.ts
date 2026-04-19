@@ -5,7 +5,7 @@ import { requireAuth } from "../middleware/auth.js";
 // credits. After that, the CLI is pointed at the self-host guide.
 export const HOSTED_TRIAL_LIMIT = 1;
 
-const SELF_HOST_URL = "https://tpm.pages.dev/self-host";
+const SELF_HOST_URL = "https://tpm-d3h.pages.dev/self-host";
 
 export async function checkQuota(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);

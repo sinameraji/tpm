@@ -35,7 +35,7 @@ ENV = "production"
 [env.dev.vars]
 ENV = "dev"
 
-# Wire up after the tpm.pages.dev zone is added to Cloudflare:
+# Wire up after the tpm-d3h.pages.dev zone is added to Cloudflare:
 # routes = [
-#   { pattern = "tpm-api.sina-b35.workers.dev/*", zone_name = "tpm.pages.dev" }
+#   { pattern = "tpm-api.sina-b35.workers.dev/*", zone_name = "tpm-d3h.pages.dev" }
 # ]

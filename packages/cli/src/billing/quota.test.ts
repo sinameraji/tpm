@@ -71,7 +71,7 @@ describe("formatSelfHostMessage", () => {
       allowances: { full_audit: false, quick_audit: true },
       self_host: {
         message: "self-host TPM on your own Cloudflare account",
-        url: "https://tpm.pages.dev/self-host",
+        url: "https://tpm-d3h.pages.dev/self-host",
       },
     });
     expect(msg).toContain("self-host");

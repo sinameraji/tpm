@@ -35,12 +35,12 @@ async function enforceHostedTrialQuota(env: Env, deviceId: string, stage: string
   const lifetime = liferow?.c ?? 0;
   if (lifetime >= HOSTED_TRIAL_LIMIT) {
     throw paymentRequired(
-      "You've used your free hosted audit. TPM is open source — see https://tpm.pages.dev/self-host to run unlimited audits on your own Cloudflare Workers AI.",
+      "You've used your free hosted audit. TPM is open source — see https://tpm-d3h.pages.dev/self-host to run unlimited audits on your own Cloudflare Workers AI.",
       {
         mode: "hosted_trial",
         used: lifetime,
         limit: HOSTED_TRIAL_LIMIT,
-        self_host: "https://tpm.pages.dev/self-host",
+        self_host: "https://tpm-d3h.pages.dev/self-host",
       },
     );
   }

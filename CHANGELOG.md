@@ -14,6 +14,6 @@ First public release. Open source under MIT.
 - **The method** — six-stage deterministic pipeline with fixed schemas and classification taxonomies (see `docs/the-method.md`)
 - **CLI** (`tpm`) — `tpm init`, `tpm audit`, `tpm report`, `tpm config`, `tpm self-host`, `tpm cost` (`upgrade` / `activate` / `account` aliased to `self-host`)
 - **Backend** (optional, `tpm-api.sina-b35.workers.dev`) — device auth, hosted-trial quota, Workers AI proxy, audit history + R2 artifact sync
-- **Marketing** (`tpm.pages.dev`) — landing, docs, self-host, privacy, terms
+- **Marketing** (`tpm-d3h.pages.dev`) — landing, docs, self-host, privacy, terms
 - **Pattern library** — 52 curated product-friction patterns with works_when/fails_when/exemplars/detection_signals
 - **Models** — `@cf/openai/gpt-oss-120b` for reasoning stages, `@cf/qwen/qwen3-30b-a3b-fp8` for navigator + prototype HTML

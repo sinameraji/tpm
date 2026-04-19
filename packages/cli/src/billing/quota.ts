@@ -45,7 +45,7 @@ export function formatSelfHostMessage(status: QuotaStatus): string {
     "✗ Your free hosted audit has been used.",
     "",
     "TPM is open source. Run unlimited audits on your own Cloudflare Workers AI:",
-    `  ${status.self_host?.url ?? "https://tpm.pages.dev/self-host"}`,
+    `  ${status.self_host?.url ?? "https://tpm-d3h.pages.dev/self-host"}`,
     "",
     "Once set up:",
     "  $ tpm config set gateway byo",

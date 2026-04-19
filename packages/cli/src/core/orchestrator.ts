@@ -88,7 +88,7 @@ export class Orchestrator {
           log.warn({ mode: status.mode, used: status.used }, "hosted trial exhausted");
           process.stderr.write(formatUpgradeMessage(status) + "\n");
           throw new Error(
-            "hosted trial exhausted — see https://tpm.pages.dev/self-host or `tpm self-host`",
+            "hosted trial exhausted — see https://tpm-d3h.pages.dev/self-host or `tpm self-host`",
           );
         }
       } catch (err) {
