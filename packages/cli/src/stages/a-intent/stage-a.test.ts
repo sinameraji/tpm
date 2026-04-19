@@ -7,7 +7,6 @@ import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
 import { runStageA } from "./stage-a.js";
 import { buildStaticMap } from "./static-map.js";
-import { parseSurfaceHtml } from "./scraper.js";
 import { LeanCanvasSchema } from "@tpm/shared/schemas/lean-canvas";
 
 const nullLogger: Logger = {
@@ -25,13 +24,13 @@ function makeLeanCanvasJson(): string {
     schema_version: 1,
     extracted_at: new Date().toISOString(),
     model: "@cf/openai/gpt-oss-120b",
-    sources: [{ type: "landing_page", url: "https://example.test/" }],
+    sources: [{ type: "codebase_static_map" }],
     lean_canvas: {
       problem: {
         items: [
           {
             statement: "Banks waste time on manual compliance workflows",
-            evidence: ["landing_page: hero tagline"],
+            evidence: ["codebase_static_map: hero h1 copy"],
             confidence: 0.85,
           },
         ],
@@ -40,14 +39,14 @@ function makeLeanCanvasJson(): string {
         items: [
           {
             segment: "Compliance officers at banks",
-            evidence: ["landing_page: hero copy targets banks"],
+            evidence: ["codebase_static_map: hero copy"],
             confidence: 0.9,
           },
         ],
       },
       unique_value_proposition: {
-        statement: "AI workflows banks can deploy with audit trails regulators accept",
-        evidence: ["landing_page: hero tagline"],
+        statement: "AI workflows banks can deploy",
+        evidence: ["codebase_static_map: hero h1"],
         confidence: 0.9,
       },
       solution: {
@@ -56,8 +55,8 @@ function makeLeanCanvasJson(): string {
       channels: {
         items: [
           {
-            channel: "Direct sales to bank IT",
-            evidence: ["landing_page: 'Book a demo' primary CTA"],
+            channel: "Direct sales",
+            evidence: ["codebase_static_map: Book demo CTA"],
             confidence: 0.85,
           },
         ],
@@ -66,7 +65,7 @@ function makeLeanCanvasJson(): string {
         items: [
           {
             stream: "Enterprise contracts",
-            evidence: ["pricing_page: 'Contact us' on Enterprise tier"],
+            evidence: ["codebase_static_map: /pricing route"],
             confidence: 0.8,
           },
         ],
@@ -75,24 +74,22 @@ function makeLeanCanvasJson(): string {
       key_metrics: {
         items: [{ metric: "Signup started", evidence: ["codebase_static_map: mixpanel event"] }],
       },
-      unfair_advantage: {
-        items: [],
-      },
+      unfair_advantage: { items: [] },
     },
     intended_jtbd_per_segment: [
       {
         segment_id: "compliance_officer",
-        job: "automate repetitive compliance workflows without writing code",
-        actor: "compliance officer at a bank",
-        trigger: "new regulatory requirement",
-        success_criterion: "workflow runs unattended with regulator-acceptable audit trail",
+        job: "automate workflows",
+        actor: "compliance officer",
+        trigger: "regulatory requirement",
+        success_criterion: "workflow runs with audit trail",
         confidence: 0.85,
       },
     ],
     intended_value_moments: [
       {
         segment_id: "compliance_officer",
-        value_moment: "first workflow executed end-to-end with audit log generated",
+        value_moment: "first workflow executed",
         rationale: "matches UVP",
         confidence: 0.8,
       },
@@ -100,17 +97,9 @@ function makeLeanCanvasJson(): string {
     intended_critical_paths: [
       {
         segment_id: "compliance_officer",
-        ideal_steps: [
-          "Land on homepage",
-          "Book demo",
-          "Complete signup",
-          "See templates",
-          "Configure template",
-          "Run with test data",
-          "See audit log",
-        ],
-        estimated_step_count: 7,
-        source: "inferred from marketing promise",
+        ideal_steps: ["Land on homepage", "Sign up", "Configure template", "Run workflow"],
+        estimated_step_count: 4,
+        source: "inferred from onboarding routes",
         confidence: 0.75,
       },
     ],
@@ -130,12 +119,11 @@ function stubGateway(responseJson: string): ModelGateway {
   };
 }
 
-describe("runStageA", () => {
-  it("validates output, writes lean-canvas.yaml + .json", async () => {
+describe("runStageA (code-only)", () => {
+  it("validates output and writes lean-canvas.yaml + .json", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "tpm-stageA-"));
     const artifacts = path.join(root, ".tpm", "artifacts", "a1");
 
-    // Build a minimal map and scraped input
     fs.mkdirSync(path.join(root, "app"), { recursive: true });
     fs.writeFileSync(
       path.join(root, "package.json"),
@@ -146,28 +134,15 @@ describe("runStageA", () => {
       "export default function Home() { return <h1>Automate compliance</h1>; }",
     );
     const map = buildStaticMap(root);
-    const scraped = {
-      schema_version: 1 as const,
-      start_url: "https://example.test/",
-      scraped_at: new Date().toISOString(),
-      surfaces: [
-        parseSurfaceHtml(
-          "<html><body><h1>Bank workflows</h1></body></html>",
-          "https://example.test/",
-          200,
-        ),
-      ],
-    };
 
     const gateway = stubGateway(makeLeanCanvasJson());
     const result = await runStageA(
-      { map, scraped },
+      { map },
       { gateway, logger: nullLogger, auditId: "a1", sessionId: "s1", artifactsDir: artifacts },
     );
 
     expect(result.leanCanvas.schema_version).toBe(1);
     expect(fs.existsSync(path.join(artifacts, "lean-canvas.yaml"))).toBe(true);
-    expect(fs.existsSync(path.join(artifacts, "lean-canvas.json"))).toBe(true);
     const parsedBack = yaml.load(
       fs.readFileSync(path.join(artifacts, "lean-canvas.yaml"), "utf8"),
     ) as unknown;
@@ -184,12 +159,6 @@ describe("runStageA", () => {
       JSON.stringify({ dependencies: { next: "^14" } }),
     );
     const map = buildStaticMap(root);
-    const scraped = {
-      schema_version: 1 as const,
-      start_url: "https://example.test/",
-      scraped_at: new Date().toISOString(),
-      surfaces: [],
-    };
 
     let calls = 0;
     const gateway: ModelGateway = {
@@ -208,7 +177,7 @@ describe("runStageA", () => {
     };
 
     const result = await runStageA(
-      { map, scraped },
+      { map },
       { gateway, logger: nullLogger, auditId: "a2", sessionId: "s2", artifactsDir: artifacts },
     );
     expect(calls).toBe(2);

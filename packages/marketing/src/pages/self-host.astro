@@ -47,12 +47,11 @@ tpm config show</code></pre>
   <section style="padding: 1rem 0;">
     <h2>3. Run audits</h2>
     <pre><code>cd your-product-repo
-tpm audit https://your-product.com</code></pre>
+tpm init
+tpm audit</code></pre>
     <p style="max-width: 44rem;">
-      TPM runs <strong>from inside your repo</strong>. The current directory is the codebase Stage A
-      extracts the Lean Canvas from; the URL argument is the deployed product TPM walks with
-      Playwright for Stage B. Pass <code>--project /path/to/repo</code> to override the codebase
-      location.
+      No URL argument. TPM reads the code in your current directory, reconstructs the intended
+      product, imagines the user journey from the code, and produces the audit artifacts.
     </p>
     <p style="max-width: 44rem;">
       Cloudflare bills you directly for usage. Expect ~$0.10–$0.50 per full audit depending
@@ -64,8 +63,8 @@ tpm audit https://your-product.com</code></pre>
     <h2>Prefer to stay on the hosted trial?</h2>
     <p style="max-width: 44rem;">
       Every device gets one free audit on our credits. If that's all you need, just
-      <code>cd</code> into your repo and run <code>tpm audit &lt;url&gt;</code> with no config —
-      the hosted gateway is the default.
+      <code>cd</code> into your repo and run <code>tpm audit</code> with no config — the hosted
+      gateway is the default.
     </p>
   </section>
 </Base>

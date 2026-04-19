@@ -4,6 +4,7 @@ import { WorkersAIGateway } from "../gateway/workers-ai.js";
 import { DirectWorkersAIGateway } from "../gateway/direct-workers-ai.js";
 import type { ModelGateway } from "../gateway/index.js";
 import { loadConfig } from "../core/config.js";
+import { loadProjectConfig } from "../core/project-config.js";
 import { bootstrap, emit, emitText } from "./_runtime.js";
 import * as path from "node:path";
 
@@ -11,18 +12,12 @@ export function register(program: Command): void {
   program
     .command("audit")
     .description(
-      "Run a full six-stage audit. Runs from the current project directory (codebase = cwd); pass the deployed product's URL as the argument.",
-    )
-    .argument(
-      "[url]",
-      "Deployed product URL to walk as each persona (e.g. https://jinba.ai). Omit to run code-only (Stages A only — no browser walk).",
+      "Audit the current project. TPM reads your codebase and reconstructs intent + imagined user journey from source alone — no browser, no network to your product.",
     )
     .option(
-      "--project <path>",
-      "Override the codebase directory (default: cwd). Rarely needed — typically you cd into the repo you want to audit.",
-    )
-    .option("--step-budget <n>", "Navigator step budget per persona (default 25)", (v: string) =>
-      Number(v),
+      "--step-budget <n>",
+      "Per-persona step budget for imagined paths (default 25)",
+      (v: string) => Number(v),
     )
     .option(
       "--top <n>",
@@ -33,10 +28,9 @@ export function register(program: Command): void {
     .option("--no-sync", "Don't sync audit artifacts to backend")
     .option("--endpoint <url>", "Override the hosted backend URL (defaults to config.api_endpoint)")
     .option("--gateway <mode>", "Force gateway mode: hosted | byo (defaults to config.gateway)")
-    .action(async function action(this: Command, url?: string) {
+    .action(async function action(this: Command) {
       const runtime = bootstrap(this);
       const opts = this.opts<{
-        project?: string;
         stepBudget?: number;
         top?: number;
         pdf?: boolean;
@@ -45,10 +39,14 @@ export function register(program: Command): void {
         gateway?: "hosted" | "byo";
       }>();
 
-      // The codebase is always the current directory unless --project overrides it.
-      // The positional arg is the DEPLOYED SITE URL. Passing nothing = code-only.
-      const projectRoot = opts.project ? path.resolve(opts.project) : process.cwd();
-      const target = url ?? projectRoot;
+      const projectRoot = process.cwd();
+      const projectCfg = loadProjectConfig(projectRoot);
+      if (!projectCfg) {
+        emitText(runtime, "No .tpm/ in this directory. Run:  tpm init");
+        emit(runtime, { ok: false, error: "not initialized" });
+        process.exitCode = 1;
+        return;
+      }
 
       const cfg = loadConfig();
       const endpoint = opts.endpoint ?? cfg.api_endpoint;
@@ -84,12 +82,10 @@ export function register(program: Command): void {
       });
 
       emitText(runtime, `Codebase: ${projectRoot}`);
-      emitText(runtime, url ? `Target URL: ${url}` : "Target: code-only (no Stage B browser walk)");
       emitText(runtime, `Gateway: ${gatewayMode}\n`);
 
       try {
         const res = await orchestrator.runAudit({
-          target,
           projectRoot,
           ...(opts.stepBudget !== undefined ? { stepBudget: opts.stepBudget } : {}),
           ...(opts.top !== undefined ? { topNSolutions: opts.top } : {}),
@@ -112,7 +108,6 @@ export function register(program: Command): void {
           audit_id: res.auditId,
           artifacts_dir: res.artifactsDir,
           codebase: projectRoot,
-          url: url ?? null,
           gateway: gatewayMode,
           total_neurons: res.totalNeurons,
           duration_ms: res.durationMs,

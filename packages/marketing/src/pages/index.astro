@@ -8,9 +8,9 @@ import Base from "../layouts/Base.astro";
       A Technical Product Manager, in your terminal.
     </h1>
     <p style="font-size: 1.2rem; color: #4d4d4d; max-width: 40rem;">
-      TPM audits your software product the way a senior PM would. It reconstructs what you intended,
-      walks the product as real users, computes the delta, and specs the highest-leverage fixes —
-      deterministic, auditable, fast.
+      TPM audits your software product from the source code alone — reconstructs what you intended,
+      imagines what a user experiences given your code, finds the gaps, and specs the
+      highest-leverage fixes. No browser, no scraping, no login to your live site.
     </p>
     <p style="margin-top: 2rem;">
       <a href="https://github.com/sinameraji/tpm" class="button">View on GitHub</a>
@@ -20,39 +20,51 @@ import Base from "../layouts/Base.astro";
 
 cd your-product-repo
 tpm init
-tpm audit https://yoursaas.com</code></pre>
+tpm audit</code></pre>
     <p style="color: #4d4d4d; font-size: 0.9rem; max-width: 40rem; margin-top: 1rem;">
-      Run it <strong>from inside your repo</strong>. The codebase (cwd) feeds the Lean Canvas
-      reconstruction; the URL is the deployed product TPM walks as real users.
-    </p>
-    <p style="color: #4d4d4d; font-size: 0.9rem; max-width: 40rem; margin-top: 0.5rem;">
       Every new device gets one free audit on our hosted Cloudflare Workers AI credits. After that,
       <a href="/self-host">set up your own Cloudflare account</a> for unlimited audits.
     </p>
   </section>
 
   <section style="padding: 2rem 0; border-top: 1px solid #e4e4e0;">
+    <h2 style="margin-bottom: 1.5rem;">How it works — read the code, imagine the UX.</h2>
+    <p style="max-width: 40rem;">
+      A skilled PM reading your codebase can narrate the user's first run from memory. TPM does the
+      same thing, algorithmically. It extracts your routes, forms, components, copy, auth gates
+      and tracking events — then reconstructs the intended product from the code, and a plausible
+      user journey from the same code.
+    </p>
+    <p style="max-width: 40rem;">
+      This means TPM works on anything you have source access to — enterprise SaaS,
+      authenticated-only dashboards, anything behind a paywall — because it never needs to visit
+      your live product.
+    </p>
+  </section>
+
+  <section style="padding: 2rem 0; border-top: 1px solid #e4e4e0;">
     <h2 style="margin-bottom: 1.5rem;">The method is the product.</h2>
     <p style="max-width: 40rem;">
-      Every TPM audit runs the same six-stage pipeline. Each stage produces a validated YAML artifact.
-      The method is fixed; only the inputs change.
+      Every TPM audit runs the same six-stage pipeline. Each stage produces a validated YAML
+      artifact.
     </p>
     <ol style="max-width: 40rem; margin-top: 1rem;">
-      <li><strong>Intent extraction</strong> — Lean Canvas reconstructed from code + marketing surfaces.</li>
-      <li><strong>Observed critical path</strong> — Playwright walks the product as each persona.</li>
+      <li><strong>Intent extraction</strong> — Lean Canvas reconstructed from the codebase.</li>
+      <li><strong>Imagined critical path</strong> — user journey inferred from routes, forms, components.</li>
       <li><strong>Delta analysis</strong> — classifies every step and names the intent mismatches.</li>
       <li><strong>Leverage prioritization</strong> — ranks problems with an explicit argument, not a formula.</li>
-      <li><strong>Solution specs + prototypes</strong> — the top 5 fixes, each with a working HTML prototype.</li>
-      <li><strong>Artifact assembly</strong> — spec.md + spec.pdf, PM-grade.</li>
+      <li><strong>Solution specs + prototypes</strong> — top 5 fixes, each with a working HTML prototype.</li>
+      <li><strong>Artifact assembly</strong> — spec.md + spec.html, PM-grade.</li>
     </ol>
   </section>
 
   <section style="padding: 2rem 0; border-top: 1px solid #e4e4e0;">
     <h2>Built for product owners who know what they're looking at.</h2>
     <p style="max-width: 40rem;">
-      TPM won't tell you to add confetti animations or rainbow gradients. It finds the step in your signup that
-      every honest user abandons, the page where your marketing copy contradicts the product, and the feature
-      whose code exists but no user can reach it. Then it gives you a structured fix with a prototype.
+      TPM won't tell you to add confetti animations or rainbow gradients. It finds the step in
+      your signup flow that every honest user abandons, the page where your marketing copy
+      contradicts the product, and the feature whose code exists but no user can reach it. Then
+      it gives you a structured fix with a prototype.
     </p>
   </section>
 

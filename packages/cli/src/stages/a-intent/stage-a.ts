@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 import yaml from "js-yaml";
-import type { Map as MapNs, Scraped as ScrapedNs } from "@tpm/shared";
+import type { Map as MapNs } from "@tpm/shared";
 import { LeanCanvasSchema, type LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
 import type { CompleteOptionsExt } from "../../gateway/workers-ai.js";
 import type { ModelGateway } from "../../gateway/index.js";
@@ -36,7 +36,7 @@ function stripCodeFences(raw: string): string {
 }
 
 export async function runStageA(
-  input: { map: MapNs.Map; scraped: ScrapedNs.ScrapedSurfaces },
+  input: { map: MapNs.Map },
   deps: StageADeps,
 ): Promise<StageAResult> {
   deps.logger.info({ stage: "A", audit_id: deps.auditId }, "stage A started");

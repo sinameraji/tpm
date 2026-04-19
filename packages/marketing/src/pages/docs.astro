@@ -8,13 +8,14 @@ import Base from "../layouts/Base.astro";
     <h2>Quick start</h2>
     <pre><code>npm install -g tpm
 
-cd your-product-repo        # TPM reads the codebase from the CURRENT DIRECTORY
-tpm init                    # creates .tpm/ in this repo
-tpm audit https://your-product.com   # URL = deployed site TPM walks</code></pre>
+cd your-product-repo
+tpm init
+tpm audit</code></pre>
     <p style="max-width: 44rem; color: #4d4d4d;">
-      TPM runs <strong>from inside your repo</strong>. The codebase (cwd) feeds Stage A's Lean
-      Canvas reconstruction; the URL argument is the deployed product TPM walks with Playwright
-      for Stage B. Omit the URL entirely to run code-only (Stage A only, no browser walk).
+      TPM runs on the source code in your current directory. No URL argument, no browser, no
+      network traffic to your product. It reads your routes / forms / components / auth gates,
+      reconstructs the intended product from code, imagines a user journey from the same code,
+      and produces the audit artifacts.
     </p>
     <p style="max-width: 44rem; color: #4d4d4d;">
       First audit runs on our hosted Cloudflare Workers AI (one per device).
@@ -24,18 +25,19 @@ tpm audit https://your-product.com   # URL = deployed site TPM walks</code></pre
     <h2>The six-stage method</h2>
     <p>TPM runs a deterministic pipeline. Each stage checkpoints to disk and can be replayed independently. Artifacts live in <code>.tpm/artifacts/&lbrace;audit_id&rbrace;/</code>:</p>
     <ul>
+      <li><code>map.yaml</code> — the static code map (routes, forms, components, nav)</li>
       <li><code>lean-canvas.yaml</code> — Stage A: what the builder intended</li>
-      <li><code>paths.yaml</code> — Stage B: what actually happens per persona</li>
+      <li><code>paths.yaml</code> — Stage B: imagined user journey per persona</li>
       <li><code>delta.yaml</code> — Stage C: the structured difference</li>
       <li><code>problems.yaml</code> — Stage D: ranked by leverage argument</li>
       <li><code>solutions.yaml</code> + <code>prototypes/*.html</code> — Stage E: top-5 fixes</li>
-      <li><code>spec.md</code> + <code>spec.pdf</code> — Stage F: the PM deliverable</li>
+      <li><code>spec.md</code> + <code>spec.html</code> — Stage F: the PM deliverable</li>
     </ul>
 
     <h2>Commands</h2>
     <ul>
       <li><code>tpm init</code> — initialize <code>.tpm/</code> in the current project</li>
-      <li><code>tpm audit [target]</code> — run a full audit</li>
+      <li><code>tpm audit</code> — run the full audit on this codebase</li>
       <li><code>tpm audit --gateway byo</code> — force BYO mode for this run</li>
       <li><code>tpm report [audit_id]</code> — show a prior spec.md</li>
       <li><code>tpm config get/set/show</code> — inspect or change config</li>
@@ -46,9 +48,9 @@ tpm audit https://your-product.com   # URL = deployed site TPM walks</code></pre
     <h2>Privacy &amp; security</h2>
     <p style="max-width: 44rem;">
       TPM runs on your machine. In <strong>hosted-trial mode</strong>, prompts flow through
-      our Cloudflare Worker proxy at tpm-api.sina-b35.workers.dev — logged server-side as token counts only
-      (not content), unless you opt into debug mode. In <strong>BYO mode</strong>, prompts go
-      directly from your CLI to your own Cloudflare account; nothing touches our infrastructure.
+      our Cloudflare Worker proxy — logged server-side as token counts only (not content),
+      unless you opt into debug mode. In <strong>BYO mode</strong>, prompts go directly from
+      your CLI to your own Cloudflare account; nothing touches our infrastructure.
     </p>
     <p style="max-width: 44rem;">Source code never leaves your machine in either mode.</p>
 

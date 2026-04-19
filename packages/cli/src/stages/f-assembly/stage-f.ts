@@ -104,46 +104,16 @@ export async function runStageF(i: StageFInputs, deps: StageFDeps): Promise<Stag
   const mdPath = path.join(deps.artifactsDir, "spec.md");
   fs.writeFileSync(mdPath, completion.text);
 
-  let pdfPath: string | null = null;
-  if (deps.renderPdf !== false) {
-    try {
-      pdfPath = await renderPdf(mdPath, path.join(deps.artifactsDir, "spec.pdf"));
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      deps.logger.warn({ err: msg }, "PDF render failed — leaving markdown only");
-    }
-  }
+  // HTML render alongside — easy to convert to PDF with any tool if desired.
+  const htmlPath = path.join(deps.artifactsDir, "spec.html");
+  fs.writeFileSync(htmlPath, renderMarkdownToHtml(completion.text));
 
-  deps.logger.info({ stage: "F", md: mdPath, pdf: pdfPath }, "stage F complete");
+  deps.logger.info({ stage: "F", md: mdPath, html: htmlPath }, "stage F complete");
   return {
     markdownPath: mdPath,
-    pdfPath,
+    pdfPath: null,
     neurons: completion.usage.neurons ?? 0,
   };
-}
-
-// Renders the markdown to PDF via Playwright. Keeps the dependency
-// lazy so users who don't want PDFs don't pay the Chromium tax.
-async function renderPdf(mdPath: string, pdfPath: string): Promise<string> {
-  const { chromium } = await import("playwright-core");
-  const md = fs.readFileSync(mdPath, "utf8");
-  const html = renderMarkdownToHtml(md);
-  const browser = await chromium.launch({ headless: true });
-  try {
-    const ctx = await browser.newContext();
-    const page = await ctx.newPage();
-    await page.setContent(html, { waitUntil: "load" });
-    await page.pdf({
-      path: pdfPath,
-      format: "A4",
-      margin: { top: "18mm", bottom: "18mm", left: "18mm", right: "18mm" },
-      printBackground: true,
-    });
-    await ctx.close();
-  } finally {
-    await browser.close();
-  }
-  return pdfPath;
 }
 
 // Minimal markdown→HTML for the PDF. Not a full MD renderer — handles

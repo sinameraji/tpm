@@ -3,12 +3,13 @@ import * as path from "node:path";
 import type { Command } from "commander";
 import { projectPaths, ensureDir } from "../core/paths.js";
 import { openDatabase } from "../db/init.js";
+import { saveProjectConfig, type ProjectConfig } from "../core/project-config.js";
 import { bootstrap, emit, emitText } from "./_runtime.js";
 
 export function register(program: Command): void {
   program
     .command("init")
-    .description("Initialize TPM in the current project (.tpm/ directory + SQLite DB).")
+    .description("Initialize TPM in the current project (creates .tpm/ with SQLite DB + config).")
     .option("--force", "Re-initialize even if .tpm/ already exists.")
     .action(async function action(this: Command) {
       const runtime = bootstrap(this);
@@ -31,24 +32,15 @@ export function register(program: Command): void {
       const db = openDatabase(paths.dbFile);
       db.close();
 
-      if (!fs.existsSync(paths.configYaml)) {
-        const stub = [
-          "# TPM project config. Keys filled out as later milestones land.",
-          `project_path: ${JSON.stringify(cwd)}`,
-          "schema_version: 1",
-          "",
-        ].join("\n");
-        fs.writeFileSync(paths.configYaml, stub, { mode: 0o644 });
-      }
+      const cfg: ProjectConfig = { schema_version: 1, project_path: cwd };
+      saveProjectConfig(cfg, cwd);
 
-      runtime.logger.info(
-        { project: cwd, dbFile: path.relative(cwd, paths.dbFile) },
-        "initialized",
-      );
+      runtime.logger.info({ project: cwd }, "initialized");
       emitText(runtime, `Initialized TPM at ${paths.root}`);
       emitText(runtime, ` - db:        ${path.relative(cwd, paths.dbFile)}`);
       emitText(runtime, ` - artifacts: ${path.relative(cwd, paths.artifactsDir)}/`);
       emitText(runtime, ` - config:    ${path.relative(cwd, paths.configYaml)}`);
+      emitText(runtime, "\nNow run:  tpm audit");
       emit(runtime, {
         ok: true,
         initialized: true,

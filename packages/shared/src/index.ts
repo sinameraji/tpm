@@ -1,5 +1,4 @@
 export * as Map from "./schemas/map.js";
-export * as Scraped from "./schemas/scraped.js";
 export * as LeanCanvas from "./schemas/lean-canvas.js";
 export * as Paths from "./schemas/paths.js";
 export * as Delta from "./schemas/delta.js";

@@ -4,13 +4,13 @@ TPM's differentiation isn't "AI looks at your app and gives feedback." It's a de
 
 ## Stage A — Intent Extraction → `lean-canvas.yaml`
 
-Reconstruct the Lean Canvas from the codebase and the deployed marketing surfaces. Make implicit intent explicit. Derive: intended JTBD per segment, intended value moment per persona, intended critical path per persona.
+Reconstruct the Lean Canvas purely from the codebase: package.json metadata, README, user-facing copy in components (h1/h2/buttons/links), routes, forms, tracking events. Make implicit intent explicit. Derive: intended JTBD per segment, intended value moment per persona, intended critical path per persona.
 
 **Rule:** every claim cites evidence + a calibrated confidence score. Empty arrays are fine when evidence is absent. Don't invent.
 
-## Stage B — Observed Critical Path → `paths.yaml`
+## Stage B — Imagined Critical Path → `paths.yaml`
 
-For each persona, run a browser navigator (Playwright + `qwen3-30b-a3b-fp8`) through the live product. 25-step budget. Record every step with observation, decision, target, reasoning, and `friction_flags[]` chosen from a fixed 12-value enum:
+For each persona, reason about the user's journey purely from the static code map (routes, forms, components, navigation, auth providers). `qwen3-30b-a3b-fp8` "reads the code the way a senior PM reads code" and produces step-by-step observations + decisions. No browser, no network to the product. 25-step budget per persona. Each step carries observation, decision, target, reasoning, and `friction_flags[]` chosen from a fixed 12-value enum:
 
 ```
 premature_data_collection  required_without_rationale
@@ -23,7 +23,7 @@ orphan_state               missing_affordance
 
 ## Stage C — Delta Analysis → `delta.yaml`
 
-Compare intent to reality. Every step gets classified against a fixed 7-value taxonomy:
+Compare intent (Stage A) to the imagined reality (Stage B). Every step gets classified against a fixed 7-value taxonomy:
 
 ```
 necessary | cuttable | cuttable_with_care |

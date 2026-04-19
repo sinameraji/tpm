@@ -2,10 +2,11 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { BrowserFactory, BrowserPage, DomState } from "./browser.js";
 import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
 import type { LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
+import type { Map as MapNs } from "@tpm/shared";
+import { buildStaticMap } from "../a-intent/static-map.js";
 import { runStageB } from "./stage-b.js";
 
 const nullLogger: Logger = {
@@ -40,8 +41,8 @@ function makeCanvas(): LeanCanvas {
         segment_id: "user",
         job: "run an audit",
         actor: "product owner",
-        trigger: "wants product insight",
-        success_criterion: "audit report visible",
+        trigger: "wants insight",
+        success_criterion: "report visible",
         confidence: 0.9,
       },
     ],
@@ -65,204 +66,97 @@ function makeCanvas(): LeanCanvas {
   };
 }
 
-function makeScriptedPage(states: DomState[]): {
-  page: BrowserPage;
-  actions: Array<{ kind: string; target?: string }>;
-} {
-  const actions: Array<{ kind: string; target?: string }> = [];
-  let idx = 0;
-  const page: BrowserPage = {
-    async current() {
-      return states[Math.min(idx, states.length - 1)] as DomState;
-    },
-    async goto(url) {
-      actions.push({ kind: "goto", target: url });
-      idx = Math.min(idx + 1, states.length - 1);
-    },
-    async click(selector) {
-      actions.push({ kind: "click", target: selector });
-      idx = Math.min(idx + 1, states.length - 1);
-    },
-    async fill(selector, value) {
-      actions.push({ kind: "fill", target: `${selector}=${value}` });
-    },
-    async submit(selector) {
-      actions.push({ kind: "submit", target: selector });
-      idx = Math.min(idx + 1, states.length - 1);
-    },
-    async screenshot() {},
-    async close() {},
-  };
-  return { page, actions };
+function tinyMap(): MapNs.Map {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "tpm-stageB-map-"));
+  fs.writeFileSync(
+    path.join(root, "package.json"),
+    JSON.stringify({ dependencies: { next: "^14" } }),
+  );
+  fs.mkdirSync(path.join(root, "app"), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, "app", "page.tsx"),
+    "export default function Home() { return <h1>Run an audit</h1>; }",
+  );
+  const map = buildStaticMap(root);
+  fs.rmSync(root, { recursive: true, force: true });
+  return map;
 }
 
-function makeFactory(page: BrowserPage): BrowserFactory {
+function stubGateway(payload: object): ModelGateway {
   return {
-    async launchPage() {
-      return page;
-    },
-  };
-}
-
-function domAt(url: string, opts: Partial<DomState> = {}): DomState {
-  return {
-    url,
-    title: opts.title ?? "Title",
-    h1: opts.h1 ?? ["Head"],
-    h2: opts.h2 ?? [],
-    visible_text: opts.visible_text ?? "",
-    clickables: opts.clickables ?? [],
-    forms: opts.forms ?? [],
-    html_hash: opts.html_hash ?? url,
-  };
-}
-
-function scriptedGateway(responses: string[]): ModelGateway {
-  let i = 0;
-  return {
-    name: "script",
+    name: "stub",
     async complete() {
-      const text = responses[Math.min(i, responses.length - 1)] as string;
-      i += 1;
       return {
-        text,
+        text: JSON.stringify(payload),
         model: "@cf/qwen/qwen3-30b-a3b-fp8",
-        usage: { inputTokens: 500, outputTokens: 80, neurons: 0.05, latencyMs: 300 },
+        usage: { inputTokens: 3000, outputTokens: 500, neurons: 0.08, latencyMs: 700 },
       };
     },
   };
 }
 
-describe("runStageB — 3-step happy path", () => {
-  it("clicks an audit CTA then reaches value moment", async () => {
-    const states: DomState[] = [
-      domAt("https://example.test/", {
-        clickables: [{ role: "a", label: "Run audit", selector: "#run", kind: "link" }],
-      }),
-      domAt("https://example.test/audits/new", {
-        clickables: [{ role: "a", label: "View report", selector: "#view", kind: "link" }],
-      }),
-      domAt("https://example.test/audits/123", { h1: ["Audit report"] }),
-    ];
-    const { page, actions } = makeScriptedPage(states);
-    const gateway = scriptedGateway([
-      JSON.stringify({
-        observation_summary: "Landing with a Run audit CTA",
+describe("runStageB — imagined path from static map", () => {
+  it("writes paths.yaml with the persona's inferred journey", async () => {
+    const steps = [
+      {
+        n: 1,
+        url: "/",
+        observation_summary: "Landing with a 'Run audit' CTA inferred from <h1> + button",
         decision: "click",
-        target: "#run",
-        reasoning: "go to audit flow",
+        target: "Run audit button",
+        reasoning: "primary CTA visible in code at /",
         value_moment_reached: false,
         friction_flags: [],
-      }),
-      JSON.stringify({
-        observation_summary: "New audit page; View report link",
-        decision: "click",
-        target: "#view",
-        reasoning: "advance to report",
+      },
+      {
+        n: 2,
+        url: "/audits/new",
+        observation_summary: "Audit form",
+        decision: "fill_form",
+        target: "form#audit",
+        reasoning: "form at /audits/new in the static map",
         value_moment_reached: false,
-        friction_flags: [],
-      }),
-      JSON.stringify({
-        observation_summary: "Audit report page visible",
+        friction_flags: [
+          { type: "premature_data_collection", detail: "5 required fields before run" },
+        ],
+      },
+      {
+        n: 3,
+        url: "/audits/123",
+        observation_summary: "Report visible",
         decision: "value_reached",
         target: null,
-        reasoning: "first audit report visible",
+        reasoning: "report is the value moment",
         value_moment_reached: true,
         friction_flags: [],
-      }),
-    ]);
+      },
+    ];
+    const gateway = stubGateway({
+      steps,
+      outcome: {
+        status: "value_reached",
+        loop_closed: true,
+        value_moment_reached: true,
+        stuck_reason: null,
+      },
+    });
 
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), "tpm-stageB-"));
-    const result = await runStageB(makeCanvas(), {
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), "tpm-stageB-out-"));
+    const result = await runStageB(makeCanvas(), tinyMap(), {
       gateway,
       logger: nullLogger,
       auditId: "aB1",
       sessionId: "sB1",
       artifactsDir: out,
-      browserFactory: makeFactory(page),
-      entryPoint: "https://example.test/",
       stepBudget: 5,
     });
 
     expect(result.paths.paths).toHaveLength(1);
     const p = result.paths.paths[0];
     expect(p?.outcome.status).toBe("value_reached");
-    expect(p?.outcome.value_moment_reached).toBe(true);
     expect(p?.steps_taken).toBe(3);
-    expect(actions.map((a) => a.kind)).toEqual(["click", "click"]);
+    expect(p?.entry_point).toBe("(code-only)");
     expect(fs.existsSync(path.join(out, "paths.yaml"))).toBe(true);
-    fs.rmSync(out, { recursive: true, force: true });
-  });
-});
-
-describe("runStageB — stuck with friction flags", () => {
-  it("records stuck reason + friction flags", async () => {
-    const states: DomState[] = [
-      domAt("https://example.test/", {
-        h1: ["Welcome"],
-        clickables: [],
-      }),
-    ];
-    const { page } = makeScriptedPage(states);
-    const gateway = scriptedGateway([
-      JSON.stringify({
-        observation_summary: "Blank landing with no CTA",
-        decision: "stuck",
-        target: null,
-        reasoning: "no forward action visible",
-        value_moment_reached: false,
-        friction_flags: [{ type: "blank_page_anxiety", detail: "no CTA" }],
-      }),
-    ]);
-
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), "tpm-stageB-stuck-"));
-    const result = await runStageB(makeCanvas(), {
-      gateway,
-      logger: nullLogger,
-      auditId: "aB2",
-      sessionId: "sB2",
-      artifactsDir: out,
-      browserFactory: makeFactory(page),
-      entryPoint: "https://example.test/",
-      stepBudget: 3,
-    });
-    const p = result.paths.paths[0];
-    expect(p?.outcome.status).toBe("stuck");
-    expect(p?.steps[0]?.friction_flags[0]?.type).toBe("blank_page_anxiety");
-    fs.rmSync(out, { recursive: true, force: true });
-  });
-});
-
-describe("runStageB — cycle detection", () => {
-  it("marks cycle_detected when URL+DOM state repeats 3 times", async () => {
-    const sameState = domAt("https://example.test/loop", {
-      clickables: [{ role: "a", label: "Retry", selector: "#r", kind: "link" }],
-    });
-    const { page } = makeScriptedPage([sameState]);
-    const gateway = scriptedGateway([
-      JSON.stringify({
-        observation_summary: "loop A",
-        decision: "click",
-        target: "#r",
-        reasoning: "try again",
-        value_moment_reached: false,
-        friction_flags: [],
-      }),
-    ]);
-
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), "tpm-stageB-cycle-"));
-    const result = await runStageB(makeCanvas(), {
-      gateway,
-      logger: nullLogger,
-      auditId: "aB3",
-      sessionId: "sB3",
-      artifactsDir: out,
-      browserFactory: makeFactory(page),
-      entryPoint: "https://example.test/loop",
-      stepBudget: 10,
-    });
-    const p = result.paths.paths[0];
-    expect(p?.outcome.status).toBe("cycle_detected");
     fs.rmSync(out, { recursive: true, force: true });
   });
 });
