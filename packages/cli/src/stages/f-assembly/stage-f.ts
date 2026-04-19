@@ -6,10 +6,12 @@ import type { Delta } from "@tpm/shared/schemas/delta";
 import type { Problems } from "@tpm/shared/schemas/problems";
 import type { Solutions } from "@tpm/shared/schemas/solutions";
 import type { ModelGateway } from "../../gateway/index.js";
-import type { CompleteOptionsExt } from "../../gateway/workers-ai.js";
 import type { Logger } from "../../core/logger.js";
+import { runStage, textParse, type StageSpec } from "../_lib/stage-runner.js";
+import { combine, hasRequiredSections, minLength } from "../_lib/validators.js";
 
 export const STAGE_F_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const STAGE_F_MAX_TOKENS = 16_000;
 
 const STAGE_F_SYSTEM = `You are TPM's writer. Produce a spec.md document for a product audit.
 
@@ -25,6 +27,16 @@ Structure EXACTLY:
 Markdown formatting. No HTML. Concise, PM-readable, professional. Don't pad.
 
 Return only markdown.`;
+
+const REQUIRED_SECTIONS = [
+  "Executive Summary",
+  "Intended Product",
+  "Observed Reality",
+  "The Delta",
+  "Top Problems",
+  "Recommended Actions",
+  "Appendix",
+];
 
 export interface StageFInputs {
   leanCanvas: LeanCanvas;
@@ -82,53 +94,40 @@ function buildUserPrompt(i: StageFInputs): string {
 }
 
 export async function runStageF(i: StageFInputs, deps: StageFDeps): Promise<StageFResult> {
-  deps.logger.info({ stage: "F", audit_id: deps.auditId }, "stage F started");
-  const opts: CompleteOptionsExt = {
+  const spec: StageSpec<string> = {
+    name: "F",
+    label: "Stage F · assembling spec.md",
+    model: STAGE_F_MODEL,
+    maxTokens: STAGE_F_MAX_TOKENS,
     temperature: 0.2,
     responseFormat: "text",
+    systemPrompt: STAGE_F_SYSTEM,
+    userPrompt: buildUserPrompt(i),
+    parse: (raw) => textParse(raw),
+    validate: (parsed) => parsed as string,
+    semanticCheck: (md) =>
+      combine(hasRequiredSections(md, REQUIRED_SECTIONS), minLength(md, 1000, "spec.md")),
+  };
+
+  const result = await runStage<string>(spec, {
+    gateway: deps.gateway,
+    logger: deps.logger,
     auditId: deps.auditId,
     sessionId: deps.sessionId,
-    stage: "F",
-    maxTokens: 16_000,
-  };
-  let completion = await deps.gateway.complete(
-    STAGE_F_MODEL,
-    [
-      { role: "system", content: STAGE_F_SYSTEM },
-      { role: "user", content: buildUserPrompt(i) },
-    ],
-    opts,
-  );
-  if (!completion.text.trim()) {
-    deps.logger.warn(
-      { usage: completion.usage },
-      "stage F returned empty; retrying with larger budget",
-    );
-    completion = await deps.gateway.complete(
-      STAGE_F_MODEL,
-      [
-        { role: "system", content: STAGE_F_SYSTEM },
-        { role: "user", content: buildUserPrompt(i) },
-      ],
-      { ...opts, maxTokens: 32_000 },
-    );
-    if (!completion.text.trim())
-      throw new Error("Stage F returned empty output even at 64K tokens.");
-  }
+  });
+  const markdown = result.output;
 
   fs.mkdirSync(deps.artifactsDir, { recursive: true });
   const mdPath = path.join(deps.artifactsDir, "spec.md");
-  fs.writeFileSync(mdPath, completion.text);
+  fs.writeFileSync(mdPath, markdown);
 
-  // HTML render alongside — easy to convert to PDF with any tool if desired.
   const htmlPath = path.join(deps.artifactsDir, "spec.html");
-  fs.writeFileSync(htmlPath, renderMarkdownToHtml(completion.text));
+  fs.writeFileSync(htmlPath, renderMarkdownToHtml(markdown));
 
-  deps.logger.info({ stage: "F", md: mdPath, html: htmlPath }, "stage F complete");
   return {
     markdownPath: mdPath,
     pdfPath: null,
-    neurons: completion.usage.neurons ?? 0,
+    neurons: result.totalNeurons,
   };
 }
 

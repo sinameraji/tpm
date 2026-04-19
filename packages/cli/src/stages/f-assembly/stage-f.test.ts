@@ -48,11 +48,45 @@ describe("renderMarkdownToHtml", () => {
 });
 
 function stubGateway(): ModelGateway {
+  // Emits a markdown skeleton that passes the Stage F semantic check
+  // (7 required sections + 1000-char minimum). Filler is deliberate:
+  // we're testing orchestration, not prose quality.
+  const filler = "Synthesized prose for test purposes. ".repeat(40);
+  const md = [
+    "# Executive Summary",
+    "",
+    `No persona reached the value moment. ${filler}`,
+    "",
+    "## Intended Product",
+    "",
+    `Bank automation platform for compliance teams. ${filler}`,
+    "",
+    "## Observed Reality",
+    "",
+    `Users get stuck at the demo-request gate. ${filler}`,
+    "",
+    "## The Delta",
+    "",
+    `Promise and product diverge at the entry. ${filler}`,
+    "",
+    "## Top Problems",
+    "",
+    `P001 dominates — entry funnel is broken. ${filler}`,
+    "",
+    "## Recommended Actions",
+    "",
+    `Ship a self-serve template gallery. ${filler}`,
+    "",
+    "## Appendix — Methodology",
+    "",
+    `Six-stage TPM pipeline. ${filler}`,
+    "",
+  ].join("\n");
   return {
     name: "stub",
     async complete() {
       return {
-        text: "# Executive Summary\n\nNo persona reached value moment.\n\n## Intended Product\n\nBank automation.\n",
+        text: md,
         model: "@cf/openai/gpt-oss-120b",
         usage: { inputTokens: 10_000, outputTokens: 1500, neurons: 0.1, latencyMs: 3000 },
       };

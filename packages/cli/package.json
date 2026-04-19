@@ -1,6 +1,6 @@
 {
   "name": "@sinameraji/tpm",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Technical Product Manager CLI — audits software products via a deterministic six-stage pipeline.",
   "keywords": [
     "pm",

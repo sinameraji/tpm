@@ -4,10 +4,12 @@ import yaml from "js-yaml";
 import type { Delta } from "@tpm/shared/schemas/delta";
 import { ProblemsSchema, type Problems } from "@tpm/shared/schemas/problems";
 import type { ModelGateway } from "../../gateway/index.js";
-import type { CompleteOptionsExt } from "../../gateway/workers-ai.js";
 import type { Logger } from "../../core/logger.js";
+import { runStage, jsonParse, zodValidate, type StageSpec } from "../_lib/stage-runner.js";
+import type { ValidationResult } from "../_lib/validators.js";
 
 export const STAGE_D_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const STAGE_D_MAX_TOKENS = 8_000;
 
 export const STAGE_D_SYSTEM_PROMPT = `You are TPM, prioritizing problems discovered in a product audit by LEVERAGE — expected impact over effort.
 
@@ -73,11 +75,6 @@ function buildUserPrompt(delta: Delta): string {
   ].join("\n");
 }
 
-function stripCodeFences(raw: string): string {
-  const m = /^```(?:json)?\s*\n?([\s\S]*?)\n?```$/m.exec(raw.trim());
-  return m?.[1]?.trim() ?? raw.trim();
-}
-
 export interface StageDDeps {
   gateway: ModelGateway;
   logger: Logger;
@@ -92,66 +89,38 @@ export interface StageDResult {
   neurons: number;
 }
 
+export function stageDSemanticCheck(out: Problems): ValidationResult {
+  const violations: string[] = [];
+  if (out.problems.length === 0) {
+    violations.push("problems is empty — every audit should surface at least one problem");
+  }
+  return { ok: violations.length === 0, violations };
+}
+
 export async function runStageD(delta: Delta, deps: StageDDeps): Promise<StageDResult> {
-  deps.logger.info({ stage: "D", audit_id: deps.auditId }, "stage D started");
-  const opts: CompleteOptionsExt = {
+  const spec: StageSpec<Problems> = {
+    name: "D",
+    label: "Stage D · ranking by leverage",
+    model: STAGE_D_MODEL,
+    maxTokens: STAGE_D_MAX_TOKENS,
     temperature: 0.15,
     responseFormat: "json",
+    systemPrompt: STAGE_D_SYSTEM_PROMPT,
+    userPrompt: buildUserPrompt(delta),
+    parse: (raw) => jsonParse(raw),
+    validate: zodValidate(ProblemsSchema),
+    semanticCheck: stageDSemanticCheck,
+  };
+
+  const result = await runStage<Problems>(spec, {
+    gateway: deps.gateway,
+    logger: deps.logger,
     auditId: deps.auditId,
     sessionId: deps.sessionId,
-    stage: "D",
-    maxTokens: 8_000,
-  };
-  let completion = await deps.gateway.complete(
-    STAGE_D_MODEL,
-    [
-      { role: "system", content: STAGE_D_SYSTEM_PROMPT },
-      { role: "user", content: buildUserPrompt(delta) },
-    ],
-    opts,
-  );
-  if (!completion.text.trim()) {
-    deps.logger.warn(
-      { usage: completion.usage },
-      "stage D returned empty; retrying with larger budget",
-    );
-    completion = await deps.gateway.complete(
-      STAGE_D_MODEL,
-      [
-        { role: "system", content: STAGE_D_SYSTEM_PROMPT },
-        { role: "user", content: buildUserPrompt(delta) },
-      ],
-      { ...opts, maxTokens: 16_000 },
-    );
-    if (!completion.text.trim())
-      throw new Error("Stage D returned empty output even at 64K tokens.");
-  }
-  let problems: Problems;
-  try {
-    problems = ProblemsSchema.parse(JSON.parse(stripCodeFences(completion.text)));
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    deps.logger.warn({ err: msg }, "stage D first response failed; retrying");
-    const retry = await deps.gateway.complete(
-      STAGE_D_MODEL,
-      [
-        { role: "system", content: STAGE_D_SYSTEM_PROMPT },
-        { role: "user", content: buildUserPrompt(delta) },
-        { role: "assistant", content: completion.text },
-        {
-          role: "user",
-          content:
-            "Your previous response did not parse. Error: " +
-            msg +
-            "\nReturn a corrected JSON object matching the schema. No other output.",
-        },
-      ],
-      opts,
-    );
-    problems = ProblemsSchema.parse(JSON.parse(stripCodeFences(retry.text)));
-  }
+  });
+  const problems = result.output;
 
-  // Sanity: ranks should be unique and contiguous. Reorder if not.
+  // Ranks must be contiguous 1..N. Reorder if the model didn't already.
   const sorted = [...problems.problems].sort((a, b) => a.rank - b.rank);
   sorted.forEach((p, i) => {
     p.rank = i + 1;
@@ -165,6 +134,5 @@ export async function runStageD(delta: Delta, deps: StageDDeps): Promise<StageDR
     path.join(deps.artifactsDir, "problems.json"),
     JSON.stringify(problems, null, 2),
   );
-  deps.logger.info({ stage: "D", count: problems.problems.length }, "stage D complete");
-  return { problems, yamlPath, neurons: completion.usage.neurons ?? 0 };
+  return { problems, yamlPath, neurons: result.totalNeurons };
 }

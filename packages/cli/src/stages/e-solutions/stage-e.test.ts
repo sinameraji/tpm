@@ -77,7 +77,11 @@ function stubGateway(): ModelGateway {
           },
           why_right_fix: "The core promise is unreachable without self-serve",
           unblocks: [],
-          implementation_outline: ["Build TemplateGallery", "Shorten signup to 2 fields"],
+          implementation_outline: [
+            "Build TemplateGallery",
+            "Shorten signup to 2 fields",
+            "Wire template selection into onboarding flow",
+          ],
           effort_estimate: { size: "medium", rationale: "templates exist in the data model" },
           risks_and_tradeoffs: [
             { risk: "Sales loses qualification signal", mitigation: "Opt-in post-run form" },
@@ -94,9 +98,10 @@ function stubGateway(): ModelGateway {
           usage: { inputTokens: 3000, outputTokens: 700, neurons: 0.06, latencyMs: 1500 },
         };
       }
-      // prototype
+      // prototype — must clear the 500-char minimum and include doctype/body.
+      const filler = "<p>Proposed self-serve flow section describing the change.</p>".repeat(12);
       return {
-        text: "<!doctype html><html><body><h1>Prototype</h1></body></html>",
+        text: `<!doctype html><html><head><title>Prototype</title></head><body><h1>Prototype</h1>${filler}</body></html>`,
         model,
         usage: { inputTokens: 600, outputTokens: 400, neurons: 0.03, latencyMs: 800 },
       };

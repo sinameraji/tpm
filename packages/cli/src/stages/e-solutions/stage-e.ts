@@ -6,8 +6,15 @@ import type { Problem, Problems } from "@tpm/shared/schemas/problems";
 import type { Delta } from "@tpm/shared/schemas/delta";
 import { Solution, SolutionsSchema, type Solutions } from "@tpm/shared/schemas/solutions";
 import type { ModelGateway } from "../../gateway/index.js";
-import type { CompleteOptionsExt } from "../../gateway/workers-ai.js";
 import type { Logger } from "../../core/logger.js";
+import {
+  runStage,
+  jsonParse,
+  textParse,
+  zodValidate,
+  type StageSpec,
+} from "../_lib/stage-runner.js";
+import { isValidHtmlDocument, type ValidationResult } from "../_lib/validators.js";
 
 export const STAGE_E_SPEC_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 export const STAGE_E_PROTOTYPE_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
@@ -34,11 +41,6 @@ Requirements:
 - Match the product's existing visual language loosely (colors, typography, spacing hints from the spec). Default to a clean neutral system (system-ui, 1280px max width, plenty of whitespace) when no hints exist.
 - Returns ONLY the HTML. No prose, no code fences, no preamble.`;
 
-function stripCodeFences(raw: string): string {
-  const m = /^```(?:json|html)?\s*\n?([\s\S]*?)\n?```$/m.exec(raw.trim());
-  return m?.[1]?.trim() ?? raw.trim();
-}
-
 export interface StageEDeps {
   gateway: ModelGateway;
   logger: Logger;
@@ -60,6 +62,25 @@ interface SpecGenInput {
   delta: Delta;
   brandingHint?: string;
 }
+
+// A solution is only useful if it has a concrete plan and a target.
+export function stageESpecSemanticCheck(out: z.infer<typeof SolutionNoProto>): ValidationResult {
+  const violations: string[] = [];
+  if (out.implementation_outline.length < 3) {
+    violations.push(
+      `implementation_outline has ${out.implementation_outline.length} steps — need at least 3 concrete steps`,
+    );
+  }
+  if (out.risks_and_tradeoffs.length === 0) {
+    violations.push("risks_and_tradeoffs is empty — every change has risks, name at least one");
+  }
+  if (!out.success_metric.target.trim()) {
+    violations.push("success_metric.target is empty — quantify the target");
+  }
+  return { ok: violations.length === 0, violations };
+}
+
+const SolutionNoProto = Solution.omit({ prototype: true });
 
 async function generateOneSpec(
   input: SpecGenInput,
@@ -96,38 +117,28 @@ async function generateOneSpec(
     "}",
     "Return only the JSON. No prototype field.",
   ].join("\n");
-  const opts: CompleteOptionsExt = {
+
+  const spec: StageSpec<z.infer<typeof SolutionNoProto>> = {
+    name: "E",
+    label: `Stage E · spec ${input.problem.id}`,
+    model: STAGE_E_SPEC_MODEL,
+    maxTokens: 8_000,
     temperature: 0.2,
     responseFormat: "json",
+    systemPrompt: SOLUTION_SYSTEM,
+    userPrompt: user,
+    parse: (raw) => jsonParse(raw),
+    validate: zodValidate(SolutionNoProto),
+    semanticCheck: stageESpecSemanticCheck,
+  };
+
+  const result = await runStage(spec, {
+    gateway: deps.gateway,
+    logger: deps.logger,
     auditId: deps.auditId,
     sessionId: deps.sessionId,
-    stage: "E",
-    maxTokens: 8_000,
-  };
-  let completion = await deps.gateway.complete(
-    STAGE_E_SPEC_MODEL,
-    [
-      { role: "system", content: SOLUTION_SYSTEM },
-      { role: "user", content: user },
-    ],
-    opts,
-  );
-  if (!completion.text.trim()) {
-    completion = await deps.gateway.complete(
-      STAGE_E_SPEC_MODEL,
-      [
-        { role: "system", content: SOLUTION_SYSTEM },
-        { role: "user", content: user },
-      ],
-      { ...opts, maxTokens: 16_000 },
-    );
-    if (!completion.text.trim()) throw new Error("Stage E spec returned empty output.");
-  }
-  const SolutionNoProto = Solution.omit({ prototype: true });
-  const parsed = SolutionNoProto.parse(JSON.parse(stripCodeFences(completion.text))) as z.infer<
-    typeof SolutionNoProto
-  >;
-  return { solution: parsed as Solution, neurons: completion.usage.neurons ?? 0 };
+  });
+  return { solution: result.output as Solution, neurons: result.totalNeurons };
 }
 
 async function generatePrototypeHtml(
@@ -142,24 +153,28 @@ async function generatePrototypeHtml(
     "",
     "Produce the standalone HTML now. Only the HTML — no code fences, no prose.",
   ].join("\n");
-  const opts: CompleteOptionsExt = {
+
+  const spec: StageSpec<string> = {
+    name: "E",
+    label: `Stage E · prototype ${solution.id}`,
+    model: STAGE_E_PROTOTYPE_MODEL,
+    maxTokens: 4_000,
     temperature: 0.3,
     responseFormat: "text",
+    systemPrompt: PROTOTYPE_SYSTEM,
+    userPrompt: user,
+    parse: (raw) => textParse(raw),
+    validate: (parsed) => parsed as string,
+    semanticCheck: (html) => isValidHtmlDocument(html, { minChars: 500 }),
+  };
+
+  const result = await runStage<string>(spec, {
+    gateway: deps.gateway,
+    logger: deps.logger,
     auditId: deps.auditId,
     sessionId: deps.sessionId,
-    stage: "E",
-    maxTokens: 4000,
-  };
-  const completion = await deps.gateway.complete(
-    STAGE_E_PROTOTYPE_MODEL,
-    [
-      { role: "system", content: PROTOTYPE_SYSTEM },
-      { role: "user", content: user },
-    ],
-    opts,
-  );
-  const html = stripCodeFences(completion.text);
-  return { html, neurons: completion.usage.neurons ?? 0 };
+  });
+  return { html: result.output, neurons: result.totalNeurons };
 }
 
 export async function runStageE(
@@ -168,7 +183,6 @@ export async function runStageE(
 ): Promise<StageEResult> {
   const topN = deps.topN ?? 5;
   const top = input.problems.problems.slice(0, topN);
-  deps.logger.info({ stage: "E", top_n: top.length }, "stage E started");
 
   const results = await Promise.all(
     top.map(async (problem) => {
@@ -212,7 +226,6 @@ export async function runStageE(
   const yamlPath = path.join(deps.artifactsDir, "solutions.yaml");
   fs.writeFileSync(yamlPath, yaml.dump(out, { noRefs: true, lineWidth: 120 }));
   fs.writeFileSync(path.join(deps.artifactsDir, "solutions.json"), JSON.stringify(out, null, 2));
-  deps.logger.info({ stage: "E", count: out.solutions.length }, "stage E complete");
   return { solutions: out, yamlPath, neurons: totalNeurons };
 }
 
