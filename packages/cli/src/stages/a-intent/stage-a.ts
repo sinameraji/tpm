@@ -9,13 +9,11 @@ import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
 import { STAGE_A_SYSTEM_PROMPT, buildStageAUserPrompt } from "./prompt.js";
 
-export const STAGE_A_MODEL = "@cf/openai/gpt-oss-120b";
-
-// gpt-oss-120b is a reasoning model: a large chunk of output tokens is
-// internal reasoning that never appears in `response`. Too small a
-// max_tokens budget → empty visible output. 32K is the comfortable
-// working point; Stage A's Lean Canvas YAML is small enough to fit.
-const STAGE_A_MAX_TOKENS = 32_000;
+// Llama 3.3 70B FP8 Fast: Cloudflare's default on the /json endpoint.
+// 92% IFEval vs 72% for Qwen3-30B Multi-IF. Non-reasoning model, so
+// max_tokens = visible output — no hidden thinking-token burn.
+export const STAGE_A_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const STAGE_A_MAX_TOKENS = 16_000;
 
 export interface StageADeps {
   gateway: ModelGateway;

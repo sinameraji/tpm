@@ -18,9 +18,10 @@ export interface InferRequest {
 }
 
 const ALLOWED_MODELS = new Set<string>([
-  "@cf/openai/gpt-oss-120b",
+  "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
   "@cf/qwen/qwen3-30b-a3b-fp8",
   "@cf/meta/llama-4-scout-17b-16e-instruct",
+  "@cf/openai/gpt-oss-120b", // kept for experimentation; no stage uses it by default
 ]);
 
 async function enforceHostedTrialQuota(env: Env, deviceId: string, stage: string): Promise<void> {

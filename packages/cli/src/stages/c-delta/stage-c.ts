@@ -9,7 +9,7 @@ import type { CompleteOptionsExt } from "../../gateway/workers-ai.js";
 import type { Logger } from "../../core/logger.js";
 import { STAGE_C_SYSTEM_PROMPT, buildStageCUserPrompt } from "./prompt.js";
 
-export const STAGE_C_MODEL = "@cf/openai/gpt-oss-120b";
+export const STAGE_C_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
 export interface StageCDeps {
   gateway: ModelGateway;
@@ -48,8 +48,7 @@ export async function runStageC(
     auditId: deps.auditId,
     sessionId: deps.sessionId,
     stage: "C",
-    // gpt-oss-120b reasoning model needs headroom; 32K covers thinking + JSON.
-    maxTokens: 32_000,
+    maxTokens: 16_000,
   };
 
   let completion = await deps.gateway.complete(
@@ -73,7 +72,7 @@ export async function runStageC(
         { role: "system", content: STAGE_C_SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
       ],
-      { ...opts, maxTokens: 64_000 },
+      { ...opts, maxTokens: 32_000 },
     );
     if (!completion.text.trim())
       throw new Error("Stage C returned empty output even at 64K tokens.");

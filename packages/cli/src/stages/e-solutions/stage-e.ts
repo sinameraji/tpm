@@ -9,7 +9,7 @@ import type { ModelGateway } from "../../gateway/index.js";
 import type { CompleteOptionsExt } from "../../gateway/workers-ai.js";
 import type { Logger } from "../../core/logger.js";
 
-export const STAGE_E_SPEC_MODEL = "@cf/openai/gpt-oss-120b";
+export const STAGE_E_SPEC_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 export const STAGE_E_PROTOTYPE_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
 
 const SOLUTION_SYSTEM = `You are TPM's solution designer. For ONE problem from the prioritized audit, produce a concrete, implementable solution spec.
@@ -102,7 +102,7 @@ async function generateOneSpec(
     auditId: deps.auditId,
     sessionId: deps.sessionId,
     stage: "E",
-    maxTokens: 16_000, // reasoning model headroom
+    maxTokens: 8_000,
   };
   let completion = await deps.gateway.complete(
     STAGE_E_SPEC_MODEL,
@@ -119,7 +119,7 @@ async function generateOneSpec(
         { role: "system", content: SOLUTION_SYSTEM },
         { role: "user", content: user },
       ],
-      { ...opts, maxTokens: 32_000 },
+      { ...opts, maxTokens: 16_000 },
     );
     if (!completion.text.trim()) throw new Error("Stage E spec returned empty output.");
   }

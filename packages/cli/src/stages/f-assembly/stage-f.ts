@@ -9,7 +9,7 @@ import type { ModelGateway } from "../../gateway/index.js";
 import type { CompleteOptionsExt } from "../../gateway/workers-ai.js";
 import type { Logger } from "../../core/logger.js";
 
-export const STAGE_F_MODEL = "@cf/openai/gpt-oss-120b";
+export const STAGE_F_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
 const STAGE_F_SYSTEM = `You are TPM's writer. Produce a spec.md document for a product audit.
 
@@ -89,7 +89,7 @@ export async function runStageF(i: StageFInputs, deps: StageFDeps): Promise<Stag
     auditId: deps.auditId,
     sessionId: deps.sessionId,
     stage: "F",
-    maxTokens: 32_000, // reasoning model headroom
+    maxTokens: 16_000,
   };
   let completion = await deps.gateway.complete(
     STAGE_F_MODEL,
@@ -110,7 +110,7 @@ export async function runStageF(i: StageFInputs, deps: StageFDeps): Promise<Stag
         { role: "system", content: STAGE_F_SYSTEM },
         { role: "user", content: buildUserPrompt(i) },
       ],
-      { ...opts, maxTokens: 64_000 },
+      { ...opts, maxTokens: 32_000 },
     );
     if (!completion.text.trim())
       throw new Error("Stage F returned empty output even at 64K tokens.");

@@ -7,7 +7,7 @@ import type { ModelGateway } from "../../gateway/index.js";
 import type { CompleteOptionsExt } from "../../gateway/workers-ai.js";
 import type { Logger } from "../../core/logger.js";
 
-export const STAGE_D_MODEL = "@cf/openai/gpt-oss-120b";
+export const STAGE_D_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
 export const STAGE_D_SYSTEM_PROMPT = `You are TPM, prioritizing problems discovered in a product audit by LEVERAGE — expected impact over effort.
 
@@ -100,7 +100,7 @@ export async function runStageD(delta: Delta, deps: StageDDeps): Promise<StageDR
     auditId: deps.auditId,
     sessionId: deps.sessionId,
     stage: "D",
-    maxTokens: 32_000, // reasoning model; needs headroom
+    maxTokens: 8_000,
   };
   let completion = await deps.gateway.complete(
     STAGE_D_MODEL,
@@ -121,7 +121,7 @@ export async function runStageD(delta: Delta, deps: StageDDeps): Promise<StageDR
         { role: "system", content: STAGE_D_SYSTEM_PROMPT },
         { role: "user", content: buildUserPrompt(delta) },
       ],
-      { ...opts, maxTokens: 64_000 },
+      { ...opts, maxTokens: 16_000 },
     );
     if (!completion.text.trim())
       throw new Error("Stage D returned empty output even at 64K tokens.");
