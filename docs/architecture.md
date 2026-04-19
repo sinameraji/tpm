@@ -18,7 +18,7 @@
              │ HTTPS
              ▼
 ┌──────────────────────────────┐
-│ api.usetpm.dev               │
+│ tpm-api.sina-b35.workers.dev               │
 │ (Cloudflare Worker)          │
 │  - router + HttpError        │
 │  - HS256 JWT auth            │

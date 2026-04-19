@@ -21,7 +21,7 @@ function aiStub(result: StubAiRun) {
 
 async function registerDevice(env: Env): Promise<string> {
   await worker.fetch(
-    new Request("https://api.usetpm.dev/device/register", {
+    new Request("https://tpm-api.sina-b35.workers.dev/device/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -41,7 +41,7 @@ describe("backend — /infer", () => {
     const { d1 } = makeD1();
     const env = baseEnv({ DB: d1, AI: aiStub({ response: "", usage: {} }) }) as unknown as Env;
     const res = await worker.fetch(
-      new Request("https://api.usetpm.dev/infer", {
+      new Request("https://tpm-api.sina-b35.workers.dev/infer", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -60,7 +60,7 @@ describe("backend — /infer", () => {
     const env = baseEnv({ DB: d1, AI: aiStub({ response: "", usage: {} }) }) as unknown as Env;
     const token = await registerDevice(env);
     const res = await worker.fetch(
-      new Request("https://api.usetpm.dev/infer", {
+      new Request("https://tpm-api.sina-b35.workers.dev/infer", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -82,7 +82,7 @@ describe("backend — /infer", () => {
     }) as unknown as Env;
     const token = await registerDevice(env);
     const res = await worker.fetch(
-      new Request("https://api.usetpm.dev/infer", {
+      new Request("https://tpm-api.sina-b35.workers.dev/infer", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -136,7 +136,7 @@ describe("backend — /infer", () => {
         new Date().toISOString(),
       );
     const res = await worker.fetch(
-      new Request("https://api.usetpm.dev/infer", {
+      new Request("https://tpm-api.sina-b35.workers.dev/infer", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
         body: JSON.stringify({

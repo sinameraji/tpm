@@ -15,7 +15,11 @@ const FINGERPRINT = "a".repeat(64);
 describe("backend — health + 404", () => {
   it("GET /health → 200 ok", async () => {
     const env = makeEnv();
-    const res = await worker.fetch(new Request("https://api.usetpm.dev/health"), env, mockCtx());
+    const res = await worker.fetch(
+      new Request("https://tpm-api.sina-b35.workers.dev/health"),
+      env,
+      mockCtx(),
+    );
     expect(res.status).toBe(200);
     const body = (await res.json()) as { ok: boolean; env: string; version: string };
     expect(body.ok).toBe(true);
@@ -24,7 +28,11 @@ describe("backend — health + 404", () => {
 
   it("GET /unknown → 404 not_found", async () => {
     const env = makeEnv();
-    const res = await worker.fetch(new Request("https://api.usetpm.dev/unknown"), env, mockCtx());
+    const res = await worker.fetch(
+      new Request("https://tpm-api.sina-b35.workers.dev/unknown"),
+      env,
+      mockCtx(),
+    );
     expect(res.status).toBe(404);
   });
 });
@@ -33,7 +41,7 @@ describe("backend — /device/register", () => {
   it("accepts a well-formed device_id and returns access + refresh tokens", async () => {
     const env = makeEnv();
     const res = await worker.fetch(
-      new Request("https://api.usetpm.dev/device/register", {
+      new Request("https://tpm-api.sina-b35.workers.dev/device/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -61,7 +69,7 @@ describe("backend — /device/register", () => {
   it("rejects a non-uuid device_id", async () => {
     const env = makeEnv();
     const res = await worker.fetch(
-      new Request("https://api.usetpm.dev/device/register", {
+      new Request("https://tpm-api.sina-b35.workers.dev/device/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -85,7 +93,7 @@ describe("backend — /device/register", () => {
     };
     const hit = () =>
       worker.fetch(
-        new Request("https://api.usetpm.dev/device/register", {
+        new Request("https://tpm-api.sina-b35.workers.dev/device/register", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(body),
@@ -113,7 +121,7 @@ describe("backend — /license/validate", () => {
   it("401 without a bearer token", async () => {
     const env = makeEnv();
     const res = await worker.fetch(
-      new Request("https://api.usetpm.dev/license/validate"),
+      new Request("https://tpm-api.sina-b35.workers.dev/license/validate"),
       env,
       mockCtx(),
     );
@@ -124,7 +132,7 @@ describe("backend — /license/validate", () => {
     const env = makeEnv();
     // register first so there's a license row
     await worker.fetch(
-      new Request("https://api.usetpm.dev/device/register", {
+      new Request("https://tpm-api.sina-b35.workers.dev/device/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -138,7 +146,7 @@ describe("backend — /license/validate", () => {
     );
     const token = await issueAccessToken(DEVICE_ID, STUB_JWT_SECRET);
     const res = await worker.fetch(
-      new Request("https://api.usetpm.dev/license/validate", {
+      new Request("https://tpm-api.sina-b35.workers.dev/license/validate", {
         headers: { authorization: `Bearer ${token}` },
       }),
       env,

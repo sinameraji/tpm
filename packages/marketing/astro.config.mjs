@@ -1,7 +1,7 @@
 import { defineConfig } from "astro/config";
 
 export default defineConfig({
-  site: "https://usetpm.dev",
+  site: "https://tpm.pages.dev",
   output: "static",
   build: {
     inlineStylesheets: "always",

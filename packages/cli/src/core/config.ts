@@ -23,7 +23,7 @@ export interface UserConfig {
 const DEFAULT: UserConfig = {
   schema_version: 1,
   gateway: "hosted",
-  api_endpoint: "https://api.usetpm.dev",
+  api_endpoint: "https://tpm-api.sina-b35.workers.dev",
   byo: {},
 };
 

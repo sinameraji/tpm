@@ -40,7 +40,7 @@ describe("QuotaClient", () => {
       );
     };
     const client = new QuotaClient({
-      endpoint: "https://api.usetpm.dev",
+      endpoint: "https://tpm-api.sina-b35.workers.dev",
       fetchImpl,
       homeDir: home,
     });
@@ -53,7 +53,10 @@ describe("QuotaClient", () => {
 
   it("throws a clear error when no token exists", async () => {
     const home = tempHome();
-    const client = new QuotaClient({ endpoint: "https://api.usetpm.dev", homeDir: home });
+    const client = new QuotaClient({
+      endpoint: "https://tpm-api.sina-b35.workers.dev",
+      homeDir: home,
+    });
     await expect(client.check()).rejects.toThrow(/no access token/i);
   });
 });
@@ -68,7 +71,7 @@ describe("formatSelfHostMessage", () => {
       allowances: { full_audit: false, quick_audit: true },
       self_host: {
         message: "self-host TPM on your own Cloudflare account",
-        url: "https://usetpm.dev/self-host",
+        url: "https://tpm.pages.dev/self-host",
       },
     });
     expect(msg).toContain("self-host");

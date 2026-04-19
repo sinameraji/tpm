@@ -3,7 +3,7 @@ import { WorkersAIGateway } from "./workers-ai.js";
 
 describe("WorkersAIGateway (M2 stub)", () => {
   it("has name 'workers-ai'", () => {
-    const g = new WorkersAIGateway({ endpoint: "https://api.usetpm.dev/infer" });
+    const g = new WorkersAIGateway({ endpoint: "https://tpm-api.sina-b35.workers.dev/infer" });
     expect(g.name).toBe("workers-ai");
   });
 
@@ -46,7 +46,7 @@ describe("WorkersAIGateway (M2 stub)", () => {
     };
 
     const g = new WorkersAIGateway({
-      endpoint: "https://api.usetpm.dev",
+      endpoint: "https://tpm-api.sina-b35.workers.dev",
       fetchImpl,
       homeDir: home,
     });
@@ -59,8 +59,8 @@ describe("WorkersAIGateway (M2 stub)", () => {
     expect(out.usage.inputTokens).toBe(10);
     expect(out.usage.outputTokens).toBe(5);
     expect(calls.map((c) => c.url)).toEqual([
-      "https://api.usetpm.dev/device/register",
-      "https://api.usetpm.dev/infer",
+      "https://tpm-api.sina-b35.workers.dev/device/register",
+      "https://tpm-api.sina-b35.workers.dev/infer",
     ]);
     // Tokens persisted
     const tokens = JSON.parse(fs.readFileSync(path.join(home, ".tpm", "tokens.json"), "utf8"));

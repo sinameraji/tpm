@@ -20,7 +20,7 @@ Before the dogfood run, the handoffs from earlier milestones need to be complete
    wrangler deploy
    ```
 
-   Point `api.usetpm.dev/*` at the deployed worker via a Cloudflare route on the `usetpm.dev` zone.
+   Point `tpm-api.sina-b35.workers.dev/*` at the deployed worker via a Cloudflare route on the `tpm.pages.dev` zone.
 
 2. **Stripe live mode (optional for dogfood)**: can run dogfood with local free-tier only; quota's lifetime=1 is enough for a single audit. Real Stripe lands at M20 launch.
 

@@ -1,10 +1,10 @@
 import type { Command } from "commander";
 import { bootstrap, emit, emitText } from "./_runtime.js";
 
-const GUIDE_URL = "https://usetpm.dev/self-host";
+const GUIDE_URL = "https://tpm.pages.dev/self-host";
 
 const SELF_HOST_GUIDE = `
-TPM is open source. The hosted backend at api.usetpm.dev gives every device
+TPM is open source. The hosted backend at tpm-api.sina-b35.workers.dev gives every device
 ONE free audit on the maintainer's Cloudflare Workers AI credits. After
 that, run TPM on your own account:
 

@@ -43,8 +43,8 @@ See [docs/architecture.md](./docs/architecture.md). CLI on your machine, thin Cl
 packages/
   shared/     Zod schemas + TS types — single source of truth
   cli/        the `tpm` command-line tool
-  backend/    optional Cloudflare Worker (hosted trial at api.usetpm.dev)
-  marketing/  usetpm.dev (Astro on Cloudflare Pages)
+  backend/    optional Cloudflare Worker (hosted trial at tpm-api.sina-b35.workers.dev)
+  marketing/  tpm.pages.dev (Astro on Cloudflare Pages)
 ```
 
 ## Development

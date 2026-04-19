@@ -1,6 +1,6 @@
 # Self-host TPM
 
-TPM is open source. The default `tpm audit` hits our hosted Cloudflare Worker at `api.usetpm.dev`, which gives every device one free audit on the maintainer's Workers AI credits. After that, self-host on your own Cloudflare — 5 minutes of setup.
+TPM is open source. The default `tpm audit` hits our hosted Cloudflare Worker at `tpm-api.sina-b35.workers.dev`, which gives every device one free audit on the maintainer's Workers AI credits. After that, self-host on your own Cloudflare — 5 minutes of setup.
 
 ## Why self-host?
 

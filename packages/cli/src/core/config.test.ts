@@ -12,7 +12,7 @@ describe("config", () => {
   it("loads defaults when no file exists", () => {
     const cfg = loadConfig(tempHome());
     expect(cfg.gateway).toBe("hosted");
-    expect(cfg.api_endpoint).toBe("https://api.usetpm.dev");
+    expect(cfg.api_endpoint).toBe("https://tpm-api.sina-b35.workers.dev");
   });
 
   it("set → save → load round trip", () => {

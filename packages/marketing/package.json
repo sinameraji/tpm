@@ -2,7 +2,7 @@
   "name": "@tpm/marketing",
   "version": "0.0.0",
   "private": true,
-  "description": "TPM marketing site (usetpm.dev) — Astro on Cloudflare Pages.",
+  "description": "TPM marketing site (tpm.pages.dev) — Astro on Cloudflare Pages.",
   "type": "module",
   "scripts": {
     "build": "astro build",

@@ -4,7 +4,7 @@
 #
 # Steps:
 #   1. Preflight (typecheck / lint / format / test / build)
-#   2. Deploy hosted-trial backend (api.usetpm.dev) — skip with --skip-backend
+#   2. Deploy hosted-trial backend (tpm-api.sina-b35.workers.dev) — skip with --skip-backend
 #   3. Build marketing site (Cloudflare Pages pulls from packages/marketing/dist)
 #   4. Publish CLI to npm as `tpm` (public)
 #   5. Tag + push
@@ -53,5 +53,5 @@ git push --tags
 echo ""
 echo "✓ Release v${VERSION} complete."
 echo "  Verify:"
-echo "    curl https://api.usetpm.dev/health"
+echo "    curl https://tpm-api.sina-b35.workers.dev/health"
 echo "    npx tpm@latest --help"

@@ -8,7 +8,7 @@ const DEVICE_ID = "33333333-3333-4333-8333-333333333333";
 
 async function register(env: Env): Promise<string> {
   await worker.fetch(
-    new Request("https://api.usetpm.dev/device/register", {
+    new Request("https://tpm-api.sina-b35.workers.dev/device/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -29,7 +29,7 @@ describe("/quota/check", () => {
     const env = baseEnv({ DB: d1 }) as unknown as Env;
     const token = await register(env);
     const res = await worker.fetch(
-      new Request("https://api.usetpm.dev/quota/check", {
+      new Request("https://tpm-api.sina-b35.workers.dev/quota/check", {
         headers: { authorization: `Bearer ${token}` },
       }),
       env,
@@ -69,7 +69,7 @@ describe("/quota/check", () => {
         new Date().toISOString(),
       );
     const res = await worker.fetch(
-      new Request("https://api.usetpm.dev/quota/check", {
+      new Request("https://tpm-api.sina-b35.workers.dev/quota/check", {
         headers: { authorization: `Bearer ${token}` },
       }),
       env,
