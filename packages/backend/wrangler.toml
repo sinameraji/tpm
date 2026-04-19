@@ -3,30 +3,19 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Replace the empty "id" / "database_id" / "bucket_name" placeholders below
-# with real values after running:
-#   wrangler d1 create tpm-prod
-#   wrangler kv namespace create SESSIONS
-#   wrangler kv namespace create RATE_LIMITS
-#   wrangler r2 bucket create tpm-artifacts
-# Then push secrets:
-#   wrangler secret put JWT_SECRET
-#   wrangler secret put STRIPE_SECRET_KEY
-#   wrangler secret put STRIPE_WEBHOOK_SECRET
-
 [[d1_databases]]
 binding = "DB"
 database_name = "tpm-prod"
-database_id = ""
+database_id = "a0cc8e09-f7a4-46c3-97e9-4bc3a56d8e71"
 migrations_dir = "migrations"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = ""
+id = "b48b253ab6a245bcbc93a92d2c123fac"
 
 [[kv_namespaces]]
 binding = "RATE_LIMITS"
-id = ""
+id = "3f844ff272b04c629aaa854ef41ec18e"
 
 [[r2_buckets]]
 binding = "ARTIFACTS"
@@ -46,7 +35,7 @@ ENV = "production"
 [env.dev.vars]
 ENV = "dev"
 
-# Routes (wire up after domain is set):
+# Wire up after the usetpm.dev zone is added to Cloudflare:
 # routes = [
 #   { pattern = "api.usetpm.dev/*", zone_name = "usetpm.dev" }
 # ]
