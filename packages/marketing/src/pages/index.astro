@@ -17,9 +17,15 @@ import Base from "../layouts/Base.astro";
       <a href="/docs" class="button secondary" style="margin-left: 0.5rem;">Read the method</a>
     </p>
     <pre style="margin-top: 2rem; max-width: 40rem;"><code>npm install -g tpm
+
+cd your-product-repo
 tpm init
 tpm audit https://yoursaas.com</code></pre>
     <p style="color: #4d4d4d; font-size: 0.9rem; max-width: 40rem; margin-top: 1rem;">
+      Run it <strong>from inside your repo</strong>. The codebase (cwd) feeds the Lean Canvas
+      reconstruction; the URL is the deployed product TPM walks as real users.
+    </p>
+    <p style="color: #4d4d4d; font-size: 0.9rem; max-width: 40rem; margin-top: 0.5rem;">
       Every new device gets one free audit on our hosted Cloudflare Workers AI credits. After that,
       <a href="/self-host">set up your own Cloudflare account</a> for unlimited audits.
     </p>

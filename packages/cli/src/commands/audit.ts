@@ -10,21 +10,33 @@ import * as path from "node:path";
 export function register(program: Command): void {
   program
     .command("audit")
-    .description("Run a full six-stage audit against a target (URL or local project).")
-    .argument("[target]", "URL or local path to audit", ".")
-    .option("--step-budget <n>", "Navigator step budget per persona", (v: string) => Number(v))
+    .description(
+      "Run a full six-stage audit. Runs from the current project directory (codebase = cwd); pass the deployed product's URL as the argument.",
+    )
+    .argument(
+      "[url]",
+      "Deployed product URL to walk as each persona (e.g. https://jinba.ai). Omit to run code-only (Stages A only — no browser walk).",
+    )
+    .option(
+      "--project <path>",
+      "Override the codebase directory (default: cwd). Rarely needed — typically you cd into the repo you want to audit.",
+    )
+    .option("--step-budget <n>", "Navigator step budget per persona (default 25)", (v: string) =>
+      Number(v),
+    )
     .option(
       "--top <n>",
       "Number of top problems to produce solutions for (default 5)",
       (v: string) => Number(v),
     )
     .option("--no-pdf", "Skip PDF rendering in Stage F")
-    .option("--no-sync", "Don't sync audit to backend (useful for offline runs)")
+    .option("--no-sync", "Don't sync audit artifacts to backend")
     .option("--endpoint <url>", "Override the hosted backend URL (defaults to config.api_endpoint)")
     .option("--gateway <mode>", "Force gateway mode: hosted | byo (defaults to config.gateway)")
-    .action(async function action(this: Command, target: string) {
+    .action(async function action(this: Command, url?: string) {
       const runtime = bootstrap(this);
       const opts = this.opts<{
+        project?: string;
         stepBudget?: number;
         top?: number;
         pdf?: boolean;
@@ -32,6 +44,11 @@ export function register(program: Command): void {
         endpoint?: string;
         gateway?: "hosted" | "byo";
       }>();
+
+      // The codebase is always the current directory unless --project overrides it.
+      // The positional arg is the DEPLOYED SITE URL. Passing nothing = code-only.
+      const projectRoot = opts.project ? path.resolve(opts.project) : process.cwd();
+      const target = url ?? projectRoot;
 
       const cfg = loadConfig();
       const endpoint = opts.endpoint ?? cfg.api_endpoint;
@@ -53,7 +70,7 @@ export function register(program: Command): void {
           accountId: cfg.byo.account_id,
           apiToken: cfg.byo.api_token,
         });
-        apiEndpointForOrchestrator = undefined; // no quota + no R2 sync in BYO
+        apiEndpointForOrchestrator = undefined;
       } else {
         gateway = new WorkersAIGateway({ endpoint });
         apiEndpointForOrchestrator = endpoint;
@@ -66,9 +83,14 @@ export function register(program: Command): void {
         ...(apiEndpointForOrchestrator ? { apiEndpoint: apiEndpointForOrchestrator } : {}),
       });
 
+      emitText(runtime, `Codebase: ${projectRoot}`);
+      emitText(runtime, url ? `Target URL: ${url}` : "Target: code-only (no Stage B browser walk)");
+      emitText(runtime, `Gateway: ${gatewayMode}\n`);
+
       try {
         const res = await orchestrator.runAudit({
           target,
+          projectRoot,
           ...(opts.stepBudget !== undefined ? { stepBudget: opts.stepBudget } : {}),
           ...(opts.top !== undefined ? { topNSolutions: opts.top } : {}),
           renderPdf: opts.pdf !== false,
@@ -76,7 +98,6 @@ export function register(program: Command): void {
         });
         emitText(runtime, `\nAudit complete: ${res.auditId}`);
         emitText(runtime, `Artifacts: ${path.relative(process.cwd(), res.artifactsDir)}`);
-        emitText(runtime, `Gateway: ${gatewayMode}`);
         emitText(runtime, `Total neurons: ${res.totalNeurons.toFixed(3)}`);
         emitText(runtime, `Duration: ${(res.durationMs / 1000).toFixed(1)}s`);
         const statuses = Object.entries(res.stages)
@@ -90,6 +111,8 @@ export function register(program: Command): void {
           ok: true,
           audit_id: res.auditId,
           artifacts_dir: res.artifactsDir,
+          codebase: projectRoot,
+          url: url ?? null,
           gateway: gatewayMode,
           total_neurons: res.totalNeurons,
           duration_ms: res.durationMs,

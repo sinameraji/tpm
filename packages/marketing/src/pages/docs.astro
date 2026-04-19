@@ -7,9 +7,15 @@ import Base from "../layouts/Base.astro";
 
     <h2>Quick start</h2>
     <pre><code>npm install -g tpm
-cd your-project
-tpm init
-tpm audit https://your-product.com</code></pre>
+
+cd your-product-repo        # TPM reads the codebase from the CURRENT DIRECTORY
+tpm init                    # creates .tpm/ in this repo
+tpm audit https://your-product.com   # URL = deployed site TPM walks</code></pre>
+    <p style="max-width: 44rem; color: #4d4d4d;">
+      TPM runs <strong>from inside your repo</strong>. The codebase (cwd) feeds Stage A's Lean
+      Canvas reconstruction; the URL argument is the deployed product TPM walks with Playwright
+      for Stage B. Omit the URL entirely to run code-only (Stage A only, no browser walk).
+    </p>
     <p style="max-width: 44rem; color: #4d4d4d;">
       First audit runs on our hosted Cloudflare Workers AI (one per device).
       For unlimited audits, <a href="/self-host">self-host on your own Cloudflare</a>.

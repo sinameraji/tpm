@@ -4,10 +4,13 @@
 
 ```bash
 npm install -g tpm
-cd your-project
-tpm init
-tpm audit https://your-product.com
+
+cd your-product-repo        # TPM reads the codebase from the CURRENT DIRECTORY
+tpm init                    # creates .tpm/ in this repo
+tpm audit https://your-product.com   # the URL is the deployed site TPM walks as users
 ```
+
+TPM runs **from inside your repo**. The codebase (cwd) feeds Stage A's Lean Canvas extraction; the URL is the deployed product TPM walks with Playwright for Stage B. Use `--project /path/to/code` if you need to override the codebase location; omit the URL entirely to run code-only (Stage A only, no browser walk).
 
 Artifacts land in `.tpm/artifacts/{audit_id}/`:
 
