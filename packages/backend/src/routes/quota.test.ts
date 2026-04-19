@@ -76,6 +76,32 @@ describe("/quota/check", () => {
     expect(body.self_host?.url).toContain("self-host");
   });
 
+  it("whitelisted device bypasses the quota even after a succeeded audit", async () => {
+    const { d1, raw } = makeD1();
+    const env = baseEnv({ DB: d1 }) as unknown as Env;
+    const token = await register(env);
+    raw.prepare("UPDATE devices SET is_whitelisted = 1 WHERE id = ?").run(DEVICE_ID);
+    raw
+      .prepare(
+        "INSERT INTO audits (id, device_id, session_id, target, started_at, status, tier_at_run, tpm_version) " +
+          "VALUES (?, ?, ?, ?, ?, 'succeeded', 'hosted_trial', '1.0.0')",
+      )
+      .run("aud-w1", DEVICE_ID, "s", "/tmp/x", new Date().toISOString());
+    const res = await worker.fetch(
+      new Request("https://tpm-api.sina-b35.workers.dev/quota/check", {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+      env,
+      mockCtx(),
+    );
+    const body = (await res.json()) as {
+      mode: string;
+      allowances: { full_audit: boolean };
+    };
+    expect(body.mode).toBe("whitelisted");
+    expect(body.allowances.full_audit).toBe(true);
+  });
+
   it("does NOT count failed audits — trial remains available", async () => {
     const { d1, raw } = makeD1();
     const env = baseEnv({ DB: d1 }) as unknown as Env;

@@ -2,10 +2,10 @@ import * as os from "node:os";
 import { loadTokens } from "../auth/tokens.js";
 
 export interface QuotaStatus {
-  mode: "hosted_trial";
-  limit: number;
+  mode: "hosted_trial" | "whitelisted";
+  limit: number | null;
   used: number;
-  remaining: number;
+  remaining: number | null;
   allowances: { full_audit: boolean; quick_audit: boolean };
   self_host: { message: string; url: string } | null;
 }

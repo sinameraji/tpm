@@ -2,7 +2,7 @@ import type { Env } from "../env.js";
 import { requireAuth } from "../middleware/auth.js";
 import { badRequest, paymentRequired, serverError } from "../lib/errors.js";
 import { nowIso, uuidv4 } from "../lib/ids.js";
-import { HOSTED_TRIAL_LIMIT, countSucceededAudits } from "./quota.js";
+import { HOSTED_TRIAL_LIMIT, countSucceededAudits, isDeviceWhitelisted } from "./quota.js";
 
 export interface InferRequest {
   model: string;
@@ -26,6 +26,9 @@ const ALLOWED_MODELS = new Set<string>([
 async function enforceHostedTrialQuota(env: Env, deviceId: string, stage: string): Promise<void> {
   // meta-stage calls aren't counted toward the trial.
   if (stage === "meta") return;
+
+  // Whitelisted devices skip the quota entirely.
+  if (await isDeviceWhitelisted(env, deviceId)) return;
 
   // Count only SUCCEEDED audits, not distinct audit_ids touched by
   // /infer calls. A failed audit shouldn't burn the user's free slot.

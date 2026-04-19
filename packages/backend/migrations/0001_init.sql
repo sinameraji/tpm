@@ -10,11 +10,13 @@ CREATE TABLE IF NOT EXISTS devices (
   last_seen_at              TEXT NOT NULL,
   ip_first_seen             TEXT,
   abuse_flag                INTEGER NOT NULL DEFAULT 0,
-  banned_at                 TEXT
+  banned_at                 TEXT,
+  is_whitelisted            INTEGER NOT NULL DEFAULT 0  -- bypass hosted-trial quota
 );
 
 CREATE INDEX IF NOT EXISTS idx_devices_fingerprint ON devices (fingerprint_hash);
 CREATE INDEX IF NOT EXISTS idx_devices_abuse ON devices (abuse_flag);
+CREATE INDEX IF NOT EXISTS idx_devices_whitelisted ON devices (is_whitelisted);
 
 -- Backend-side audit metadata (summary only; full artifacts live in R2).
 CREATE TABLE IF NOT EXISTS audits (
