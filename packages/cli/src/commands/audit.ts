@@ -139,17 +139,41 @@ export function register(program: Command): void {
           renderPdf: opts.pdf !== false,
           skipSync: opts.sync === false || gatewayMode === "byo",
         });
-        emitText(runtime, `\nAudit complete: ${res.auditId}`);
-        emitText(runtime, `Artifacts: ${path.relative(process.cwd(), res.artifactsDir)}`);
-        emitText(runtime, `Total neurons: ${res.totalNeurons.toFixed(3)}`);
-        emitText(runtime, `Duration: ${(res.durationMs / 1000).toFixed(1)}s`);
+        const artifactsAbs = path.resolve(res.artifactsDir);
+        const specMd = path.join(artifactsAbs, "spec.md");
+        const specHtml = path.join(artifactsAbs, "spec.html");
+        const openCmd =
+          process.platform === "darwin"
+            ? "open"
+            : process.platform === "win32"
+              ? "start"
+              : "xdg-open";
+        const mins = Math.floor(res.durationMs / 60_000);
+        const secs = Math.round((res.durationMs % 60_000) / 1000);
+        const durationStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+
+        emitText(
+          runtime,
+          `\n✓ Audit complete (${durationStr}, ${res.totalNeurons.toFixed(0)} neurons)`,
+        );
+        emitText(runtime, `\n  Your report:`);
+        emitText(runtime, `    ${specMd}`);
+        emitText(runtime, `    ${openCmd} ${specHtml}`);
+        emitText(runtime, `\n  All artifacts: ${artifactsAbs}/`);
+        emitText(runtime, `  Audit id: ${res.auditId}`);
+        emitText(
+          runtime,
+          `\n  Note: .tpm/ is a local cache and is gitignored — safe to leave uncommitted.`,
+        );
+        emitText(runtime, `  Re-open this audit later: tpm report ${res.auditId.slice(0, 8)}`);
+
         const statuses = Object.entries(res.stages)
           .map(
             ([s, v]) =>
               `  ${s}: ${v.status}${v.neurons ? ` (${v.neurons.toFixed(3)} neurons)` : ""}`,
           )
           .join("\n");
-        emitText(runtime, `Stages:\n${statuses}`);
+        emitText(runtime, `\nStages:\n${statuses}`);
         emit(runtime, {
           ok: true,
           audit_id: res.auditId,
