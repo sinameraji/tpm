@@ -18,6 +18,7 @@ import { runStageD } from "../stages/d-leverage/stage-d.js";
 import { runStageE } from "../stages/e-solutions/stage-e.js";
 import { runStageF } from "../stages/f-assembly/stage-f.js";
 import { loadBuiltInPatterns, summarizePatternLibrary } from "../patterns/loader.js";
+import { withProgress } from "./progress.js";
 import { TPM_VERSION } from "@tpm/shared";
 
 export interface OrchestratorDeps {
@@ -119,18 +120,25 @@ export class Orchestrator {
     const costPerStage: Record<string, number> = {};
 
     try {
-      log.info({ stage: "A-prep" }, "building static map");
-      const map = buildStaticMap(projectRoot);
-      writeMapYaml(map, path.join(artifactsDir, "map.yaml"));
+      const map = await withProgress("Reading codebase", async () => {
+        const m = buildStaticMap(projectRoot);
+        writeMapYaml(m, path.join(artifactsDir, "map.yaml"));
+        return m;
+      });
 
       let scraped: ScrapedNs.ScrapedSurfaces | undefined;
       if (opts.marketingUrl) {
         try {
-          log.info({ url: opts.marketingUrl }, "scraping marketing surfaces (auxiliary)");
-          scraped = await scrapeMarketingSurfaces(opts.marketingUrl, { maxPages: 8 });
-          fs.writeFileSync(
-            path.join(artifactsDir, "scraped-surfaces.yaml"),
-            yaml.dump(scraped, { noRefs: true, lineWidth: 120 }),
+          scraped = await withProgress(
+            `Fetching marketing surfaces (${opts.marketingUrl})`,
+            async () => {
+              const s = await scrapeMarketingSurfaces(opts.marketingUrl!, { maxPages: 8 });
+              fs.writeFileSync(
+                path.join(artifactsDir, "scraped-surfaces.yaml"),
+                yaml.dump(s, { noRefs: true, lineWidth: 120 }),
+              );
+              return s;
+            },
           );
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -143,88 +151,100 @@ export class Orchestrator {
 
       const stageAInput: { map: typeof map; scraped?: ScrapedNs.ScrapedSurfaces } = { map };
       if (scraped !== undefined) stageAInput.scraped = scraped;
-      const a = await runStageA(stageAInput, {
-        gateway: this.deps.gateway,
-        logger: log,
-        auditId,
-        sessionId: this.deps.sessionId,
-        artifactsDir,
-      });
+      const a = await withProgress("Stage A · extracting intent", () =>
+        runStageA(stageAInput, {
+          gateway: this.deps.gateway,
+          logger: log,
+          auditId,
+          sessionId: this.deps.sessionId,
+          artifactsDir,
+        }),
+      );
       stages.A = { status: "ok", neurons: a.neurons };
       costPerStage.A = a.neurons;
       totalNeurons += a.neurons;
 
-      const b = await runStageB(a.leanCanvas, map, {
-        gateway: this.deps.gateway,
-        logger: log,
-        auditId,
-        sessionId: this.deps.sessionId,
-        artifactsDir,
-        ...(opts.stepBudget !== undefined ? { stepBudget: opts.stepBudget } : {}),
-      });
+      const b = await withProgress("Stage B · imagining user journey", () =>
+        runStageB(a.leanCanvas, map, {
+          gateway: this.deps.gateway,
+          logger: log,
+          auditId,
+          sessionId: this.deps.sessionId,
+          artifactsDir,
+          ...(opts.stepBudget !== undefined ? { stepBudget: opts.stepBudget } : {}),
+        }),
+      );
       stages.B = { status: "ok", neurons: b.neurons };
       costPerStage.B = b.neurons;
       totalNeurons += b.neurons;
 
       const patterns = loadBuiltInPatterns();
       const patternLibrarySummary = summarizePatternLibrary(patterns);
-      const c = await runStageC(
-        { leanCanvas: a.leanCanvas, paths: b.paths },
-        {
-          gateway: this.deps.gateway,
-          logger: log,
-          auditId,
-          sessionId: this.deps.sessionId,
-          artifactsDir,
-          patternLibrarySummary,
-        },
+      const c = await withProgress("Stage C · analyzing delta", () =>
+        runStageC(
+          { leanCanvas: a.leanCanvas, paths: b.paths },
+          {
+            gateway: this.deps.gateway,
+            logger: log,
+            auditId,
+            sessionId: this.deps.sessionId,
+            artifactsDir,
+            patternLibrarySummary,
+          },
+        ),
       );
       stages.C = { status: "ok", neurons: c.neurons };
       costPerStage.C = c.neurons;
       totalNeurons += c.neurons;
 
-      const d = await runStageD(c.delta, {
-        gateway: this.deps.gateway,
-        logger: log,
-        auditId,
-        sessionId: this.deps.sessionId,
-        artifactsDir,
-      });
-      stages.D = { status: "ok", neurons: d.neurons };
-      costPerStage.D = d.neurons;
-      totalNeurons += d.neurons;
-
-      const e = await runStageE(
-        { problems: d.problems, delta: c.delta },
-        {
+      const d = await withProgress("Stage D · ranking by leverage", () =>
+        runStageD(c.delta, {
           gateway: this.deps.gateway,
           logger: log,
           auditId,
           sessionId: this.deps.sessionId,
           artifactsDir,
-          ...(opts.topNSolutions !== undefined ? { topN: opts.topNSolutions } : {}),
-        },
+        }),
+      );
+      stages.D = { status: "ok", neurons: d.neurons };
+      costPerStage.D = d.neurons;
+      totalNeurons += d.neurons;
+
+      const e = await withProgress("Stage E · drafting solutions + prototypes", () =>
+        runStageE(
+          { problems: d.problems, delta: c.delta },
+          {
+            gateway: this.deps.gateway,
+            logger: log,
+            auditId,
+            sessionId: this.deps.sessionId,
+            artifactsDir,
+            ...(opts.topNSolutions !== undefined ? { topN: opts.topNSolutions } : {}),
+          },
+        ),
       );
       stages.E = { status: "ok", neurons: e.neurons };
       costPerStage.E = e.neurons;
       totalNeurons += e.neurons;
 
-      const f = await runStageF(
-        {
-          leanCanvas: a.leanCanvas,
-          paths: b.paths,
-          delta: c.delta,
-          problems: d.problems,
-          solutions: e.solutions,
-        },
-        {
-          gateway: this.deps.gateway,
-          logger: log,
-          auditId,
-          sessionId: this.deps.sessionId,
-          artifactsDir,
-          ...(opts.renderPdf !== undefined ? { renderPdf: opts.renderPdf } : {}),
-        },
+      const f = await withProgress("Stage F · writing spec.md", () =>
+        runStageF(
+          {
+            leanCanvas: a.leanCanvas,
+            paths: b.paths,
+            delta: c.delta,
+            problems: d.problems,
+            solutions: e.solutions,
+          },
+          {
+            gateway: this.deps.gateway,
+            logger: log,
+            auditId,
+            sessionId: this.deps.sessionId,
+            artifactsDir,
+            ...(opts.renderPdf !== undefined ? { renderPdf: opts.renderPdf } : {}),
+          },
+        ),
       );
       stages.F = { status: "ok", neurons: f.neurons };
       costPerStage.F = f.neurons;

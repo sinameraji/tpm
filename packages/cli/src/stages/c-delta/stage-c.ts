@@ -48,10 +48,11 @@ export async function runStageC(
     auditId: deps.auditId,
     sessionId: deps.sessionId,
     stage: "C",
-    maxTokens: 12_000,
+    // gpt-oss-120b reasoning model needs headroom; 32K covers thinking + JSON.
+    maxTokens: 32_000,
   };
 
-  const completion = await deps.gateway.complete(
+  let completion = await deps.gateway.complete(
     STAGE_C_MODEL,
     [
       { role: "system", content: STAGE_C_SYSTEM_PROMPT },
@@ -59,6 +60,24 @@ export async function runStageC(
     ],
     opts,
   );
+
+  // Reasoning-model empty-output retry.
+  if (!completion.text.trim()) {
+    deps.logger.warn(
+      { usage: completion.usage },
+      "stage C returned empty; retrying with larger budget",
+    );
+    completion = await deps.gateway.complete(
+      STAGE_C_MODEL,
+      [
+        { role: "system", content: STAGE_C_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      { ...opts, maxTokens: 64_000 },
+    );
+    if (!completion.text.trim())
+      throw new Error("Stage C returned empty output even at 64K tokens.");
+  }
 
   let delta: Delta;
   const raw = stripCodeFences(completion.text);

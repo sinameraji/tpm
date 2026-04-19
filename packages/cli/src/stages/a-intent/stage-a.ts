@@ -11,12 +11,18 @@ import { STAGE_A_SYSTEM_PROMPT, buildStageAUserPrompt } from "./prompt.js";
 
 export const STAGE_A_MODEL = "@cf/openai/gpt-oss-120b";
 
+// gpt-oss-120b is a reasoning model: a large chunk of output tokens is
+// internal reasoning that never appears in `response`. Too small a
+// max_tokens budget → empty visible output. 32K is the comfortable
+// working point; Stage A's Lean Canvas YAML is small enough to fit.
+const STAGE_A_MAX_TOKENS = 32_000;
+
 export interface StageADeps {
   gateway: ModelGateway;
   logger: Logger;
   auditId: string;
   sessionId: string;
-  artifactsDir: string; // .tpm/artifacts/{audit_id}
+  artifactsDir: string;
 }
 
 export interface StageAResult {
@@ -35,6 +41,28 @@ function stripCodeFences(raw: string): string {
   return m?.[1]?.trim() ?? trimmed;
 }
 
+type Completion = {
+  text: string;
+  model: string;
+  usage: { inputTokens: number; outputTokens: number; neurons?: number; latencyMs: number };
+};
+
+async function call(
+  deps: StageADeps,
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+  maxTokens: number,
+): Promise<Completion> {
+  const opts: CompleteOptionsExt = {
+    temperature: 0.1,
+    responseFormat: "json",
+    auditId: deps.auditId,
+    sessionId: deps.sessionId,
+    stage: "A",
+    maxTokens,
+  };
+  return deps.gateway.complete(STAGE_A_MODEL, messages, opts) as Promise<Completion>;
+}
+
 export async function runStageA(
   input: { map: MapNs.Map; scraped?: ScrapedNs.ScrapedSurfaces | undefined },
   deps: StageADeps,
@@ -46,41 +74,43 @@ export async function runStageA(
   };
   if (input.scraped !== undefined) promptInput.scraped = input.scraped;
   const userPrompt = buildStageAUserPrompt(promptInput);
-  const opts: CompleteOptionsExt = {
-    temperature: 0.1,
-    responseFormat: "json",
-    auditId: deps.auditId,
-    sessionId: deps.sessionId,
-    stage: "A",
-    maxTokens: 8192,
-  };
+  const messages = [
+    { role: "system" as const, content: STAGE_A_SYSTEM_PROMPT },
+    { role: "user" as const, content: userPrompt },
+  ];
 
-  let completion;
+  // First attempt.
+  let completion: Completion;
   try {
-    completion = await (
-      deps.gateway as ModelGateway & {
-        complete: (
-          m: string,
-          msgs: unknown,
-          o: CompleteOptionsExt,
-        ) => Promise<{
-          text: string;
-          model: string;
-          usage: { inputTokens: number; outputTokens: number; neurons?: number; latencyMs: number };
-        }>;
-      }
-    ).complete(
-      STAGE_A_MODEL,
-      [
-        { role: "system", content: STAGE_A_SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ],
-      opts,
-    );
+    completion = await call(deps, messages, STAGE_A_MAX_TOKENS);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     deps.logger.error({ stage: "A", err: msg }, "stage A gateway call failed");
     throw err;
+  }
+
+  // Reasoning models can burn the whole budget on reasoning and return
+  // empty text. Retry once with a bigger budget before giving up.
+  if (!completion.text.trim()) {
+    deps.logger.warn(
+      {
+        stage: "A",
+        usage: completion.usage,
+        first_budget: STAGE_A_MAX_TOKENS,
+        retrying_with: STAGE_A_MAX_TOKENS * 2,
+      },
+      "stage A returned empty — likely spent all tokens on internal reasoning; retrying with larger budget",
+    );
+    completion = await call(deps, messages, STAGE_A_MAX_TOKENS * 2);
+    if (!completion.text.trim()) {
+      deps.logger.error(
+        { stage: "A", usage: completion.usage },
+        "stage A still returned empty after retry",
+      );
+      throw new Error(
+        "Stage A model returned empty output even at 64K tokens. The codebase may be too large for the reasoning model to summarize in one pass, or the model is overloaded. Try re-running, or trim the project (most audits fit fine).",
+      );
+    }
   }
 
   const raw = stripCodeFences(completion.text);
@@ -90,7 +120,12 @@ export async function runStageA(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     deps.logger.error(
-      { stage: "A", parse_error: msg, raw_preview: raw.slice(0, 400) },
+      {
+        stage: "A",
+        parse_error: msg,
+        usage: completion.usage,
+        raw_preview: raw.slice(0, 400),
+      },
       "stage A JSON parse failed",
     );
     throw new Error(`Stage A returned non-JSON: ${msg}`);
@@ -101,28 +136,14 @@ export async function runStageA(
     leanCanvas = LeanCanvasSchema.parse(parsed);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    deps.logger.error(
+    deps.logger.warn(
       { stage: "A", zod_error: msg },
       "stage A schema validation failed — requesting retry",
     );
-    // One retry with the violation in the prompt
-    const retryCompletion = await (
-      deps.gateway as ModelGateway & {
-        complete: (
-          m: string,
-          msgs: unknown,
-          o: CompleteOptionsExt,
-        ) => Promise<{
-          text: string;
-          model: string;
-          usage: { inputTokens: number; outputTokens: number; neurons?: number; latencyMs: number };
-        }>;
-      }
-    ).complete(
-      STAGE_A_MODEL,
+    const retryCompletion = await call(
+      deps,
       [
-        { role: "system", content: STAGE_A_SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
+        ...messages,
         { role: "assistant", content: completion.text },
         {
           role: "user",
@@ -132,10 +153,14 @@ export async function runStageA(
             "\n\nReturn a corrected JSON object that matches the schema. No other output.",
         },
       ],
-      opts,
+      STAGE_A_MAX_TOKENS,
     );
     const retryRaw = stripCodeFences(retryCompletion.text);
+    if (!retryRaw) {
+      throw new Error("Stage A schema-retry returned empty output.");
+    }
     leanCanvas = LeanCanvasSchema.parse(JSON.parse(retryRaw));
+    completion = retryCompletion;
   }
 
   ensureDir(deps.artifactsDir);

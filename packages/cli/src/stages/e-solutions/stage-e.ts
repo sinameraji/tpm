@@ -102,9 +102,9 @@ async function generateOneSpec(
     auditId: deps.auditId,
     sessionId: deps.sessionId,
     stage: "E",
-    maxTokens: 3000,
+    maxTokens: 16_000, // reasoning model headroom
   };
-  const completion = await deps.gateway.complete(
+  let completion = await deps.gateway.complete(
     STAGE_E_SPEC_MODEL,
     [
       { role: "system", content: SOLUTION_SYSTEM },
@@ -112,6 +112,17 @@ async function generateOneSpec(
     ],
     opts,
   );
+  if (!completion.text.trim()) {
+    completion = await deps.gateway.complete(
+      STAGE_E_SPEC_MODEL,
+      [
+        { role: "system", content: SOLUTION_SYSTEM },
+        { role: "user", content: user },
+      ],
+      { ...opts, maxTokens: 32_000 },
+    );
+    if (!completion.text.trim()) throw new Error("Stage E spec returned empty output.");
+  }
   const SolutionNoProto = Solution.omit({ prototype: true });
   const parsed = SolutionNoProto.parse(JSON.parse(stripCodeFences(completion.text))) as z.infer<
     typeof SolutionNoProto

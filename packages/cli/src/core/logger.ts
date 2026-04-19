@@ -7,7 +7,9 @@ export interface LoggerOptions {
 }
 
 export function createLogger(opts: LoggerOptions): Logger {
-  const level = opts.verbose ? "debug" : (process.env["TPM_LOG_LEVEL"] ?? "info");
+  // Quiet by default so the progress spinner isn't drowned in pino lines.
+  // --verbose restores info/debug. Env var still wins so CI can force any level.
+  const level = opts.verbose ? "debug" : (process.env["TPM_LOG_LEVEL"] ?? "warn");
 
   const base = {
     level,

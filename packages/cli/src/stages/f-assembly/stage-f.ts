@@ -89,9 +89,9 @@ export async function runStageF(i: StageFInputs, deps: StageFDeps): Promise<Stag
     auditId: deps.auditId,
     sessionId: deps.sessionId,
     stage: "F",
-    maxTokens: 8000,
+    maxTokens: 32_000, // reasoning model headroom
   };
-  const completion = await deps.gateway.complete(
+  let completion = await deps.gateway.complete(
     STAGE_F_MODEL,
     [
       { role: "system", content: STAGE_F_SYSTEM },
@@ -99,6 +99,22 @@ export async function runStageF(i: StageFInputs, deps: StageFDeps): Promise<Stag
     ],
     opts,
   );
+  if (!completion.text.trim()) {
+    deps.logger.warn(
+      { usage: completion.usage },
+      "stage F returned empty; retrying with larger budget",
+    );
+    completion = await deps.gateway.complete(
+      STAGE_F_MODEL,
+      [
+        { role: "system", content: STAGE_F_SYSTEM },
+        { role: "user", content: buildUserPrompt(i) },
+      ],
+      { ...opts, maxTokens: 64_000 },
+    );
+    if (!completion.text.trim())
+      throw new Error("Stage F returned empty output even at 64K tokens.");
+  }
 
   fs.mkdirSync(deps.artifactsDir, { recursive: true });
   const mdPath = path.join(deps.artifactsDir, "spec.md");

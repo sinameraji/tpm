@@ -100,9 +100,9 @@ export async function runStageD(delta: Delta, deps: StageDDeps): Promise<StageDR
     auditId: deps.auditId,
     sessionId: deps.sessionId,
     stage: "D",
-    maxTokens: 6000,
+    maxTokens: 32_000, // reasoning model; needs headroom
   };
-  const completion = await deps.gateway.complete(
+  let completion = await deps.gateway.complete(
     STAGE_D_MODEL,
     [
       { role: "system", content: STAGE_D_SYSTEM_PROMPT },
@@ -110,6 +110,22 @@ export async function runStageD(delta: Delta, deps: StageDDeps): Promise<StageDR
     ],
     opts,
   );
+  if (!completion.text.trim()) {
+    deps.logger.warn(
+      { usage: completion.usage },
+      "stage D returned empty; retrying with larger budget",
+    );
+    completion = await deps.gateway.complete(
+      STAGE_D_MODEL,
+      [
+        { role: "system", content: STAGE_D_SYSTEM_PROMPT },
+        { role: "user", content: buildUserPrompt(delta) },
+      ],
+      { ...opts, maxTokens: 64_000 },
+    );
+    if (!completion.text.trim())
+      throw new Error("Stage D returned empty output even at 64K tokens.");
+  }
   let problems: Problems;
   try {
     problems = ProblemsSchema.parse(JSON.parse(stripCodeFences(completion.text)));
