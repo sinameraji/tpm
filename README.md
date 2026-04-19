@@ -1,6 +1,6 @@
 # TPM — Technical Product Manager
 
-A senior PM in your terminal. TPM audits software products via a deterministic six-stage pipeline — reconstructs what you intended, walks the product as real users, computes the delta between intent and reality, ranks problems by leverage, and specifies fixes with low-fi prototypes.
+**Open source (MIT).** A senior PM in your terminal. TPM audits software products via a deterministic six-stage pipeline — reconstructs what you intended, walks the product as real users, computes the delta between intent and reality, ranks problems by leverage, and specifies fixes with low-fi prototypes.
 
 ```bash
 npm install -g tpm
@@ -18,21 +18,24 @@ Artifacts land in `.tpm/artifacts/{audit_id}/`:
 - `solutions.yaml` + `prototypes/*.html` — top-5 fixes with working HTML mockups
 - `spec.md` + `spec.pdf` — the PM deliverable
 
+## Hosted trial vs self-host
+
+- **Hosted trial** (default). Every device gets **one free audit** on the maintainer's Cloudflare Workers AI credits. Zero setup — just `tpm audit <url>`.
+- **Self-host** for unlimited audits. Point TPM at your own Cloudflare account (~5 min setup). You pay Cloudflare directly — cheap, typically $0.10–$0.50 per audit. See [docs/self-host](./docs/self-host.md) or run `tpm self-host`.
+
+```bash
+tpm config set gateway byo
+tpm config set byo.account_id <your-account-id>
+tpm config set byo.api_token <your-api-token>
+```
+
 ## The method
 
 See [docs/the-method.md](./docs/the-method.md). Six stages, fixed enums, replayable per-stage.
 
 ## Architecture
 
-See [docs/architecture.md](./docs/architecture.md). CLI on your machine, thin Cloudflare Worker backend, Workers AI exclusively — no third-party LLMs.
-
-## Pricing
-
-- **Free** — 1 lifetime audit, unlimited quick audits on repos you've already audited.
-- **Pro** — $20/month, 20 audits, PDF, audit history sync.
-- **Team** — $49/seat/month, 50 audits/seat, shared patterns.
-
-See [usetpm.dev/pricing](https://usetpm.dev/pricing).
+See [docs/architecture.md](./docs/architecture.md). CLI on your machine, thin Cloudflare Worker backend (optional), Workers AI exclusively.
 
 ## Repo layout
 
@@ -40,7 +43,7 @@ See [usetpm.dev/pricing](https://usetpm.dev/pricing).
 packages/
   shared/     Zod schemas + TS types — single source of truth
   cli/        the `tpm` command-line tool
-  backend/    Cloudflare Worker (api.usetpm.dev)
+  backend/    optional Cloudflare Worker (hosted trial at api.usetpm.dev)
   marketing/  usetpm.dev (Astro on Cloudflare Pages)
 ```
 
@@ -59,11 +62,20 @@ Node 20+ and pnpm 9+ required.
 
 - [The method](./docs/the-method.md)
 - [Architecture](./docs/architecture.md)
+- [Self-host](./docs/self-host.md)
 - [Models](./docs/models.md)
 - [Authoring patterns](./docs/patterns-authoring.md)
-- [Jinba dogfood protocol](./docs/jinba-dogfood-protocol.md)
-- [Launch checklist](./docs/launch-checklist.md)
+
+## Author
+
+Built by [Sina Meraji](https://github.com/sinameraji).
+
+- X: [@sinasanm](https://x.com/sinasanm)
+- GitHub: [@sinameraji](https://github.com/sinameraji)
+- LinkedIn: [sinameraji](https://linkedin.com/in/sinameraji)
+
+PRs welcome. New patterns, new extractors, new prompt improvements — all appreciated. See [docs/patterns-authoring.md](./docs/patterns-authoring.md) for how the built-in pattern library works.
 
 ## License
 
-Commercial — see [LICENSE](./LICENSE) (TBD before M20 publish).
+[MIT](./LICENSE). Do what you like, attribution appreciated.

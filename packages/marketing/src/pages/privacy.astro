@@ -4,25 +4,24 @@ import Base from "../layouts/Base.astro";
 <Base title="Privacy — TPM">
   <section style="padding: 3rem 0;">
     <h1>Privacy</h1>
-    <p><strong>Last updated: 2026-04-18.</strong></p>
-    <p>TPM runs on your machine. What you see here is how we treat data that flows through our systems.</p>
-    <h2>Data we collect</h2>
+    <p><strong>Last updated: 2026-04-19.</strong></p>
+    <p>TPM runs on your machine. In BYO mode, nothing here applies — prompts go directly from your CLI to your own Cloudflare account. The rest of this page covers hosted-trial mode.</p>
+    <h2>Data collected in hosted-trial mode</h2>
     <ul>
-      <li><strong>Device metadata</strong> — a UUID generated on first run, a hashed fingerprint of hostname + platform + CPU. Used for license + anti-abuse.</li>
-      <li><strong>Usage logs</strong> — per inference call: timestamp, model, token counts, neurons, session id. Used for quota and billing.</li>
-      <li><strong>Audit metadata</strong> (Pro/Team) — audit id, target URL, duration, cost. Synced to your account.</li>
-      <li><strong>Audit artifacts</strong> (Pro/Team, opt-in) — YAML / JSON / HTML / PDF outputs synced to R2 for cross-device access.</li>
+      <li><strong>Device metadata</strong> — a UUID generated on first run, a hashed fingerprint of hostname + platform + CPU. Used for the one-free-audit limit and anti-abuse.</li>
+      <li><strong>Usage logs</strong> — per inference call: timestamp, model, token counts, neurons, session id. Used for the quota.</li>
+      <li><strong>Audit metadata</strong> — audit id, target URL, duration, cost.</li>
+      <li><strong>Audit artifacts</strong> (optional, opt-in) — YAML / JSON / HTML / PDF outputs synced to R2 for cross-device access.</li>
     </ul>
     <h2>What we DON'T collect</h2>
     <ul>
       <li>Your source code.</li>
       <li>Prompt contents, unless you explicitly enable debug mode.</li>
-      <li>The targets you audit (for Free tier).</li>
     </ul>
     <h2>Third parties</h2>
     <ul>
       <li><strong>Cloudflare</strong> — compute (Workers), storage (D1, KV, R2), model inference (Workers AI).</li>
-      <li><strong>Stripe</strong> — payments. We send them your email and a device id.</li>
     </ul>
+    <p>We do not use Stripe, Google Analytics, or any other third-party service.</p>
   </section>
 </Base>

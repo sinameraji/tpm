@@ -3,7 +3,8 @@ import Base from "../layouts/Base.astro";
 ---
 <Base title="TPM — A Technical Product Manager in your terminal">
   <section style="padding: 3rem 0 2rem;">
-    <h1 style="font-size: 2.8rem; line-height: 1.15; margin: 0 0 1rem;">
+    <p><span class="badge">Open source · MIT</span></p>
+    <h1 style="font-size: 2.8rem; line-height: 1.15; margin: 0.5rem 0 1rem;">
       A Technical Product Manager, in your terminal.
     </h1>
     <p style="font-size: 1.2rem; color: #4d4d4d; max-width: 40rem;">
@@ -12,12 +13,16 @@ import Base from "../layouts/Base.astro";
       deterministic, auditable, fast.
     </p>
     <p style="margin-top: 2rem;">
-      <a href="/upgrade" class="button">Get started — $20/month</a>
+      <a href="https://github.com/sinameraji/tpm" class="button">View on GitHub</a>
       <a href="/docs" class="button secondary" style="margin-left: 0.5rem;">Read the method</a>
     </p>
     <pre style="margin-top: 2rem; max-width: 40rem;"><code>npm install -g tpm
 tpm init
 tpm audit https://yoursaas.com</code></pre>
+    <p style="color: #4d4d4d; font-size: 0.9rem; max-width: 40rem; margin-top: 1rem;">
+      Every new device gets one free audit on our hosted Cloudflare Workers AI credits. After that,
+      <a href="/self-host">set up your own Cloudflare account</a> for unlimited audits.
+    </p>
   </section>
 
   <section style="padding: 2rem 0; border-top: 1px solid #e4e4e0;">
@@ -42,6 +47,14 @@ tpm audit https://yoursaas.com</code></pre>
       TPM won't tell you to add confetti animations or rainbow gradients. It finds the step in your signup that
       every honest user abandons, the page where your marketing copy contradicts the product, and the feature
       whose code exists but no user can reach it. Then it gives you a structured fix with a prototype.
+    </p>
+  </section>
+
+  <section style="padding: 2rem 0; border-top: 1px solid #e4e4e0;">
+    <h2>Open source</h2>
+    <p style="max-width: 40rem;">
+      All source, all patterns, all prompts: <a href="https://github.com/sinameraji/tpm">github.com/sinameraji/tpm</a>.
+      Fork it, audit it, send PRs, or just run it on your own infra.
     </p>
   </section>
 </Base>

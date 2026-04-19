@@ -3,7 +3,7 @@ interface Props {
   title: string;
   description?: string;
 }
-const { title, description = "TPM — Technical Product Manager. Audits software products via a deterministic six-stage pipeline." } = Astro.props;
+const { title, description = "TPM — open-source Technical Product Manager CLI. Audits software products via a deterministic six-stage pipeline." } = Astro.props;
 ---
 <!doctype html>
 <html lang="en">
@@ -49,6 +49,7 @@ const { title, description = "TPM — Technical Product Manager. Audits software
       font-weight: 700;
       color: var(--brand);
       letter-spacing: 0.02em;
+      text-decoration: none;
     }
     header nav a {
       margin-left: 1.25rem;
@@ -65,6 +66,13 @@ const { title, description = "TPM — Technical Product Manager. Audits software
       padding-bottom: 3rem;
     }
     footer a { color: var(--muted); }
+    footer .credits {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 0.5rem;
+      font-size: 0.82rem;
+    }
     .button {
       display: inline-block;
       background: var(--brand);
@@ -93,15 +101,28 @@ const { title, description = "TPM — Technical Product Manager. Audits software
       padding: 1rem;
       overflow-x: auto;
     }
+    .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: #efefe9;
+      color: var(--muted);
+      padding: 2px 8px;
+      border-radius: 999px;
+      vertical-align: middle;
+      margin-left: 0.5rem;
+    }
   </style>
 </head>
 <body>
   <header>
     <a href="/" class="brand">TPM · Technical Product Manager</a>
     <nav>
-      <a href="/pricing">Pricing</a>
       <a href="/docs">Docs</a>
-      <a href="/upgrade">Upgrade</a>
+      <a href="/self-host">Self-host</a>
+      <a href="https://github.com/sinameraji/tpm">GitHub</a>
     </nav>
   </header>
   <main>
@@ -109,8 +130,15 @@ const { title, description = "TPM — Technical Product Manager. Audits software
   </main>
   <footer>
     <p>
-      © 2026 TPM. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="mailto:support@usetpm.dev">support@usetpm.dev</a>
+      TPM is open source (MIT). Built by <a href="https://github.com/sinameraji">Sina Meraji</a>.
     </p>
+    <div class="credits">
+      <a href="https://x.com/sinasanm">x.com/sinasanm</a>
+      <a href="https://github.com/sinameraji">github.com/sinameraji</a>
+      <a href="https://linkedin.com/in/sinameraji">linkedin.com/in/sinameraji</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </div>
   </footer>
 </body>
 </html>

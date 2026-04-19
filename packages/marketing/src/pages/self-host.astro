@@ -1,0 +1,63 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Self-host TPM on your own Cloudflare Workers AI">
+  <section style="padding: 3rem 0 2rem;">
+    <p><span class="badge">Open source · MIT</span></p>
+    <h1>Self-host TPM</h1>
+    <p style="font-size: 1.1rem; color: #4d4d4d; max-width: 40rem;">
+      Every device gets one free audit on the maintainer's Cloudflare Workers AI credits.
+      For unlimited audits, run TPM on your own Cloudflare account — 5 minutes of setup, then you
+      own the pipeline end-to-end.
+    </p>
+  </section>
+
+  <section style="padding: 1rem 0;">
+    <h2>1. Cloudflare setup</h2>
+    <ol style="max-width: 44rem;">
+      <li>
+        Sign up at <a href="https://dash.cloudflare.com/sign-up">dash.cloudflare.com/sign-up</a>
+        (free). The <a href="https://developers.cloudflare.com/workers-ai/">Workers AI</a>
+        free allowance covers plenty of audits; heavy usage is metered and cheap.
+      </li>
+      <li>
+        From the dashboard home, copy your <strong>Account ID</strong> (shown in the right
+        sidebar on any Cloudflare page).
+      </li>
+      <li>
+        Create an API token: <strong>My Profile → API Tokens → Create Token</strong>.
+        Use the <em>Custom token</em> template and grant <code>Workers AI → Read</code> and
+        <code>Workers AI → Run</code>. Save the token — Cloudflare only shows it once.
+      </li>
+    </ol>
+  </section>
+
+  <section style="padding: 1rem 0;">
+    <h2>2. Point TPM at your account</h2>
+    <pre><code>tpm config set gateway byo
+tpm config set byo.account_id &lt;your-account-id&gt;
+tpm config set byo.api_token &lt;your-api-token&gt;
+tpm config show</code></pre>
+    <p style="max-width: 44rem; color: #4d4d4d;">
+      The token is stored in <code>~/.tpm/config.yaml</code> with mode 0600 and never synced anywhere.
+      Audits in BYO mode talk directly to Cloudflare's AI REST API — no TPM proxy.
+    </p>
+  </section>
+
+  <section style="padding: 1rem 0;">
+    <h2>3. Run audits</h2>
+    <pre><code>tpm audit https://your-product.com</code></pre>
+    <p style="max-width: 44rem;">
+      Cloudflare bills you directly for usage. Expect ~$0.10–$0.50 per full audit depending
+      on product complexity — the exact cost is printed after every run.
+    </p>
+  </section>
+
+  <section style="padding: 2rem 0; border-top: 1px solid #e4e4e0;">
+    <h2>Prefer to stay on the hosted trial?</h2>
+    <p style="max-width: 44rem;">
+      Every device gets one free audit on our credits. If that's all you need, just run
+      <code>tpm audit &lt;url&gt;</code> with no config — the hosted gateway is the default.
+    </p>
+  </section>
+</Base>

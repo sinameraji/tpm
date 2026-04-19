@@ -10,9 +10,13 @@ import Base from "../layouts/Base.astro";
 cd your-project
 tpm init
 tpm audit https://your-product.com</code></pre>
+    <p style="max-width: 44rem; color: #4d4d4d;">
+      First audit runs on our hosted Cloudflare Workers AI (one per device).
+      For unlimited audits, <a href="/self-host">self-host on your own Cloudflare</a>.
+    </p>
 
     <h2>The six-stage method</h2>
-    <p>TPM runs a deterministic pipeline. Each stage checkpoints to disk and can be replayed independently. The artifacts live in <code>.tpm/artifacts/&lbrace;audit_id&rbrace;/</code>:</p>
+    <p>TPM runs a deterministic pipeline. Each stage checkpoints to disk and can be replayed independently. Artifacts live in <code>.tpm/artifacts/&lbrace;audit_id&rbrace;/</code>:</p>
     <ul>
       <li><code>lean-canvas.yaml</code> — Stage A: what the builder intended</li>
       <li><code>paths.yaml</code> — Stage B: what actually happens per persona</li>
@@ -26,16 +30,28 @@ tpm audit https://your-product.com</code></pre>
     <ul>
       <li><code>tpm init</code> — initialize <code>.tpm/</code> in the current project</li>
       <li><code>tpm audit [target]</code> — run a full audit</li>
-      <li><code>tpm report [audit_id]</code> — show a prior spec.md (or open its PDF with <code>--pdf</code>)</li>
+      <li><code>tpm audit --gateway byo</code> — force BYO mode for this run</li>
+      <li><code>tpm report [audit_id]</code> — show a prior spec.md</li>
       <li><code>tpm config get/set/show</code> — inspect or change config</li>
-      <li><code>tpm upgrade</code> — open Stripe checkout</li>
-      <li><code>tpm account</code> — open the Stripe Customer Portal</li>
-      <li><code>tpm activate &lt;code&gt;</code> — activate a license code if polling missed</li>
+      <li><code>tpm self-host</code> — print the BYO setup guide</li>
       <li><code>tpm cost</code> — show Neuron spend per audit / per stage / per model</li>
     </ul>
 
     <h2>Privacy &amp; security</h2>
-    <p>TPM runs on your machine. Only prompts necessary to the current pipeline step are sent to the Workers AI proxy at <code>api.usetpm.dev/infer</code>. Prompts are logged as metadata (tokens, model, session id) — not content — unless you explicitly opt into debug mode.</p>
-    <p>Source code never leaves your machine.</p>
+    <p style="max-width: 44rem;">
+      TPM runs on your machine. In <strong>hosted-trial mode</strong>, prompts flow through
+      our Cloudflare Worker proxy at api.usetpm.dev — logged server-side as token counts only
+      (not content), unless you opt into debug mode. In <strong>BYO mode</strong>, prompts go
+      directly from your CLI to your own Cloudflare account; nothing touches our infrastructure.
+    </p>
+    <p style="max-width: 44rem;">Source code never leaves your machine in either mode.</p>
+
+    <h2>More</h2>
+    <ul>
+      <li><a href="https://github.com/sinameraji/tpm">Source on GitHub</a></li>
+      <li><a href="https://github.com/sinameraji/tpm/blob/main/docs/the-method.md">The method</a></li>
+      <li><a href="https://github.com/sinameraji/tpm/blob/main/docs/architecture.md">Architecture</a></li>
+      <li><a href="https://github.com/sinameraji/tpm/blob/main/docs/patterns-authoring.md">Authoring patterns</a></li>
+    </ul>
   </section>
 </Base>
