@@ -6,12 +6,15 @@ import Base from "../layouts/Base.astro";
     <h1>Docs</h1>
 
     <h2>Quick start</h2>
-    <pre><code>cd your-product-repo
-npx @sinameraji/tpm@latest init
-npx @sinameraji/tpm@latest audit</code></pre>
+    <pre><code>npm install -g @sinameraji/tpm
+
+cd your-product-repo
+tpm init
+tpm audit</code></pre>
     <p style="max-width: 44rem; color: #4d4d4d; font-size: 0.9rem;">
-      Or install globally for the shorter <code>tpm</code> command:
-      <code>npm install -g @sinameraji/tpm</code>.
+      Don't want to install globally? <code>npx @sinameraji/tpm@latest audit</code> works without
+      any install. macOS users hitting EACCES on global install:
+      <a href="https://github.com/sinameraji/tpm/blob/main/packages/cli/README.md#if-npm-install--g-fails-with-eacces-macos-default">one-time prefix fix</a>.
     </p>
     <p style="max-width: 44rem; color: #4d4d4d;">
       TPM runs on the source code in your current directory (primary source of truth). No
