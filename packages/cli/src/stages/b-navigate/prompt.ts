@@ -1,35 +1,42 @@
-import type { Map as MapNs } from "@tpm/shared";
 import type { LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
+import type { AppModel } from "@tpm/shared/schemas/app-model";
+
+// B-walk prompt: imagine a persona's journey using the verified
+// AppModel, NOT the raw code map. The prompt is app-type-agnostic
+// because AppModel already abstracts away "is this a web app, a
+// desktop app, a mobile app?" — the persona walks between screen_ids
+// and the screens themselves carry file_paths + labels.
 
 export const INFERRED_PATH_SYSTEM_PROMPT = `You are TPM, imagining what a user experiences when they use this product.
 
 You are given:
-1. The product's reconstructed intent (Lean Canvas + intended JTBD / value moment / ideal path per persona).
-2. A static map of the codebase: routes, components, forms with their fields, navigation structure, tracking events, auth providers.
+1. The product's reconstructed intent (Lean Canvas + intended JTBD / value moment / ideal path for one persona).
+2. An app_model: a verified structural model of the product's entry points, walls (auth, paywall, onboarding, etc.), screens, and navigation graph — produced by reading the codebase.
 
-Your job is to mentally walk through the product AS THE PERSONA — without running it. You read the code the way a senior PM reads code: infer what each route renders, what copy the user sees, what forms they hit, what auth gates block them, and what friction shows up along the way.
-
-This is NOT a browser walk. You never run the product. You reason about the product from its source alone.
+Your job is to mentally walk through the product AS THE PERSONA, using ONLY the app_model. You do not run the product. You do not invent screens. Every step references a concrete screen_id from app_model.screens.
 
 For the assigned persona, produce 8-20 imagined steps that reach the intended value moment — or fail to reach it, which is often the more honest outcome. For each step:
 
 - n: step number (1-indexed, sequential)
-- url: the route/path the persona is on (infer from the static map — e.g. "/", "/signup", "/dashboard"; if the codebase doesn't expose that route, write "(not in code)" as a friction signal)
-- observation_summary: one sentence on what the persona would see at this point, inferred from the route's component, forms, copy
+- screen_id: the screen_id (from app_model.screens[].id) the persona is on at this step. May be null ONLY for the very first step before any entry_point opens a screen, or for a transition to an external destination.
+- location: human-readable breadcrumb — copy from app_model.screens[].file_path OR construct from the screen's title. For an external transition, describe where the user went ("external: <url or label>"). For CLI/library projects that have no screens, location is the command or function name.
+- url: a real HTTP route if AND ONLY IF the app serves HTTP and you can infer the route from the screen's file_path (Next.js-style pages/, Remix routes, Express paths). Otherwise null. Do NOT invent URLs for desktop or mobile apps.
+- observation_summary: one sentence on what the persona would see at this point, inferred from the screen's visible_elements
 - decision: one of click | fill_form | navigate | scroll | wait | go_back | stuck | value_reached
-- target: the selector or route or button label you believe they'd interact with, or null for stuck/value_reached
-- reasoning: 1-2 sentences on WHY this is the next move for this persona, and what the code led you to conclude
-- value_moment_reached: boolean — true ONLY when the persona is LOOKING AT evidence of the value moment (e.g., their first workflow running, their first message delivered). Be conservative.
+- target: the visible_element label or transition trigger you believe they'd interact with, or null for stuck/value_reached
+- reasoning: 1-2 sentences on WHY this is the next move for this persona, citing specific visible_elements or transitions from the app_model
+- value_moment_reached: boolean — true ONLY when the persona is LOOKING AT evidence of the value moment. Be conservative.
 - friction_flags: array of { type, detail } entries. TYPE must be one of:
     premature_data_collection | required_without_rationale | blank_page_anxiety | forced_tour |
     configuration_theater | verification_before_value | intent_mismatch | dead_end |
     fork_without_signal | cycle_detected | orphan_state | missing_affordance
 
-RULES:
-- Cite what in the CODE told you about this step. "Signup form has required company/role/use_case fields" → premature_data_collection. "Dashboard component renders an empty list with no create button" → blank_page_anxiety. "Marketing hero says 'free trial' but /signup redirects to /contact-sales" → intent_mismatch.
-- If there IS no code path to the value moment, terminate with decision=stuck and an honest reasoning.
-- If signup requires email verification / phone / payment that would block a cold user from proceeding, flag verification_before_value.
-- Do not invent routes that aren't in the static map; if the map doesn't show a /signup, the persona can't sign up.
+HARD RULES:
+- You MAY ONLY use screen_ids that exist in app_model.screens[].id. Inventing a screen_id is a hard failure.
+- You MAY ONLY use transitions that exist in app_model.navigation_graph — or explicitly note when the persona is blocked because no transition leads to the required screen (this is a dead_end friction).
+- Walls are real: if a screen's gated_by_walls is non-empty, the persona encounters that wall before reaching the screen. Model the wall step explicitly.
+- If app_model.screens is empty (headless API, library, CLI with no interactive UI), respond with outcome.status="skipped" and a stuck_reason explaining the project has no user-facing journey to walk.
+- If the persona literally cannot reach the value moment because the app_model has no path to it, terminate with decision=stuck and an honest reasoning.
 - Respond with ONE JSON object. No prose, no code fences.`;
 
 export interface PersonaBriefing {
@@ -63,24 +70,28 @@ export function extractPersonaBriefing(
   };
 }
 
-function compactMap(map: MapNs.Map): unknown {
+// Compact projection of the app model for the walker — full fidelity
+// on screens/walls/transitions, but omit fields the walker doesn't
+// need (synthesis_notes, seed_files_used). Keeps the prompt tight.
+function compactAppModel(appModel: AppModel): unknown {
   return {
-    framework: map.framework,
-    package: {
-      name: map.package.name,
-      description: map.package.description,
-      dependencies: map.package.dependencies.slice(0, 30),
-    },
-    routes: map.routes.slice(0, 100),
-    components_top: map.components.slice(0, 40).map((c) => c.name),
-    forms: map.forms,
-    visible_strings: map.visible_strings.slice(0, 150),
-    navigation: map.navigation.slice(0, 40),
-    auth_providers: map.auth_providers,
+    profile_summary: appModel.profile.description,
+    entry_points: appModel.entry_points,
+    walls: appModel.walls,
+    screens: appModel.screens.map((s) => ({
+      id: s.id,
+      title: s.title,
+      file_path: s.file_path,
+      is_entry: s.is_entry,
+      gated_by_walls: s.gated_by_walls,
+      visible_elements: s.visible_elements,
+    })),
+    navigation_graph: appModel.navigation_graph,
+    known_unknowns: appModel.known_unknowns,
   };
 }
 
-export function buildInferredPathUserPrompt(briefing: PersonaBriefing, map: MapNs.Map): string {
+export function buildInferredPathUserPrompt(briefing: PersonaBriefing, appModel: AppModel): string {
   return [
     "=== PERSONA ===",
     `actor: ${briefing.actor}`,
@@ -93,8 +104,8 @@ export function buildInferredPathUserPrompt(briefing: PersonaBriefing, map: MapN
       ? `\nIntended ideal path (from Stage A):\n  ${briefing.idealSteps.map((s, i) => `${i + 1}. ${s}`).join("\n  ")}`
       : "",
     "",
-    "=== STATIC CODE MAP ===",
-    JSON.stringify(compactMap(map), null, 2),
+    "=== APP MODEL (verified from codebase) ===",
+    JSON.stringify(compactAppModel(appModel), null, 2),
     "",
     "=== TASK ===",
     "Imagine this persona using this product. Produce ONE JSON object matching:",
@@ -102,7 +113,9 @@ export function buildInferredPathUserPrompt(briefing: PersonaBriefing, map: MapN
     "type Output = {",
     "  steps: Array<{",
     "    n: number,",
-    "    url: string,",
+    "    screen_id: string | null,",
+    "    location: string | null,",
+    "    url: string | null,",
     "    observation_summary: string,",
     "    decision: 'click'|'fill_form'|'navigate'|'scroll'|'wait'|'go_back'|'stuck'|'value_reached',",
     "    target: string | null,",
@@ -118,6 +131,6 @@ export function buildInferredPathUserPrompt(briefing: PersonaBriefing, map: MapN
     "  }",
     "}",
     "",
-    "Return only the JSON object. 8-20 steps, 25 max.",
+    "Return only the JSON object. 8-20 steps, 25 max. If screens is empty, respond with status='skipped'.",
   ].join("\n");
 }

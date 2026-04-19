@@ -38,7 +38,16 @@ export type Decision = z.infer<typeof Decision>;
 
 export const Step = z.object({
   n: z.number().int().positive(),
-  url: z.string(),
+  // screen_id references app-model.screens[].id. Non-null when the
+  // step occurs on a screen B-model identified; null for transitions
+  // that don't correspond to a known screen (e.g., external redirect).
+  screen_id: z.string().nullable(),
+  // Human-readable breadcrumb — file_path, route, or window label,
+  // whichever the app model exposes. Not a machine-resolvable URL.
+  location: z.string().nullable(),
+  // Retained for web apps that DO have HTTP routes; nullable/optional
+  // because desktop/mobile/CLI apps have none.
+  url: z.string().nullable().optional(),
   observation_summary: z.string(),
   decision: Decision,
   target: z.string().nullable(),

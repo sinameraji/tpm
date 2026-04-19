@@ -62,7 +62,9 @@ export function buildStageCUserPrompt(input: StageCInput): string {
     outcome: p.outcome,
     steps: p.steps.map((s) => ({
       n: s.n,
-      url: s.url,
+      screen_id: s.screen_id,
+      location: s.location,
+      url: s.url ?? null,
       observation_summary: s.observation_summary,
       decision: s.decision,
       target: s.target,

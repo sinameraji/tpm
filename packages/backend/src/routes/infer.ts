@@ -20,6 +20,7 @@ export interface InferRequest {
 const ALLOWED_MODELS = new Set<string>([
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
   "@cf/qwen/qwen3-30b-a3b-fp8",
+  "@cf/qwen/qwen2.5-coder-32b-instruct", // B-classify + B-model modeler A (code specialist, JSON-mode native)
   "@cf/meta/llama-4-scout-17b-16e-instruct",
   "@cf/openai/gpt-oss-120b", // kept for experimentation; no stage uses it by default
 ]);

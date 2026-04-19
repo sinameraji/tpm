@@ -8,5 +8,7 @@ export * as Solutions from "./schemas/solutions.js";
 export * as Patterns from "./schemas/patterns.js";
 export * as Config from "./schemas/config.js";
 export * as License from "./schemas/license.js";
+export * as ProjectProfile from "./schemas/project-profile.js";
+export * as AppModel from "./schemas/app-model.js";
 
 export const TPM_VERSION = "1.0.0";

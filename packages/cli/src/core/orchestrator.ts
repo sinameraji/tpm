@@ -165,12 +165,13 @@ export class Orchestrator {
       totalNeurons += a.neurons;
 
       const b = await withProgress("Stage B · imagining user journey", () =>
-        runStageB(a.leanCanvas, map, {
+        runStageB(a.leanCanvas, {
           gateway: this.deps.gateway,
           logger: log,
           auditId,
           sessionId: this.deps.sessionId,
           artifactsDir,
+          projectRoot,
           ...(opts.stepBudget !== undefined ? { stepBudget: opts.stepBudget } : {}),
         }),
       );

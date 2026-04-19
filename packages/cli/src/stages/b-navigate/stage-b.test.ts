@@ -1,12 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { ModelGateway } from "../../gateway/index.js";
+import type { ModelGateway, CompletionResult } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
 import type { LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
-import type { Map as MapNs } from "@tpm/shared";
-import { buildStaticMap } from "../a-intent/static-map.js";
 import { runStageB } from "./stage-b.js";
 
 const nullLogger: Logger = {
@@ -19,11 +17,38 @@ const nullLogger: Logger = {
   child: () => nullLogger,
 } as unknown as Logger;
 
+// Route a scripted queue by model name — classify/modeler/synthesizer/walker
+// each have distinct model ids, so we can keep the fixture readable.
+function routedGateway(routes: Record<string, Array<Partial<CompletionResult>>>): ModelGateway {
+  const counters: Record<string, number> = {};
+  return {
+    name: "routed",
+    async complete(model) {
+      const queue = routes[model];
+      if (!queue) throw new Error(`routedGateway: no script for model ${model}`);
+      const i = counters[model] ?? 0;
+      counters[model] = i + 1;
+      const step = queue[i];
+      if (!step) throw new Error(`routedGateway: queue exhausted for ${model} at call ${i + 1}`);
+      return {
+        text: step.text ?? "",
+        model: step.model ?? model,
+        usage: step.usage ?? {
+          inputTokens: 1000,
+          outputTokens: 400,
+          neurons: 0.04,
+          latencyMs: 500,
+        },
+      };
+    },
+  };
+}
+
 function makeCanvas(): LeanCanvas {
   return {
     schema_version: 1,
     extracted_at: new Date().toISOString(),
-    model: "@cf/openai/gpt-oss-120b",
+    model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
     sources: [],
     lean_canvas: {
       problem: { items: [] },
@@ -66,97 +91,166 @@ function makeCanvas(): LeanCanvas {
   };
 }
 
-function tinyMap(): MapNs.Map {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "tpm-stageB-map-"));
-  fs.writeFileSync(
-    path.join(root, "package.json"),
-    JSON.stringify({ dependencies: { next: "^14" } }),
-  );
-  fs.mkdirSync(path.join(root, "app"), { recursive: true });
-  fs.writeFileSync(
-    path.join(root, "app", "page.tsx"),
-    "export default function Home() { return <h1>Run an audit</h1>; }",
-  );
-  const map = buildStaticMap(root);
-  fs.rmSync(root, { recursive: true, force: true });
-  return map;
-}
+let repo: string;
+let artifacts: string;
 
-function stubGateway(payload: object): ModelGateway {
-  return {
-    name: "stub",
-    async complete() {
-      return {
-        text: JSON.stringify(payload),
-        model: "@cf/qwen/qwen3-30b-a3b-fp8",
-        usage: { inputTokens: 3000, outputTokens: 500, neurons: 0.08, latencyMs: 700 },
-      };
-    },
-  };
-}
+beforeEach(() => {
+  repo = fs.mkdtempSync(path.join(os.tmpdir(), "tpm-stageB-repo-"));
+  artifacts = fs.mkdtempSync(path.join(os.tmpdir(), "tpm-stageB-out-"));
+  fs.writeFileSync(
+    path.join(repo, "package.json"),
+    JSON.stringify({ name: "test-app", main: "./main.js" }),
+  );
+  fs.writeFileSync(path.join(repo, "main.js"), "console.log('hi')\n");
+  fs.mkdirSync(path.join(repo, "src"));
+  fs.writeFileSync(
+    path.join(repo, "src", "Home.tsx"),
+    "export default function Home() { return <button>Run audit</button>; }\n",
+  );
+});
+afterEach(() => {
+  fs.rmSync(repo, { recursive: true, force: true });
+  fs.rmSync(artifacts, { recursive: true, force: true });
+});
 
-describe("runStageB — imagined path from static map", () => {
-  it("writes paths.yaml with the persona's inferred journey", async () => {
-    const steps = [
-      {
-        n: 1,
-        url: "/",
-        observation_summary: "Landing with a 'Run audit' CTA inferred from <h1> + button",
-        decision: "click",
-        target: "Run audit button",
-        reasoning: "primary CTA visible in code at /",
-        value_moment_reached: false,
-        friction_flags: [],
-      },
-      {
-        n: 2,
-        url: "/audits/new",
-        observation_summary: "Audit form",
-        decision: "fill_form",
-        target: "form#audit",
-        reasoning: "form at /audits/new in the static map",
-        value_moment_reached: false,
-        friction_flags: [
-          { type: "premature_data_collection", detail: "5 required fields before run" },
-        ],
-      },
-      {
-        n: 3,
-        url: "/audits/123",
-        observation_summary: "Report visible",
-        decision: "value_reached",
-        target: null,
-        reasoning: "report is the value moment",
-        value_moment_reached: true,
-        friction_flags: [],
-      },
-    ];
-    const gateway = stubGateway({
-      steps,
+describe("runStageB — snapshot → classify → model → walk", () => {
+  it("writes app-model.yaml + paths.yaml end-to-end", async () => {
+    const profile = {
+      schema_version: 1,
+      description:
+        "A small Node.js app with a main entry and a React Home component; simple test fixture.",
+      candidate_entry_points: [{ file_path: "main.js", rationale: "package.json main" }],
+      candidate_screen_files: [
+        { file_path: "src/Home.tsx", rationale: "default-export component" },
+      ],
+      confidence: "high",
+      unknowns: [],
+    };
+
+    const modelerAOutput = {
+      schema_version: 1,
+      audit_id: "aB1",
+      generated_at: new Date().toISOString(),
+      models: ["@cf/qwen/qwen2.5-coder-32b-instruct"],
+      profile,
+      entry_points: [
+        {
+          id: "E001",
+          kind_label: "main process",
+          file_path: "main.js",
+          opens_screen_id: "S001",
+          notes: "loads Home",
+        },
+      ],
+      walls: [],
+      screens: [
+        {
+          id: "S001",
+          title: "Home",
+          file_path: "src/Home.tsx",
+          is_entry: true,
+          gated_by_walls: [],
+          visible_elements: [
+            {
+              kind_label: "button",
+              label: "Run audit",
+              action: {
+                kind_label: "submit",
+                target_screen_id: null,
+                handler_file: "src/Home.tsx",
+                handler_symbol: "onClick",
+              },
+            },
+          ],
+          known_unknowns: [],
+        },
+      ],
+      navigation_graph: [],
+      known_unknowns: [],
+      seed_files_used: ["main.js", "src/Home.tsx"],
+    };
+    // Modeler B produces the SAME output so there are zero disputes —
+    // keeps the test focused on orchestration, not on synthesizer
+    // disagreement handling (covered by model-app-diff tests).
+    const modelerBOutput = {
+      ...modelerAOutput,
+      models: ["@cf/meta/llama-3.3-70b-instruct-fp8-fast"],
+    };
+    const synthesizerOutput = {
+      ...modelerAOutput,
+      models: ["@cf/meta/llama-3.3-70b-instruct-fp8-fast"],
+      synthesis_notes: [],
+    };
+    const walkerOutput = {
+      steps: [
+        {
+          n: 1,
+          screen_id: "S001",
+          location: "src/Home.tsx",
+          url: null,
+          observation_summary: "Home screen with Run audit button",
+          decision: "click",
+          target: "Run audit",
+          reasoning: "primary CTA on the only screen",
+          value_moment_reached: false,
+          friction_flags: [],
+        },
+        {
+          n: 2,
+          screen_id: "S001",
+          location: "src/Home.tsx",
+          url: null,
+          observation_summary: "Report visible",
+          decision: "value_reached",
+          target: null,
+          reasoning: "same screen shows output",
+          value_moment_reached: true,
+          friction_flags: [],
+        },
+      ],
       outcome: {
         status: "value_reached",
         loop_closed: true,
         value_moment_reached: true,
         stuck_reason: null,
       },
+    };
+
+    const gateway = routedGateway({
+      "@cf/qwen/qwen2.5-coder-32b-instruct": [
+        { text: JSON.stringify({ mode: "final", profile }) }, // B-classify
+        { text: JSON.stringify(modelerAOutput) }, // Modeler A
+      ],
+      "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [
+        { text: JSON.stringify(modelerBOutput) }, // Modeler B
+        { text: JSON.stringify(synthesizerOutput) }, // Synthesizer
+      ],
+      "@cf/qwen/qwen3-30b-a3b-fp8": [
+        { text: JSON.stringify(walkerOutput) }, // B-walk persona
+      ],
     });
 
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), "tpm-stageB-out-"));
-    const result = await runStageB(makeCanvas(), tinyMap(), {
+    const result = await runStageB(makeCanvas(), {
       gateway,
       logger: nullLogger,
       auditId: "aB1",
       sessionId: "sB1",
-      artifactsDir: out,
+      artifactsDir: artifacts,
+      projectRoot: repo,
       stepBudget: 5,
     });
 
     expect(result.paths.paths).toHaveLength(1);
     const p = result.paths.paths[0];
     expect(p?.outcome.status).toBe("value_reached");
-    expect(p?.steps_taken).toBe(3);
-    expect(p?.entry_point).toBe("(code-only)");
-    expect(fs.existsSync(path.join(out, "paths.yaml"))).toBe(true);
-    fs.rmSync(out, { recursive: true, force: true });
+    expect(p?.steps_taken).toBe(2);
+    expect(p?.steps[0]?.screen_id).toBe("S001");
+    expect(p?.steps[0]?.location).toBe("src/Home.tsx");
+    expect(p?.steps[0]?.url).toBeNull(); // desktop-style — no web URL
+    expect(fs.existsSync(path.join(artifacts, "paths.yaml"))).toBe(true);
+    expect(fs.existsSync(path.join(artifacts, "app-model.yaml"))).toBe(true);
+    expect(fs.existsSync(path.join(artifacts, "project-profile.yaml"))).toBe(true);
+    expect(result.appModel.screens).toHaveLength(1);
+    expect(result.appModel.entry_points).toHaveLength(1);
   });
 });
