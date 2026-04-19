@@ -50,24 +50,17 @@ describe("/quota/check", () => {
     expect(body.self_host).toBeNull();
   });
 
-  it("flags full_audit=false + self_host link after the trial is consumed", async () => {
+  it("flags full_audit=false + self_host link only after a SUCCEEDED audit exists", async () => {
     const { d1, raw } = makeD1();
     const env = baseEnv({ DB: d1 }) as unknown as Env;
     const token = await register(env);
+    // Seed a succeeded audit row (not just a usage_log entry).
     raw
       .prepare(
-        "INSERT INTO usage_log (id, device_id, audit_id, session_id, stage, model, request_at, status, neurons) " +
-          "VALUES (?, ?, ?, ?, ?, ?, ?, 'ok', 0.1)",
+        "INSERT INTO audits (id, device_id, session_id, target, started_at, status, tier_at_run, tpm_version) " +
+          "VALUES (?, ?, ?, ?, ?, 'succeeded', 'hosted_trial', '1.0.0')",
       )
-      .run(
-        "u1",
-        DEVICE_ID,
-        "audit-1",
-        "s",
-        "A",
-        "@cf/openai/gpt-oss-120b",
-        new Date().toISOString(),
-      );
+      .run("aud-1", DEVICE_ID, "s", "/tmp/x", new Date().toISOString());
     const res = await worker.fetch(
       new Request("https://tpm-api.sina-b35.workers.dev/quota/check", {
         headers: { authorization: `Bearer ${token}` },
@@ -81,5 +74,31 @@ describe("/quota/check", () => {
     };
     expect(body.allowances.full_audit).toBe(false);
     expect(body.self_host?.url).toContain("self-host");
+  });
+
+  it("does NOT count failed audits — trial remains available", async () => {
+    const { d1, raw } = makeD1();
+    const env = baseEnv({ DB: d1 }) as unknown as Env;
+    const token = await register(env);
+    // A failed audit attempt should NOT burn the trial.
+    raw
+      .prepare(
+        "INSERT INTO audits (id, device_id, session_id, target, started_at, status, tier_at_run, tpm_version) " +
+          "VALUES (?, ?, ?, ?, ?, 'failed', 'hosted_trial', '1.0.0')",
+      )
+      .run("aud-fail", DEVICE_ID, "s", "/tmp/x", new Date().toISOString());
+    const res = await worker.fetch(
+      new Request("https://tpm-api.sina-b35.workers.dev/quota/check", {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+      env,
+      mockCtx(),
+    );
+    const body = (await res.json()) as {
+      used: number;
+      allowances: { full_audit: boolean };
+    };
+    expect(body.used).toBe(0);
+    expect(body.allowances.full_audit).toBe(true);
   });
 });

@@ -2,7 +2,7 @@ import type { Env } from "../env.js";
 import { requireAuth } from "../middleware/auth.js";
 import { badRequest, paymentRequired, serverError } from "../lib/errors.js";
 import { nowIso, uuidv4 } from "../lib/ids.js";
-import { HOSTED_TRIAL_LIMIT } from "./quota.js";
+import { HOSTED_TRIAL_LIMIT, countSucceededAudits } from "./quota.js";
 
 export interface InferRequest {
   model: string;
@@ -27,12 +27,9 @@ async function enforceHostedTrialQuota(env: Env, deviceId: string, stage: string
   // meta-stage calls aren't counted toward the trial.
   if (stage === "meta") return;
 
-  const liferow = await env.DB.prepare(
-    "SELECT COUNT(DISTINCT audit_id) as c FROM usage_log WHERE device_id = ? AND audit_id IS NOT NULL AND status = 'ok'",
-  )
-    .bind(deviceId)
-    .first<{ c: number }>();
-  const lifetime = liferow?.c ?? 0;
+  // Count only SUCCEEDED audits, not distinct audit_ids touched by
+  // /infer calls. A failed audit shouldn't burn the user's free slot.
+  const lifetime = await countSucceededAudits(env, deviceId);
   if (lifetime >= HOSTED_TRIAL_LIMIT) {
     throw paymentRequired(
       "You've used your free hosted audit. TPM is open source — see https://tpm-d3h.pages.dev/self-host to run unlimited audits on your own Cloudflare Workers AI.",

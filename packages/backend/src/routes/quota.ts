@@ -7,16 +7,23 @@ export const HOSTED_TRIAL_LIMIT = 1;
 
 const SELF_HOST_URL = "https://tpm-d3h.pages.dev/self-host";
 
+// Count only SUCCEEDED audits toward the trial. A failed audit (e.g.,
+// Stage A returned empty, parse error) should not burn the user's one
+// free slot.
+async function countSucceededAudits(env: Env, deviceId: string): Promise<number> {
+  const row = await env.DB.prepare(
+    `SELECT COUNT(*) as c FROM audits
+       WHERE device_id = ? AND status = 'succeeded'`,
+  )
+    .bind(deviceId)
+    .first<{ c: number }>();
+  return row?.c ?? 0;
+}
+
 export async function checkQuota(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
 
-  const lifetimeRow = await env.DB.prepare(
-    `SELECT COUNT(DISTINCT audit_id) as c FROM usage_log
-       WHERE device_id = ? AND audit_id IS NOT NULL AND status = 'ok'`,
-  )
-    .bind(auth.deviceId)
-    .first<{ c: number }>();
-  const lifetime = lifetimeRow?.c ?? 0;
+  const lifetime = await countSucceededAudits(env, auth.deviceId);
 
   const remaining = Math.max(0, HOSTED_TRIAL_LIMIT - lifetime);
   const allowed = lifetime < HOSTED_TRIAL_LIMIT;
@@ -40,3 +47,5 @@ export async function checkQuota(request: Request, env: Env): Promise<Response> 
         },
   });
 }
+
+export { countSucceededAudits };

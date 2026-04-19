@@ -113,28 +113,19 @@ describe("backend — /infer", () => {
     expect(row.neurons).toBeGreaterThan(0);
   });
 
-  it("402 when free-tier lifetime audit cap is hit", async () => {
+  it("402 when a SUCCEEDED audit already exists (trial burned)", async () => {
     const { d1, raw } = makeD1();
     const env = baseEnv({
       DB: d1,
       AI: aiStub({ response: "x", usage: { prompt_tokens: 1, completion_tokens: 1 } }),
     }) as unknown as Env;
     const token = await registerDevice(env);
-    // Seed a prior completed audit
     raw
       .prepare(
-        "INSERT INTO usage_log (id, device_id, audit_id, session_id, stage, model, request_at, status, neurons) " +
-          "VALUES (?, ?, ?, ?, ?, ?, ?, 'ok', 0.1)",
+        "INSERT INTO audits (id, device_id, session_id, target, started_at, status, tier_at_run, tpm_version) " +
+          "VALUES (?, ?, ?, ?, ?, 'succeeded', 'hosted_trial', '1.0.0')",
       )
-      .run(
-        "uid-1",
-        DEVICE_ID,
-        "prior-audit",
-        "s",
-        "A",
-        "@cf/openai/gpt-oss-120b",
-        new Date().toISOString(),
-      );
+      .run("prior-audit", DEVICE_ID, "s", "/tmp/x", new Date().toISOString());
     const res = await worker.fetch(
       new Request("https://tpm-api.sina-b35.workers.dev/infer", {
         method: "POST",
@@ -150,5 +141,35 @@ describe("backend — /infer", () => {
       mockCtx(),
     );
     expect(res.status).toBe(402);
+  });
+
+  it("does NOT 402 when only a FAILED audit exists", async () => {
+    const { d1, raw } = makeD1();
+    const env = baseEnv({
+      DB: d1,
+      AI: aiStub({ response: "x", usage: { prompt_tokens: 1, completion_tokens: 1 } }),
+    }) as unknown as Env;
+    const token = await registerDevice(env);
+    raw
+      .prepare(
+        "INSERT INTO audits (id, device_id, session_id, target, started_at, status, tier_at_run, tpm_version) " +
+          "VALUES (?, ?, ?, ?, ?, 'failed', 'hosted_trial', '1.0.0')",
+      )
+      .run("prior-fail", DEVICE_ID, "s", "/tmp/x", new Date().toISOString());
+    const res = await worker.fetch(
+      new Request("https://tpm-api.sina-b35.workers.dev/infer", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          model: "@cf/openai/gpt-oss-120b",
+          messages: [{ role: "user", content: "hi" }],
+          stage: "A",
+          audit_id: "retry-audit",
+        }),
+      }),
+      env,
+      mockCtx(),
+    );
+    expect(res.status).toBe(200);
   });
 });
