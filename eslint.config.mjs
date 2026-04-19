@@ -12,6 +12,7 @@ export default tseslint.config(
       "**/coverage/**",
       "**/*.tsbuildinfo",
       "packages/marketing/**",
+      "packages/cli/scripts/**",
     ],
   },
   js.configs.recommended,
