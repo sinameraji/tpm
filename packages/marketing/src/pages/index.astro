@@ -8,9 +8,9 @@ import Base from "../layouts/Base.astro";
       A Technical Product Manager, in your terminal.
     </h1>
     <p style="font-size: 1.2rem; color: #4d4d4d; max-width: 40rem;">
-      TPM audits your software product from the source code alone — reconstructs what you intended,
-      imagines what a user experiences given your code, finds the gaps, and specs the
-      highest-leverage fixes. No browser, no scraping, no login to your live site.
+      TPM audits your product by <strong>reading your codebase</strong> — the source of truth —
+      and optionally cross-referencing your public marketing site for context. It never runs
+      your product, never signs in, never hits your auth-gated screens.
     </p>
     <p style="margin-top: 2rem;">
       <a href="https://github.com/sinameraji/tpm" class="button">View on GitHub</a>
@@ -22,23 +22,26 @@ cd your-product-repo
 tpm init
 tpm audit</code></pre>
     <p style="color: #4d4d4d; font-size: 0.9rem; max-width: 40rem; margin-top: 1rem;">
-      Every new device gets one free audit on our hosted Cloudflare Workers AI credits. After that,
-      <a href="/self-host">set up your own Cloudflare account</a> for unlimited audits.
+      First run prompts you for an optional marketing URL. Skip with Enter for a code-only audit.
+      Every new device gets one free audit on our hosted Cloudflare Workers AI credits. After
+      that, <a href="/self-host">self-host on your own Cloudflare</a> for unlimited audits.
     </p>
   </section>
 
   <section style="padding: 2rem 0; border-top: 1px solid #e4e4e0;">
-    <h2 style="margin-bottom: 1.5rem;">How it works — read the code, imagine the UX.</h2>
+    <h2 style="margin-bottom: 1.5rem;">Code is the source of truth. Marketing is auxiliary.</h2>
     <p style="max-width: 40rem;">
-      A skilled PM reading your codebase can narrate the user's first run from memory. TPM does the
-      same thing, algorithmically. It extracts your routes, forms, components, copy, auth gates
-      and tracking events — then reconstructs the intended product from the code, and a plausible
-      user journey from the same code.
+      Production apps have multiple frontend/server/infra folders, env vars, seed data, auth
+      flows — it's unrealistic to assume any tool can "run your product as a user" before
+      reviewing it. TPM doesn't try. It reads your source, extracts the routes, forms,
+      components, copy, auth gates and tracking events, and narrates what the user experiences
+      from the code alone.
     </p>
     <p style="max-width: 40rem;">
-      This means TPM works on anything you have source access to — enterprise SaaS,
-      authenticated-only dashboards, anything behind a paywall — because it never needs to visit
-      your live product.
+      Optionally, TPM can also fetch your public marketing URL (landing, pricing, features) to
+      understand the positioning promise. This is step 2 of <code>tpm audit</code> — explicitly
+      optional, skippable with a keystroke. When marketing and code disagree, the code wins, and
+      TPM reports the divergence as a finding.
     </p>
   </section>
 
@@ -49,7 +52,7 @@ tpm audit</code></pre>
       artifact.
     </p>
     <ol style="max-width: 40rem; margin-top: 1rem;">
-      <li><strong>Intent extraction</strong> — Lean Canvas reconstructed from the codebase.</li>
+      <li><strong>Intent extraction</strong> — Lean Canvas reconstructed from the codebase (primary) + marketing (auxiliary).</li>
       <li><strong>Imagined critical path</strong> — user journey inferred from routes, forms, components.</li>
       <li><strong>Delta analysis</strong> — classifies every step and names the intent mismatches.</li>
       <li><strong>Leverage prioritization</strong> — ranks problems with an explicit argument, not a formula.</li>

@@ -33,7 +33,7 @@
 └──────────────────────────────┘
 ```
 
-TPM is a **static analysis tool**. It never opens a browser, never scrapes the web, never touches the user's product over the network. The only network calls are to a Workers AI inference endpoint.
+TPM is a **static analysis tool**. The primary source of truth is the codebase; TPM never runs the user's product, never signs in, never automates a browser against it. Optionally — and only if the user provides a URL — TPM fetches the product's public marketing surfaces (landing / pricing / features / docs) as auxiliary positioning context. Everything else stays offline.
 
 ## Key interfaces
 
@@ -43,12 +43,13 @@ TPM is a **static analysis tool**. It never opens a browser, never scrapes the w
 ## Pipeline (per audit)
 
 1. **Static map**: tree-walk the repo + regex extractors → `map.yaml` with routes, components, forms, nav, auth providers, tracking events.
-2. **Stage A (Intent)**: single `gpt-oss-120b` call on the static map → `lean-canvas.yaml`. Reconstructs intent + JTBD + value moments + intended critical paths. Evidence cites code locations only.
-3. **Stage B (Imagined Path)**: per-persona `qwen3-30b-a3b-fp8` call with the Lean Canvas + static map → `paths.yaml`. Model "reads the code as a PM" and imagines the user's journey: 8–20 steps with observations, decisions, reasoning, and friction_flags drawn from a fixed 12-value enum. No browser, no Playwright, no network to the live product.
-4. **Stage C (Delta)**: `gpt-oss-120b` → `delta.yaml`. 7-class step classification, necessity tests, intent mismatches, implicit-vs-stated job alignment.
-5. **Stage D (Leverage)**: `gpt-oss-120b` → `problems.yaml` with structured leverage arguments, contiguous 1..N ranking.
-6. **Stage E (Solutions)**: top-5 problems in parallel, each gets a `gpt-oss-120b` spec call + a `qwen3-30b` prototype HTML call.
-7. **Stage F (Assembly)**: `gpt-oss-120b` → `spec.md` + `spec.html`.
+2. **Optional marketing scrape**: if the user supplied a marketing URL, fetch landing + pricing + features + docs + about + blog + faq with cheerio + `robots.txt` compliance → `scraped-surfaces.yaml`. Skipped silently if no URL.
+3. **Stage A (Intent)**: single `gpt-oss-120b` call on (static map + optional scraped) → `lean-canvas.yaml`. Code-sourced evidence is primary; marketing-sourced evidence is auxiliary and cited explicitly.
+4. **Stage B (Imagined Path)**: per-persona `qwen3-30b-a3b-fp8` call with the Lean Canvas + static map → `paths.yaml`. Model "reads the code as a PM" and imagines the user's journey: 8–20 steps with observations, decisions, reasoning, and friction_flags drawn from a fixed 12-value enum. No browser, no Playwright, no network to the live product.
+5. **Stage C (Delta)**: `gpt-oss-120b` → `delta.yaml`. 7-class step classification, necessity tests, intent mismatches, implicit-vs-stated job alignment.
+6. **Stage D (Leverage)**: `gpt-oss-120b` → `problems.yaml` with structured leverage arguments, contiguous 1..N ranking.
+7. **Stage E (Solutions)**: top-5 problems in parallel, each gets a `gpt-oss-120b` spec call + a `qwen3-30b` prototype HTML call.
+8. **Stage F (Assembly)**: `gpt-oss-120b` → `spec.md` + `spec.html`.
 
 ## Storage
 

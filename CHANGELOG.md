@@ -12,7 +12,11 @@ tpm init
 tpm audit
 ```
 
-No URL. No browser. No network traffic to your live product. TPM reads your source code and reconstructs intent + imagined user journey from the code alone. Works on any codebase you have source access to, including enterprise/auth-gated products.
+**Codebase is the source of truth.** TPM reads your source and reconstructs intent + an imagined user journey from it. No browser automation, no fake signups, no running your product locally (unrealistic for real apps with env vars, multi-service infra, seed data).
+
+**Marketing URL is optional auxiliary context.** Step 2 of `tpm audit` asks for your product's public marketing URL (landing/pricing/features). Skip with Enter for a code-only audit, or pre-set with `--marketing-url https://yourproduct.com`. When marketing and code disagree, code wins — and the divergence becomes an audit finding.
+
+Works on enterprise/auth-gated products because TPM never needs to log in or run anything.
 
 ### Model
 
@@ -30,6 +34,5 @@ No URL. No browser. No network traffic to your live product. TPM reads your sour
 
 ### Deliberately not included
 
-- **Playwright / browser automation.** TPM is a static analysis tool; it never runs your product. This means it works on enterprise SaaS, authenticated-only dashboards, and anything behind a paywall.
-- **Marketing site scraping.** Same reason — all evidence comes from source code.
+- **Playwright / browser automation against the user's product.** TPM never runs the live product or attempts logins/signups. This means it works on enterprise SaaS, authenticated-only dashboards, and anything behind a paywall.
 - **PDF rendering.** `spec.md` and `spec.html` are produced; users who want PDF can pipe through any markdown-to-PDF tool.

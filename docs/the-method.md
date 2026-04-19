@@ -4,7 +4,12 @@ TPM's differentiation isn't "AI looks at your app and gives feedback." It's a de
 
 ## Stage A — Intent Extraction → `lean-canvas.yaml`
 
-Reconstruct the Lean Canvas purely from the codebase: package.json metadata, README, user-facing copy in components (h1/h2/buttons/links), routes, forms, tracking events. Make implicit intent explicit. Derive: intended JTBD per segment, intended value moment per persona, intended critical path per persona.
+Reconstruct the Lean Canvas from two sources:
+
+- **Primary: the codebase** — package.json metadata, README, user-facing copy in components (h1/h2/buttons/links), routes, forms, tracking events, auth providers.
+- **Auxiliary: the product's public marketing surfaces** (optional) — landing page, /pricing, /features, /docs. Only fetched if the user provides a URL. When code and marketing disagree, code wins and the divergence is recorded as a low-confidence marketing claim (this is often exactly the finding Stage C turns into an intent_mismatch).
+
+Make implicit intent explicit. Derive: intended JTBD per segment, intended value moment per persona, intended critical path per persona.
 
 **Rule:** every claim cites evidence + a calibrated confidence score. Empty arrays are fine when evidence is absent. Don't invent.
 

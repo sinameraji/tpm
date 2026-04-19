@@ -7,8 +7,11 @@ import { QuotaClient, formatUpgradeMessage } from "../billing/quota.js";
 import { AuditSync } from "../sync/audits.js";
 import { projectPaths } from "./paths.js";
 import { openDatabase } from "../db/init.js";
+import yaml from "js-yaml";
 import { buildStaticMap, writeMapYaml } from "../stages/a-intent/static-map.js";
+import { scrapeMarketingSurfaces } from "../stages/a-intent/scraper.js";
 import { runStageA } from "../stages/a-intent/stage-a.js";
+import type { Scraped as ScrapedNs } from "@tpm/shared";
 import { runStageB } from "../stages/b-navigate/stage-b.js";
 import { runStageC } from "../stages/c-delta/stage-c.js";
 import { runStageD } from "../stages/d-leverage/stage-d.js";
@@ -26,6 +29,7 @@ export interface OrchestratorDeps {
 
 export interface OrchestratorOptions {
   projectRoot?: string;
+  marketingUrl?: string;
   stepBudget?: number;
   topNSolutions?: number;
   renderPdf?: boolean;
@@ -119,16 +123,33 @@ export class Orchestrator {
       const map = buildStaticMap(projectRoot);
       writeMapYaml(map, path.join(artifactsDir, "map.yaml"));
 
-      const a = await runStageA(
-        { map },
-        {
-          gateway: this.deps.gateway,
-          logger: log,
-          auditId,
-          sessionId: this.deps.sessionId,
-          artifactsDir,
-        },
-      );
+      let scraped: ScrapedNs.ScrapedSurfaces | undefined;
+      if (opts.marketingUrl) {
+        try {
+          log.info({ url: opts.marketingUrl }, "scraping marketing surfaces (auxiliary)");
+          scraped = await scrapeMarketingSurfaces(opts.marketingUrl, { maxPages: 8 });
+          fs.writeFileSync(
+            path.join(artifactsDir, "scraped-surfaces.yaml"),
+            yaml.dump(scraped, { noRefs: true, lineWidth: 120 }),
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          log.warn(
+            { url: opts.marketingUrl, err: msg },
+            "marketing scrape failed — proceeding code-only",
+          );
+        }
+      }
+
+      const stageAInput: { map: typeof map; scraped?: ScrapedNs.ScrapedSurfaces } = { map };
+      if (scraped !== undefined) stageAInput.scraped = scraped;
+      const a = await runStageA(stageAInput, {
+        gateway: this.deps.gateway,
+        logger: log,
+        auditId,
+        sessionId: this.deps.sessionId,
+        artifactsDir,
+      });
       stages.A = { status: "ok", neurons: a.neurons };
       costPerStage.A = a.neurons;
       totalNeurons += a.neurons;

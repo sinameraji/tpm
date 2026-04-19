@@ -4,7 +4,8 @@ import { WorkersAIGateway } from "../gateway/workers-ai.js";
 import { DirectWorkersAIGateway } from "../gateway/direct-workers-ai.js";
 import type { ModelGateway } from "../gateway/index.js";
 import { loadConfig } from "../core/config.js";
-import { loadProjectConfig } from "../core/project-config.js";
+import { loadProjectConfig, saveProjectConfig } from "../core/project-config.js";
+import { isValidHttpUrl, promptLine } from "../core/prompt.js";
 import { bootstrap, emit, emitText } from "./_runtime.js";
 import * as path from "node:path";
 
@@ -12,7 +13,15 @@ export function register(program: Command): void {
   program
     .command("audit")
     .description(
-      "Audit the current project. TPM reads your codebase and reconstructs intent + imagined user journey from source alone — no browser, no network to your product.",
+      "Audit the current project. TPM reads your codebase (primary source of truth) and optionally your public marketing URL (auxiliary context) to reconstruct intent and imagine the user journey.",
+    )
+    .option(
+      "--marketing-url <url>",
+      "Your product's public marketing URL. Auxiliary — helps TPM understand positioning. Remembered for subsequent runs.",
+    )
+    .option(
+      "--no-marketing",
+      "Skip the marketing URL entirely (and don't prompt). Code-only audit.",
     )
     .option(
       "--step-budget <n>",
@@ -31,6 +40,8 @@ export function register(program: Command): void {
     .action(async function action(this: Command) {
       const runtime = bootstrap(this);
       const opts = this.opts<{
+        marketingUrl?: string;
+        marketing?: boolean; // --no-marketing → false
         stepBudget?: number;
         top?: number;
         pdf?: boolean;
@@ -51,6 +62,40 @@ export function register(program: Command): void {
       const cfg = loadConfig();
       const endpoint = opts.endpoint ?? cfg.api_endpoint;
       const gatewayMode = opts.gateway ?? cfg.gateway;
+
+      // Marketing URL resolution: flag → project config → interactive prompt (TTY only) → none.
+      let marketingUrl: string | undefined;
+      if (opts.marketing === false) {
+        marketingUrl = undefined;
+      } else if (opts.marketingUrl) {
+        if (!isValidHttpUrl(opts.marketingUrl)) {
+          emitText(runtime, `invalid --marketing-url: ${opts.marketingUrl}`);
+          emit(runtime, { ok: false, error: "invalid marketing url" });
+          process.exitCode = 1;
+          return;
+        }
+        marketingUrl = opts.marketingUrl;
+      } else if (projectCfg.marketing_url) {
+        marketingUrl = projectCfg.marketing_url;
+      } else if (!runtime.isJson) {
+        emitText(
+          runtime,
+          "[Step 1/2] Code analysis — TPM reads your repo (primary source of truth).",
+        );
+        const answer = await promptLine(
+          "[Step 2/2] Optionally, paste your product's public marketing URL (landing page).\n  This is auxiliary — it helps TPM understand your positioning.\n  Press Enter to skip:\n  > ",
+        );
+        if (answer && isValidHttpUrl(answer)) {
+          marketingUrl = answer;
+        } else if (answer) {
+          emitText(runtime, `(not a valid URL, skipping: ${answer})`);
+        }
+      }
+
+      // Persist the URL so subsequent audits don't re-prompt.
+      if (marketingUrl && marketingUrl !== projectCfg.marketing_url) {
+        saveProjectConfig({ ...projectCfg, marketing_url: marketingUrl }, projectRoot);
+      }
 
       let gateway: ModelGateway;
       let apiEndpointForOrchestrator: string | undefined;
@@ -81,12 +126,14 @@ export function register(program: Command): void {
         ...(apiEndpointForOrchestrator ? { apiEndpoint: apiEndpointForOrchestrator } : {}),
       });
 
-      emitText(runtime, `Codebase: ${projectRoot}`);
-      emitText(runtime, `Gateway: ${gatewayMode}\n`);
+      emitText(runtime, `Codebase:       ${projectRoot}`);
+      emitText(runtime, `Marketing URL:  ${marketingUrl ?? "(none — code-only)"}`);
+      emitText(runtime, `Gateway:        ${gatewayMode}\n`);
 
       try {
         const res = await orchestrator.runAudit({
           projectRoot,
+          ...(marketingUrl ? { marketingUrl } : {}),
           ...(opts.stepBudget !== undefined ? { stepBudget: opts.stepBudget } : {}),
           ...(opts.top !== undefined ? { topNSolutions: opts.top } : {}),
           renderPdf: opts.pdf !== false,
@@ -108,6 +155,7 @@ export function register(program: Command): void {
           audit_id: res.auditId,
           artifacts_dir: res.artifactsDir,
           codebase: projectRoot,
+          marketing_url: marketingUrl ?? null,
           gateway: gatewayMode,
           total_neurons: res.totalNeurons,
           duration_ms: res.durationMs,

@@ -5,6 +5,11 @@ import { projectPaths, ensureDir } from "./paths.js";
 export interface ProjectConfig {
   schema_version: 1;
   project_path: string;
+  // Optional marketing/landing URL. Auxiliary evidence only — the
+  // primary source of truth is the codebase. User can set via
+  //   tpm audit --marketing-url https://...
+  // or interactively at audit time, or leave blank entirely.
+  marketing_url?: string;
 }
 
 export function loadProjectConfig(projectRoot: string = process.cwd()): ProjectConfig | null {
@@ -14,10 +19,12 @@ export function loadProjectConfig(projectRoot: string = process.cwd()): ProjectC
     const raw = fs.readFileSync(p, "utf8");
     const parsed = yaml.load(raw) as Partial<ProjectConfig> | null;
     if (!parsed || typeof parsed !== "object") return null;
-    return {
+    const cfg: ProjectConfig = {
       schema_version: 1,
       project_path: parsed.project_path ?? projectRoot,
     };
+    if (parsed.marketing_url) cfg.marketing_url = parsed.marketing_url;
+    return cfg;
   } catch {
     return null;
   }

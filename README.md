@@ -1,22 +1,32 @@
 # TPM — Technical Product Manager
 
-**Open source (MIT).** A senior PM in your terminal. TPM audits software products from their source code alone — no browser, no scraping, no login to your live site. It reads your repo, reconstructs what you intended the product to be, imagines what a user experiences given the code, and specs the highest-leverage fixes.
+**Open source (MIT).** A senior PM in your terminal. TPM audits software products by reading the **codebase** (primary source of truth) and, optionally, your public **marketing site** (auxiliary context). It never runs your product — no browser automation, no fake signups, no logins to your live app.
 
 ```bash
 npm install -g tpm
 
-cd your-product-repo     # TPM runs on the codebase you're standing in
-tpm init                 # creates .tpm/
-tpm audit                # reads source, produces audit artifacts
+cd your-product-repo
+tpm init
+tpm audit
 ```
 
-That's it. No URL argument, no browser install, no credentials for your product. Everything derives from the code you already have.
+First run prompts you for an optional marketing URL. Skip with Enter, or pre-set with `--marketing-url https://yourproduct.com`. The URL is remembered for subsequent runs.
+
+## The mental model
+
+A skilled PM reading your codebase can narrate the user's first run from memory. TPM does the same thing, algorithmically. It extracts your routes, forms, components, copy, auth gates and tracking events — then reconstructs the intended product from the code, and a plausible user journey from the same code.
+
+- **Codebase = source of truth.** What the code says the product does IS what the product does. It's unrealistic to run production apps locally (multiple server/infra/frontend folders, env vars, seed data, auth flows). TPM skips that entirely.
+- **Marketing URL = auxiliary.** Optional. Helps TPM understand the positioning promise (hero copy, pricing, features). When marketing and code disagree, the code wins — and TPM reports the divergence.
+
+This means TPM works on anything you have source access to — enterprise SaaS, authenticated-only dashboards, anything behind a paywall — because it never needs to run or sign into your live product.
 
 ## What you get
 
 Artifacts land in `.tpm/artifacts/{audit_id}/`:
 
 - `map.yaml` — static code map (routes, components, forms, nav, auth providers)
+- `scraped-surfaces.yaml` — marketing pages (only if a URL was provided)
 - `lean-canvas.yaml` — reconstructed intent (problem, segments, UVP, JTBD, value moments)
 - `paths.yaml` — imagined user journey per persona, inferred from code
 - `delta.yaml` — classified gaps between intent and the code's reality
@@ -41,7 +51,7 @@ Six-stage deterministic pipeline, fully specified by schema. See [`docs/the-meth
 
 ## Architecture
 
-CLI on your machine (Node 20+), optional thin Cloudflare Worker backend for the hosted trial, Workers AI for inference. No Playwright, no scraping, no external service calls to your product. See [`docs/architecture.md`](./docs/architecture.md).
+CLI on your machine (Node 20+), optional thin Cloudflare Worker backend for the hosted trial, Workers AI for inference. No Playwright, no live-product automation. See [`docs/architecture.md`](./docs/architecture.md).
 
 ## Repo layout
 

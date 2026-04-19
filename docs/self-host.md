@@ -43,7 +43,7 @@ tpm init
 tpm audit
 ```
 
-No URL argument. TPM reads the source code in your current directory, reconstructs the intended product, imagines the user journey from the code, and produces the audit artifacts.
+TPM reads the source code in your current directory — that's the source of truth. Step 2 of `tpm audit` optionally prompts for your public marketing URL (landing/pricing/features) as auxiliary positioning context; skip with Enter or pre-set with `--marketing-url https://yourproduct.com`.
 
 Cost is printed after every run. Expect ~$0.10–$0.50 per full audit depending on product complexity.
 

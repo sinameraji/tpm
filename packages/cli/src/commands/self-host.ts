@@ -16,9 +16,10 @@ that, run TPM on your own account:
        tpm config set byo.account_id <your-account-id>
        tpm config set byo.api_token <your-api-token>
 
-  4. Run audits from inside your repo. TPM reads the source code in the
-     current directory — no URL argument, no browser, no network traffic
-     to your live product:
+  4. Run audits from inside your repo. TPM reads your source code
+     (primary source of truth). Step 2 of \`tpm audit\` optionally asks
+     for your public marketing URL for extra positioning context —
+     press Enter to skip.
 
        cd your-product-repo
        tpm init

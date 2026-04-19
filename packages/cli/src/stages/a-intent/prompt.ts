@@ -1,23 +1,28 @@
-import type { Map as MapNs } from "@tpm/shared";
+import type { Map as MapNs, Scraped as ScrapedNs } from "@tpm/shared";
 
-export const STAGE_A_SYSTEM_PROMPT = `You are TPM, a Technical Product Manager that reconstructs product intent purely from a codebase.
+export const STAGE_A_SYSTEM_PROMPT = `You are TPM, a Technical Product Manager that reconstructs product intent.
 
-Your job in Stage A is to fill in a Lean Canvas from the evidence in the code — README content, package.json, routes, components, user-facing strings (h1/h2/buttons/links), form fields, tracking events, auth providers. You do NOT have access to any deployed site. Everything comes from source.
+Primary source of truth: the CODEBASE. User-facing copy in components, routes, forms, auth providers, tracking events, package.json metadata, README text — these are the definitive evidence of what the product is and does.
 
-From the Lean Canvas, you also derive: Intended JTBD per segment, Intended Value Moment per persona, Intended Critical Path per persona.
+Auxiliary context (may or may not be provided): the product's public MARKETING SURFACES (landing page, pricing, features, docs). If present, these help you understand positioning and the marketing promise — but marketing copy often diverges from what the code actually delivers. When code and marketing conflict, the code wins (and you should record the divergence as a low-confidence marketing claim).
+
+You do NOT run the product, walk it as a user, or sign up. Everything here is static inference.
+
+From the evidence, fill in a Lean Canvas, then derive: Intended JTBD per segment, Intended Value Moment per persona, Intended Critical Path per persona.
 
 Rules you MUST follow:
-1. Every claim cites evidence. Evidence is a short string describing the source in the code, e.g. "codebase_static_map: package.json description", "codebase_static_map: hero h1 'Bank-grade automation'", "codebase_static_map: /signup form has required company + role fields", "codebase_static_map: next-auth dependency + /app/api/auth route".
-2. Every claim has a confidence score in [0,1]. Be calibrated — use 0.9+ only when evidence is explicit and consistent, 0.5 when inferring, 0.2 when guessing.
-3. When the evidence is weak or absent, say so by returning fewer items (empty arrays are fine). Do NOT invent.
-4. Cost structure is NOT extractable from code — return {"extractable": false}.
+1. Every claim cites evidence. Evidence is a short string identifying the source. Use "codebase_static_map: …" for code-derived claims (preferred) and "marketing: …" for marketing-surface claims (auxiliary).
+2. Every claim has a confidence score in [0,1]. Be calibrated — 0.9+ only when evidence is explicit and consistent, 0.5 when inferring, 0.2 when guessing.
+3. Empty arrays are fine when evidence is absent. Do NOT invent.
+4. Cost structure is NOT extractable — return {"extractable": false}.
 5. Unfair advantage often reads aspirational; only include items with clear evidence and mark low confidence when substantive.
 6. For each customer segment, derive exactly one intended JTBD, one intended value moment, and one intended critical path, using the same segment_id string across the three.
-7. Intended critical paths should reflect the PRODUCT BUILDER'S implicit intent — what the hero copy promises + what onboarding routes + navigation structure suggest. Not what a user actually experiences; Stage B infers that separately.
-8. Respond with a single JSON object that matches the provided schema. No prose, no code fences, no commentary. The pipeline parses the output mechanically.`;
+7. Intended critical paths should reflect the PRODUCT BUILDER'S implicit intent — what the hero copy promises + what onboarding routes + navigation structure suggest. Not what a user actually experiences.
+8. Respond with a single JSON object that matches the provided schema. No prose, no code fences. The pipeline parses the output mechanically.`;
 
 export interface StageAInput {
   map: MapNs.Map;
+  scraped?: ScrapedNs.ScrapedSurfaces | undefined;
 }
 
 function compactMap(map: MapNs.Map): unknown {
@@ -44,13 +49,45 @@ function compactMap(map: MapNs.Map): unknown {
   };
 }
 
+function compactSurfaces(scraped: ScrapedNs.ScrapedSurfaces): unknown[] {
+  return scraped.surfaces.map((s) => ({
+    url: s.url,
+    kind: s.kind,
+    meta_title: s.meta.title,
+    meta_description: s.meta.description ?? s.meta.og_description,
+    h1: s.h1,
+    h2: s.h2.slice(0, 15),
+    hero_copy: s.hero_copy,
+    subhero_copy: s.subhero_copy,
+    ctas: s.ctas.slice(0, 10),
+    pricing_tiers: s.pricing_tiers,
+    nav_labels: s.nav_links.map((l) => l.label).slice(0, 20),
+    testimonials: s.testimonials.slice(0, 5),
+    text_excerpt: s.text_excerpt.slice(0, 2000),
+  }));
+}
+
 export function buildStageAUserPrompt(input: StageAInput): string {
-  return [
-    "Here is the static codebase map for this product. This is your ONLY evidence.",
-    "",
-    "=== STATIC MAP (codebase) ===",
+  const lines: string[] = [
+    "=== PRIMARY: STATIC CODE MAP ===",
     JSON.stringify(compactMap(input.map), null, 2),
     "",
+  ];
+  if (input.scraped && input.scraped.surfaces.length > 0) {
+    lines.push(
+      "=== AUXILIARY: SCRAPED MARKETING SURFACES ===",
+      "(Use to understand positioning. Code wins when it conflicts.)",
+      JSON.stringify(compactSurfaces(input.scraped), null, 2),
+      "",
+    );
+  } else {
+    lines.push(
+      "=== AUXILIARY: SCRAPED MARKETING SURFACES ===",
+      "(none provided — run audit with a marketing URL to add this context)",
+      "",
+    );
+  }
+  lines.push(
     "=== TASK ===",
     "Produce ONE JSON object matching this TypeScript shape:",
     "",
@@ -58,7 +95,7 @@ export function buildStageAUserPrompt(input: StageAInput): string {
     "  schema_version: 1,",
     "  extracted_at: string, // ISO 8601",
     "  model: string,",
-    "  sources: Array<{ type: 'codebase_static_map'|'other', hash?: string }>,",
+    "  sources: Array<{ type: 'codebase_static_map'|'landing_page'|'pricing_page'|'features_page'|'docs'|'other', url?: string, hash?: string, scraped_at?: string }>,",
     "  lean_canvas: {",
     "    problem: { items: Array<{ statement: string, evidence: string[], confidence: number }> },",
     "    customer_segments: { items: Array<{ segment: string, evidence: string[], confidence: number }> },",
@@ -76,5 +113,6 @@ export function buildStageAUserPrompt(input: StageAInput): string {
     "}",
     "",
     "Return only the JSON object.",
-  ].join("\n");
+  );
+  return lines.join("\n");
 }
