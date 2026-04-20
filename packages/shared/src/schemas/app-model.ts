@@ -69,19 +69,14 @@ export const Transition = z.object({
 });
 export type Transition = z.infer<typeof Transition>;
 
-export const SynthesisNote = z.object({
-  claim: z.string(),
-  resolution: z.string(),
-  evidence: z.string(),
-});
-export type SynthesisNote = z.infer<typeof SynthesisNote>;
-
 export const AppModelSchema = z.object({
   schema_version: z.literal(1),
   audit_id: z.string(),
   generated_at: z.string(),
-  // Multiple models may contribute via the ensemble+synthesizer path.
-  models: z.array(z.string()),
+  // `models` is kept as an array for forward compatibility (a future
+  // multi-model path could populate more than one). In v1.2.0 it's
+  // a single-element list.
+  models: z.array(z.string()).min(1),
   profile: ProjectProfileSchema,
   entry_points: z.array(EntryPoint).min(1),
   // Walls/screens/nav may be empty — headless APIs, libraries, and
@@ -92,15 +87,5 @@ export const AppModelSchema = z.object({
   navigation_graph: z.array(Transition),
   known_unknowns: z.array(z.string()),
   seed_files_used: z.array(z.string()),
-  synthesis_notes: z.array(SynthesisNote).optional(),
 });
 export type AppModel = z.infer<typeof AppModelSchema>;
-
-// What a single modeler returns (no synthesis_notes yet — the
-// synthesizer attaches those later). The shape is otherwise identical
-// to AppModelSchema so the synthesizer can consume both branches with
-// one type.
-export const ModelerOutputSchema = AppModelSchema.extend({
-  models: z.array(z.string()).length(1),
-}).omit({ synthesis_notes: true });
-export type ModelerOutput = z.infer<typeof ModelerOutputSchema>;

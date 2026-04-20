@@ -1,13 +1,13 @@
 import type { ProjectProfile } from "@tpm/shared/schemas/project-profile";
-import type { ModelerOutput } from "@tpm/shared/schemas/app-model";
 import type { RequestedFile } from "./classify-project-prompt.js";
-import type { DisputeExcerpt } from "./model-app-diff.js";
 
-// ─────────────────────────────────────────────────────────────
-// MODELER PROMPT — what a single "eyes on the codebase" call sees.
-// ─────────────────────────────────────────────────────────────
+// B-model system prompt. Single call (v1.2.0) — collapsed from
+// Modeler A + Modeler B + Synthesizer once we moved to a single
+// reliable model family (Anthropic). The prompt is the old modeler
+// prompt with the "models array with a single element" contract
+// relaxed to AppModel's multi-element array.
 
-export const MODELER_SYSTEM_PROMPT = `You are a senior engineer reading a codebase cold. You do not execute the code. You do not guess. Your job is to produce a verifiable structural model of how a user moves through this app — a navigation graph rooted at concrete entry points, with any walls (auth, paywall, onboarding, waitlist, feature flag, rate limit, region block, or whatever the code actually contains) that gate access to screens.
+export const MODEL_APP_SYSTEM_PROMPT = `You are a senior engineer reading a codebase cold. You do not execute the code. You do not guess. Your job is to produce a verifiable structural model of how a user moves through this app — a navigation graph rooted at concrete entry points, with any walls (auth, paywall, onboarding, waitlist, feature flag, rate limit, region block, or whatever the code actually contains) that gate access to screens.
 
 You will receive:
 - A project_profile describing what kind of project this is (B-classify's output).
@@ -26,7 +26,7 @@ HARD RULES:
 
 RESPOND WITH ONE JSON OBJECT matching this TypeScript shape — no prose, no code fences:
 
-type ModelerOutput = {
+type AppModel = {
   schema_version: 1;
   audit_id: string;     // passed in, echo back
   generated_at: string; // ISO 8601 UTC now
@@ -42,7 +42,7 @@ type ModelerOutput = {
 
 Stable id format: E001/E002 for entry_points, W001 for walls, S001 for screens, T001 for transitions.`;
 
-export function buildModelerUserPrompt(input: {
+export function buildModelAppUserPrompt(input: {
   auditId: string;
   profile: ProjectProfile;
   seedFiles: RequestedFile[];
@@ -67,72 +67,6 @@ export function buildModelerUserPrompt(input: {
     seedFileBlocks.join("\n\n"),
     "",
     "=== TASK ===",
-    "Produce the ModelerOutput JSON now, following every rule in your system prompt.",
-  ].join("\n");
-}
-
-// ─────────────────────────────────────────────────────────────
-// SYNTHESIZER PROMPT — the "principal engineer" reconciling two juniors.
-// ─────────────────────────────────────────────────────────────
-
-export const SYNTHESIZER_SYSTEM_PROMPT = `You are a principal engineer reviewing two independent junior engineers' structural analyses of the same codebase. Your job is to produce the CONSENSUS answer.
-
-You will receive:
-- Two ModelerOutputs, A and B.
-- The project_profile (from B-classify, both modelers got the same one).
-- agreed_claims: the items where A and B already match — you pass these through unchanged.
-- disputed_claims: items where A and B disagree, each with the specific file excerpts that could resolve the dispute.
-
-For each disputed_claim:
-- Read the quoted code in file_excerpts carefully.
-- Pick the correct answer. If neither modeler is right, produce the correct one yourself based on the code.
-- If the code genuinely doesn't answer the dispute, record the claim in known_unknowns rather than forcing a choice.
-- Do NOT favor modeler A or B because one model is better — judge on the code alone.
-
-For EVERY non-trivial resolution (every disputed claim you decided), add a synthesis_notes entry: {claim, resolution, evidence}. "evidence" is a short code span or file-path reference. This makes every choice auditable.
-
-HARD RULES:
-1. Every file_path in your output must appear in seed_files_used (combined from A and B).
-2. Every Transition.to_screen (if non-null and is_external=false) must exist in your final screens[].id list.
-3. Every Screen.gated_by_walls[] id must exist in your final walls[].id list.
-4. Every Wall.redirect_on_success (if non-null) must exist in your final screens[].id list.
-5. entry_points must have at least one element.
-6. Ids are YOUR ids — you may re-number (E001, W001, S001, T001) to maintain consistency after merging.
-
-RESPOND WITH ONE JSON OBJECT matching the AppModel TypeScript shape (same as ModelerOutput but with models: string[] listing all contributors including yourself, and with synthesis_notes: Array<{claim, resolution, evidence}>). No prose, no code fences.`;
-
-export function buildSynthesizerUserPrompt(input: {
-  auditId: string;
-  profile: ProjectProfile;
-  modelerA: ModelerOutput;
-  modelerB: ModelerOutput;
-  agreedSummary: {
-    entry_points: ModelerOutput["entry_points"];
-    walls: ModelerOutput["walls"];
-    screens: ModelerOutput["screens"];
-    navigation_graph: ModelerOutput["navigation_graph"];
-  };
-  disputedClaims: DisputeExcerpt[];
-}): string {
-  return [
-    `audit_id: ${input.auditId}`,
-    "",
-    "=== PROJECT PROFILE ===",
-    JSON.stringify(input.profile, null, 2),
-    "",
-    "=== MODELER A ===",
-    JSON.stringify(input.modelerA, null, 2),
-    "",
-    "=== MODELER B ===",
-    JSON.stringify(input.modelerB, null, 2),
-    "",
-    "=== AGREED CLAIMS (pass through unchanged unless merging ids forces a rename) ===",
-    JSON.stringify(input.agreedSummary, null, 2),
-    "",
-    "=== DISPUTED CLAIMS (resolve each one, cite evidence) ===",
-    JSON.stringify(input.disputedClaims, null, 2),
-    "",
-    "=== TASK ===",
-    "Produce the consensus AppModel JSON now. Include synthesis_notes for every disputed claim you resolved.",
+    "Produce the AppModel JSON now, following every rule in your system prompt.",
   ].join("\n");
 }

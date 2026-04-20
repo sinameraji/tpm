@@ -127,11 +127,11 @@ describe("runStageB — snapshot → classify → model → walk", () => {
       unknowns: [],
     };
 
-    const modelerAOutput = {
+    const appModelOutput = {
       schema_version: 1,
       audit_id: "aB1",
       generated_at: new Date().toISOString(),
-      models: ["@cf/qwen/qwen2.5-coder-32b-instruct"],
+      models: ["claude-sonnet-4-6"],
       profile,
       entry_points: [
         {
@@ -169,18 +169,6 @@ describe("runStageB — snapshot → classify → model → walk", () => {
       known_unknowns: [],
       seed_files_used: ["main.js", "src/Home.tsx"],
     };
-    // Modeler B produces the SAME output so there are zero disputes —
-    // keeps the test focused on orchestration, not on synthesizer
-    // disagreement handling (covered by model-app-diff tests).
-    const modelerBOutput = {
-      ...modelerAOutput,
-      models: ["@cf/meta/llama-3.3-70b-instruct-fp8-fast"],
-    };
-    const synthesizerOutput = {
-      ...modelerAOutput,
-      models: ["@cf/meta/llama-3.3-70b-instruct-fp8-fast"],
-      synthesis_notes: [],
-    };
     const walkerOutput = {
       steps: [
         {
@@ -217,18 +205,12 @@ describe("runStageB — snapshot → classify → model → walk", () => {
     };
 
     const gateway = routedGateway({
-      // B-classify + B-walk ported to Sonnet in C8 + C9.
+      // All three B sub-stages now go to Sonnet after the v1.2.0
+      // ensemble collapse (C10).
       "claude-sonnet-4-6": [
         { text: JSON.stringify({ mode: "final", profile }) }, // B-classify
+        { text: JSON.stringify(appModelOutput) }, // B-model (single call)
         { text: JSON.stringify(walkerOutput) }, // B-walk persona
-      ],
-      // B-model ensemble (Modeler A/B/Synth) still on CF until C10.
-      "@cf/qwen/qwen2.5-coder-32b-instruct": [
-        { text: JSON.stringify(modelerAOutput) }, // Modeler A
-      ],
-      "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [
-        { text: JSON.stringify(modelerBOutput) }, // Modeler B
-        { text: JSON.stringify(synthesizerOutput) }, // Synthesizer
       ],
     });
 
