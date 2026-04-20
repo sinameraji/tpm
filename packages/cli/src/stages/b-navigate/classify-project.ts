@@ -26,12 +26,13 @@ import type { RepoSnapshot } from "./snapshot.js";
 
 // Qwen2.5-Coder is the code specialist; JSON mode is natively supported.
 // Qwen2.5-Coder-32B has a 24K total context on Workers AI. Round-2
-// requested files (up to 6) are capped at 150 lines each, keeping
-// input + 4K output budget under the limit.
+// concatenates up to 6 requested files at 100 lines each ≈ 33K chars
+// ≈ 12K CF tokens. Plus ~1.5K snapshot + ~1.5K system + 3K output
+// ≈ 18K total. Margin of 6K for tokenizer variance.
 export const CLASSIFY_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct";
-const MAX_TOKENS = 4_000;
+const MAX_TOKENS = 3_000;
 const TEMPERATURE = 0.1;
-const MAX_FILE_LINES = 150;
+const MAX_FILE_LINES = 100;
 
 export interface ClassifyDeps {
   gateway: ModelGateway;

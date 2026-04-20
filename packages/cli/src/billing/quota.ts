@@ -1,5 +1,5 @@
 import * as os from "node:os";
-import { loadTokens } from "../auth/tokens.js";
+import { ensureFreshToken } from "../auth/tokens.js";
 
 export interface QuotaStatus {
   mode: "hosted_trial" | "whitelisted";
@@ -25,10 +25,7 @@ export class QuotaClient {
   }
 
   async check(): Promise<QuotaStatus> {
-    const tokens = loadTokens(this.homeDir);
-    if (!tokens) {
-      throw new Error("no access token — run `tpm audit` once to register the device");
-    }
+    const tokens = await ensureFreshToken(this.config.endpoint, this.homeDir, this.fetchImpl);
     const res = await this.fetchImpl(new URL("/quota/check", this.config.endpoint).toString(), {
       headers: { authorization: `Bearer ${tokens.access_token}` },
     });

@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { loadTokens } from "../auth/tokens.js";
+import { ensureFreshToken } from "../auth/tokens.js";
 
 export interface AuditSyncConfig {
   endpoint: string;
@@ -17,9 +17,8 @@ export class AuditSync {
     this.homeDir = config.homeDir ?? os.homedir();
   }
 
-  private bearer(): string {
-    const t = loadTokens(this.homeDir);
-    if (!t) throw new Error("no access token");
+  private async bearer(): Promise<string> {
+    const t = await ensureFreshToken(this.config.endpoint, this.homeDir, this.fetchImpl);
     return `Bearer ${t.access_token}`;
   }
 
@@ -31,7 +30,7 @@ export class AuditSync {
   }): Promise<{ r2_prefix: string }> {
     const res = await this.fetchImpl(new URL("/audits", this.config.endpoint).toString(), {
       method: "POST",
-      headers: { authorization: this.bearer(), "content-type": "application/json" },
+      headers: { authorization: await this.bearer(), "content-type": "application/json" },
       body: JSON.stringify({
         audit_id: params.auditId,
         target: params.target,
@@ -56,7 +55,7 @@ export class AuditSync {
       new URL(`/audits/${params.auditId}`, this.config.endpoint).toString(),
       {
         method: "PATCH",
-        headers: { authorization: this.bearer(), "content-type": "application/json" },
+        headers: { authorization: await this.bearer(), "content-type": "application/json" },
         body: JSON.stringify({
           status: params.status,
           total_neurons: params.totalNeurons,
@@ -80,7 +79,7 @@ export class AuditSync {
         {
           method: "PUT",
           headers: {
-            authorization: this.bearer(),
+            authorization: await this.bearer(),
             "content-type": inferContentType(relName),
           },
           body,
@@ -102,7 +101,7 @@ export class AuditSync {
     }>
   > {
     const res = await this.fetchImpl(new URL("/audits", this.config.endpoint).toString(), {
-      headers: { authorization: this.bearer() },
+      headers: { authorization: await this.bearer() },
     });
     if (!res.ok) throw new Error(`listAudits ${res.status}: ${await res.text()}`);
     const body = (await res.json()) as {

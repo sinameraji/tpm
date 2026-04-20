@@ -51,13 +51,47 @@ describe("QuotaClient", () => {
     expect(headers?.authorization ?? headers?.Authorization).toBe("Bearer a");
   });
 
-  it("throws a clear error when no token exists", async () => {
+  it("auto-registers the device when no local token exists", async () => {
     const home = tempHome();
+    const calls: string[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = typeof input === "string" ? input : (input as URL).toString();
+      calls.push(url);
+      if (url.endsWith("/device/register")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            device_id: "d",
+            tier: "free",
+            access_token: "fresh",
+            refresh_token: "r",
+            expires_in: 3600,
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          mode: "hosted_trial",
+          limit: 1,
+          used: 0,
+          remaining: 1,
+          allowances: { full_audit: true, quick_audit: true },
+          self_host: null,
+        }),
+        { status: 200 },
+      );
+    };
     const client = new QuotaClient({
       endpoint: "https://tpm-api.sina-b35.workers.dev",
+      fetchImpl,
       homeDir: home,
     });
-    await expect(client.check()).rejects.toThrow(/no access token/i);
+    const status = await client.check();
+    expect(status.mode).toBe("hosted_trial");
+    expect(calls.some((u) => u.endsWith("/device/register"))).toBe(true);
+    expect(calls.some((u) => u.endsWith("/quota/check"))).toBe(true);
   });
 });
 
