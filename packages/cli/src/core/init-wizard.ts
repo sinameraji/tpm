@@ -32,11 +32,6 @@ longer and cost more.
 1. Create a key:  https://console.anthropic.com/settings/keys
 2. Paste it here (starts with sk-ant-...):`;
 
-const TIER_PROMPT = `Pick a default model tier:
-  [1] fast  — Sonnet 4.6 throughout. Cheaper, faster.
-  [2] deep  — Opus 4.7 on the heavy stages (B-model, C, E-spec, F). 3-5x cost.
-Enter 1 or 2 (default 1):`;
-
 function write(line: string): void {
   process.stderr.write(line + "\n");
 }
@@ -191,12 +186,11 @@ export async function runKeyWizard(opts: {
   }
 
   cfg = setConfigValue(cfg, "anthropic_api_key", key);
-
-  write("");
-  write(TIER_PROMPT);
-  const tierAns = (await readLine("  >")).trim();
-  const tier = tierAns === "2" ? "deep" : "fast";
-  cfg = setConfigValue(cfg, "model_tier", tier);
+  // Default tier is fast (Sonnet 4.6 everywhere). We intentionally
+  // don't ask the user to pick — first-run should have zero cryptic
+  // choices. Power users discover the `deep` tier through `tpm config`
+  // output or the pointer printed below.
+  cfg = setConfigValue(cfg, "model_tier", "fast");
 
   saveConfig(cfg);
   write("");
@@ -204,6 +198,11 @@ export async function runKeyWizard(opts: {
   write(
     `${DIM}Key stored locally only. TPM will never transmit it except to api.anthropic.com.${RESET}`,
   );
+  write("");
+  write(
+    `${DIM}Using the ${RESET}fast${DIM} tier (Sonnet 4.6). For deeper analysis on large codebases, upgrade later with:${RESET}`,
+  );
+  write(`${DIM}  tpm config set model-tier deep${RESET}`);
   write("");
   return { cfg, keySet: true };
 }
