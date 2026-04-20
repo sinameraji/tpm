@@ -31,6 +31,20 @@ Keep entries terse: symptom, root cause, remediation, commit link.
 
 ---
 
+## Workers AI neuron accounting — JSON-mode multiplier + free-tier enforcement
+
+- **Symptom:** hosted-tier audit errored with `4006: you have used up your daily free allocation of 10,000 neurons`. The Workers AI dashboard showed only 6.58k/10k consumed in the "Text Generation" card, but a separate "Other" card showed **6.99k neurons on `@cf/meta/llama-3.3-70b-instruct-sd`** — a model ID TPM never explicitly calls.
+- **Root cause:** when you request `@cf/meta/llama-3.3-70b-instruct-fp8-fast` with `response_format: { type: "json_object" }`, Workers AI routes the call through the speculative-decoding backend (`-sd` variant), which bills separately. Effective neuron cost per JSON-mode call is roughly 2.5× the sticker price. The cumulative-usage dashboard and the enforcer disagree about which models to aggregate, so the "you haven't hit the limit" display is misleading.
+- **Implication for pricing estimates in `docs/models.md`:** a full 6-stage audit that our pre-Phase-2-governance numbers priced at ~$0.50 is closer to **$1.00–$1.25** in real neurons. Budget accordingly.
+- **Implication for the hosted trial:** the free 10K neurons/day on an un-upgraded account covers roughly **1 audit per day**. Users on the hosted tier will hit 4006 if they try a second audit before 00:00 UTC.
+- **Remediation options:**
+  1. Enable Workers Paid on the account. Removes the 10K/day enforcement. Bills per-neuron (~$0.011/1K). For accounts on the Cloudflare for Startups Program, invoices draw from the $250K credit pool — no out-of-pocket cost.
+  2. Use BYO gateway (`tpm config set gateway byo`) with an account that has Workers Paid enabled.
+  3. Temporarily reduce JSON-mode calls (downgrades output quality — not recommended).
+- **Why this wasn't caught earlier:** the neuron cost per call during development was small enough to fit under the 10K/day cap on the first run. The second run of the day pushed us over.
+
+---
+
 ## Lessons
 
 - **Always diagnose before fixing.** For both failures, we initially hypothesized the wrong cause (thinking-tokens for Qwen3-A3B; we were about to re-hypothesize on the shape without verifying). A one-line structured log in the backend confirmed shape in 20 minutes; would have saved days the first time.

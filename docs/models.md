@@ -49,11 +49,19 @@ Per-stage model selection will live in `~/.tpm/config.yaml` once per-stage overr
 
 Neurons are approximated server-side as `0.01 × (prompt_tokens + completion_tokens)` until real Cloudflare invoices calibrate this. Target per-audit spend: **~$0.60–0.75** after the Stage B redesign (was ~$0.50).
 
-| Stage | Target     | Notes                                                                                                                                                                        |
-| ----- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A     | $0.10      | Single llama-3.3-70b call; compacted static map in, Lean Canvas JSON out                                                                                                     |
-| B     | $0.22–0.35 | B-classify (1–2 Qwen2.5-Coder calls) + B-model ensemble (Qwen2.5-Coder + Llama 3.3-70B in parallel + Llama synthesizer) + B-walk (1 Qwen3-30B call per persona, 1–2 typical) |
-| C     | $0.10      | Single llama-3.3-70b call                                                                                                                                                    |
-| D     | $0.05      | Single llama-3.3-70b call                                                                                                                                                    |
-| E     | $0.08      | 5 llama spec calls + 5 qwen prototype calls, parallelized                                                                                                                    |
-| F     | $0.02      | Single llama-3.3-70b call, markdown out                                                                                                                                      |
+| Stage | Target     | Notes                                                                                                                                                                            |
+| ----- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A     | $0.10      | Single llama-3.3-70b call; compacted static map in, Lean Canvas JSON out                                                                                                         |
+| B     | $0.22–0.35 | B-classify (1–2 Qwen2.5-Coder calls) + B-model ensemble (Qwen2.5-Coder + Llama 3.3-70B in parallel + Llama synthesizer) + B-walk (1 Llama-3.3-70B call per persona, 1–2 typical) |
+| C     | $0.10      | Single llama-3.3-70b call                                                                                                                                                        |
+| D     | $0.05      | Single llama-3.3-70b call                                                                                                                                                        |
+| E     | $0.08      | 5 llama spec calls + 5 llama prototype calls, bounded concurrency=2 (1.1.3)                                                                                                      |
+| F     | $0.02      | Single llama-3.3-70b call, markdown out                                                                                                                                          |
+
+### JSON-mode multiplier (observed in production)
+
+Requesting `response_format: { type: "json_object" }` on Llama 3.3-70B triggers Workers AI's speculative-decoding backend (`@cf/meta/llama-3.3-70b-instruct-sd`). Neurons are billed against the `-sd` routing **in addition to** the base model call — effective cost is roughly **2.5× the sticker neuron price per JSON-mode call**. Real per-audit cost is closer to **$1.00–$1.25**, not the $0.60–$0.75 target above. The Workers AI usage dashboard under-reports this because its "Text Generation" aggregate card excludes the `-sd` routing bucket. See `docs/model-failures.md` for the full incident and remediation.
+
+### Hosted-tier free allocation
+
+Cloudflare's free Workers AI tier is **10K neurons/day/account**. A full 6-stage TPM audit is ~8–12K neurons after the JSON-mode multiplier, so the free tier covers **~1 audit/day**. Upgrade to Workers Paid (or use BYO gateway against an account with Workers Paid enabled) for unlimited audits. Cloudflare for Startups Program members: your $250K credit pool covers Workers Paid usage — ask startups@cloudflare.com to enable the paid tier on your account.
