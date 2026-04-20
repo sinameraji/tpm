@@ -2,55 +2,177 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { configSummary, getConfigValue, loadConfig, saveConfig, setConfigValue } from "./config.js";
+import yaml from "js-yaml";
+import {
+  configSummary,
+  detectLegacyConfig,
+  getConfigValue,
+  loadConfig,
+  resolveAnthropicKey,
+  saveConfig,
+  setConfigValue,
+  unsetConfigValue,
+} from "./config.js";
 
 function tempHome(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "tpm-cfg-"));
 }
 
+function writeLegacyConfigFile(home: string, body: unknown): void {
+  const dir = path.join(home, ".tpm");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "config.yaml"), yaml.dump(body));
+}
+
 describe("config", () => {
   it("loads defaults when no file exists", () => {
     const cfg = loadConfig(tempHome());
-    expect(cfg.gateway).toBe("hosted");
-    expect(cfg.api_endpoint).toBe("https://tpm-api.sina-b35.workers.dev");
+    expect(cfg.model_tier).toBe("fast");
+    expect(cfg.anthropic_api_key).toBeUndefined();
+    expect(cfg.stage_models).toBeUndefined();
+    expect(detectLegacyConfig(cfg)).toBe(false);
   });
 
-  it("set → save → load round trip", () => {
+  it("set → save → load round trip (anthropic key + tier + stage overrides)", () => {
     const home = tempHome();
     let cfg = loadConfig(home);
-    cfg = setConfigValue(cfg, "gateway", "byo");
-    cfg = setConfigValue(cfg, "byo.account_id", "my-acct");
-    cfg = setConfigValue(cfg, "byo.api_token", "secret-token-abc");
-    cfg = setConfigValue(cfg, "byo.models.heavy", "@cf/openai/gpt-oss-120b");
+    cfg = setConfigValue(cfg, "anthropic-key", "sk-ant-abc123XYZ");
+    cfg = setConfigValue(cfg, "model-tier", "deep");
+    cfg = setConfigValue(cfg, "stage_models.c", "claude-opus-4-7");
+    cfg = setConfigValue(cfg, "stage_models.f", "claude-opus-4-7");
     saveConfig(cfg, home);
+
     const reloaded = loadConfig(home);
-    expect(reloaded.gateway).toBe("byo");
-    expect(reloaded.byo.account_id).toBe("my-acct");
-    expect(reloaded.byo.api_token).toBe("secret-token-abc");
-    expect(reloaded.byo.models?.heavy).toBe("@cf/openai/gpt-oss-120b");
+    expect(reloaded.anthropic_api_key).toBe("sk-ant-abc123XYZ");
+    expect(reloaded.model_tier).toBe("deep");
+    expect(reloaded.stage_models).toEqual({
+      c: "claude-opus-4-7",
+      f: "claude-opus-4-7",
+    });
   });
 
-  it("rejects invalid gateway value", () => {
+  it("unset removes key / stage override / resets tier", () => {
+    let cfg = loadConfig(tempHome());
+    cfg = setConfigValue(cfg, "anthropic-key", "sk-ant-xyz");
+    cfg = setConfigValue(cfg, "model-tier", "deep");
+    cfg = setConfigValue(cfg, "stage_models.c", "claude-opus-4-7");
+
+    cfg = unsetConfigValue(cfg, "anthropic-key");
+    expect(cfg.anthropic_api_key).toBeUndefined();
+
+    cfg = unsetConfigValue(cfg, "stage_models.c");
+    expect(cfg.stage_models).toBeUndefined();
+
+    cfg = unsetConfigValue(cfg, "model-tier");
+    expect(cfg.model_tier).toBe("fast");
+  });
+
+  it("rejects invalid model_tier value", () => {
     const cfg = loadConfig(tempHome());
-    expect(() => setConfigValue(cfg, "gateway", "other")).toThrow(/hosted.*byo/);
+    expect(() => setConfigValue(cfg, "model-tier", "turbo")).toThrow(/fast.*deep/);
   });
 
   it("rejects unknown keys", () => {
     const cfg = loadConfig(tempHome());
     expect(() => setConfigValue(cfg, "weird.thing", "x")).toThrow(/unknown/);
+    expect(() => setConfigValue(cfg, "stage_models.z", "x")).toThrow(/unknown/);
   });
 
-  it("get masks byo.api_token", () => {
-    let cfg = loadConfig(tempHome());
-    cfg = setConfigValue(cfg, "byo.api_token", "ABCD1234EFGH5678IJKL");
-    const masked = getConfigValue(cfg, "byo.api_token");
-    expect(masked).toBe("ABCD…IJKL");
+  it("rejects empty anthropic key", () => {
+    const cfg = loadConfig(tempHome());
+    expect(() => setConfigValue(cfg, "anthropic-key", "   ")).toThrow(/empty/);
   });
 
-  it("configSummary masks the token", () => {
+  it("get masks anthropic_api_key preserving the sk-ant- prefix", () => {
     let cfg = loadConfig(tempHome());
-    cfg = setConfigValue(cfg, "byo.api_token", "ABCD1234EFGH5678IJKL");
-    const s = configSummary(cfg) as { byo: { api_token?: string } };
-    expect(s.byo.api_token).toBe("ABCD…IJKL");
+    cfg = setConfigValue(cfg, "anthropic-key", "sk-ant-abcdefghijklmnopXYZ9");
+    const masked = getConfigValue(cfg, "anthropic-key");
+    expect(masked).toMatch(/^sk-ant-…/);
+    expect(masked).toContain("XYZ9");
+    expect(masked).not.toContain("abcdef");
+  });
+
+  it("configSummary masks the key and reports legacy=false for fresh configs", () => {
+    let cfg = loadConfig(tempHome());
+    cfg = setConfigValue(cfg, "anthropic-key", "sk-ant-abcdefghijklmnopXYZ9");
+    const s = configSummary(cfg);
+    expect(s.anthropic_api_key).toMatch(/^sk-ant-…/);
+    expect(s.legacy_detected).toBe(false);
+  });
+});
+
+describe("resolveAnthropicKey", () => {
+  it("env wins over config", () => {
+    let cfg = loadConfig(tempHome());
+    cfg = setConfigValue(cfg, "anthropic-key", "sk-ant-from-config");
+    expect(resolveAnthropicKey(cfg, { ANTHROPIC_API_KEY: "sk-ant-from-env" })).toBe(
+      "sk-ant-from-env",
+    );
+  });
+
+  it("falls back to config when env is unset", () => {
+    let cfg = loadConfig(tempHome());
+    cfg = setConfigValue(cfg, "anthropic-key", "sk-ant-from-config");
+    expect(resolveAnthropicKey(cfg, {})).toBe("sk-ant-from-config");
+  });
+
+  it("returns undefined when neither is set", () => {
+    expect(resolveAnthropicKey(loadConfig(tempHome()), {})).toBeUndefined();
+  });
+
+  it("treats whitespace-only env as unset", () => {
+    let cfg = loadConfig(tempHome());
+    cfg = setConfigValue(cfg, "anthropic-key", "sk-ant-from-config");
+    expect(resolveAnthropicKey(cfg, { ANTHROPIC_API_KEY: "   " })).toBe("sk-ant-from-config");
+  });
+});
+
+describe("legacy detection", () => {
+  it("flags a 1.1.x config.yaml", () => {
+    const home = tempHome();
+    writeLegacyConfigFile(home, {
+      schema_version: 1,
+      gateway: "hosted",
+      api_endpoint: "https://tpm-api.sina-b35.workers.dev",
+      byo: {
+        account_id: "acc",
+        api_token: "tok",
+      },
+    });
+    const cfg = loadConfig(home);
+    expect(detectLegacyConfig(cfg)).toBe(true);
+    // New fields take their defaults on a purely-legacy file.
+    expect(cfg.model_tier).toBe("fast");
+    expect(cfg.anthropic_api_key).toBeUndefined();
+  });
+
+  it("does not flag a config that only has the new keys", () => {
+    const home = tempHome();
+    writeLegacyConfigFile(home, {
+      schema_version: 1,
+      model_tier: "deep",
+      anthropic_api_key: "sk-ant-real",
+    });
+    const cfg = loadConfig(home);
+    expect(detectLegacyConfig(cfg)).toBe(false);
+  });
+
+  it("saveConfig does NOT persist the legacy block", () => {
+    const home = tempHome();
+    writeLegacyConfigFile(home, {
+      schema_version: 1,
+      gateway: "hosted",
+      api_endpoint: "https://tpm-api.example",
+      model_tier: "fast",
+    });
+    const cfg = loadConfig(home);
+    expect(detectLegacyConfig(cfg)).toBe(true);
+    saveConfig(cfg, home);
+    const rewritten = yaml.load(
+      fs.readFileSync(path.join(home, ".tpm", "config.yaml"), "utf8"),
+    ) as Record<string, unknown>;
+    expect(rewritten.gateway).toBeUndefined();
+    expect(rewritten.api_endpoint).toBeUndefined();
+    expect(rewritten.byo).toBeUndefined();
   });
 });

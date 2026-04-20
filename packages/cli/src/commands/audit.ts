@@ -60,8 +60,15 @@ export function register(program: Command): void {
       }
 
       const cfg = loadConfig();
-      const endpoint = opts.endpoint ?? cfg.api_endpoint;
-      const gatewayMode = opts.gateway ?? cfg.gateway;
+      // Transitional: audit.ts still runs the v1.1.x workers-ai path.
+      // v1.2.0 config dropped gateway/api_endpoint/byo as top-level
+      // keys — they're only read from the `legacy` block for
+      // backward-compat. The full gateway-selection rewrite lands
+      // with the Stage A Anthropic port in C5+.
+      const LEGACY_DEFAULT_ENDPOINT = "https://tpm-api.sina-b35.workers.dev";
+      const endpoint = opts.endpoint ?? cfg.legacy?.api_endpoint ?? LEGACY_DEFAULT_ENDPOINT;
+      const legacyGateway = cfg.legacy?.gateway === "byo" ? "byo" : "hosted";
+      const gatewayMode = opts.gateway ?? legacyGateway;
 
       // Marketing URL resolution: flag → project config → interactive prompt (TTY only) → none.
       let marketingUrl: string | undefined;
@@ -100,7 +107,9 @@ export function register(program: Command): void {
       let gateway: ModelGateway;
       let apiEndpointForOrchestrator: string | undefined;
       if (gatewayMode === "byo") {
-        if (!cfg.byo.account_id || !cfg.byo.api_token) {
+        const byoAcct = cfg.legacy?.byo?.account_id;
+        const byoTok = cfg.legacy?.byo?.api_token;
+        if (!byoAcct || !byoTok) {
           emitText(
             runtime,
             "BYO gateway requires both byo.account_id and byo.api_token. Run `tpm self-host` for setup.",
@@ -110,8 +119,8 @@ export function register(program: Command): void {
           return;
         }
         gateway = new DirectWorkersAIGateway({
-          accountId: cfg.byo.account_id,
-          apiToken: cfg.byo.api_token,
+          accountId: byoAcct,
+          apiToken: byoTok,
         });
         apiEndpointForOrchestrator = undefined;
       } else {
