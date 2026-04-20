@@ -35,8 +35,13 @@ export const MODELER_A_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct";
 export const MODELER_B_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 export const SYNTHESIZER_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
-const MODELER_MAX_TOKENS = 8_000;
-const SYNTHESIZER_MAX_TOKENS = 8_000;
+// Qwen2.5-Coder-32B has a hard 24K total context on Workers AI and
+// CF's tokenizer counts dense code more heavily than our estimator.
+// 5K output leaves ~19K for input with safety margin. Llama has
+// plenty of room either way — we keep modelers symmetric for the
+// synthesizer.
+const MODELER_MAX_TOKENS = 5_000;
+const SYNTHESIZER_MAX_TOKENS = 5_000;
 
 export interface ModelAppDeps {
   gateway: ModelGateway;

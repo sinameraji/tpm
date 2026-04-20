@@ -55,12 +55,27 @@ interface AiRunUsage {
 }
 
 interface AiRunResult {
-  response?: string;
+  // Workers AI returns a string for text models and a parsed object for
+  // some models when response_format: { type: "json_object" } is set
+  // (notably Qwen2.5-Coder). The client always wants a string, so we
+  // normalize below.
+  response?: unknown;
   usage?: AiRunUsage;
 }
 
 function isAiRunResult(x: unknown): x is AiRunResult {
   return typeof x === "object" && x !== null && ("response" in x || "usage" in x);
+}
+
+function normalizeResponseText(response: unknown): string {
+  if (typeof response === "string") return response;
+  if (response === null || response === undefined) return "";
+  // Object → JSON string. The client was going to JSON.parse anyway.
+  try {
+    return JSON.stringify(response);
+  } catch {
+    return String(response);
+  }
 }
 
 // Workers AI pricing is expressed in "neurons" server-side. We approximate
@@ -164,7 +179,7 @@ export async function infer(request: Request, env: Env): Promise<Response> {
     ok: true,
     call_id: callId,
     model: body.model,
-    text: result.response ?? "",
+    text: normalizeResponseText(result.response),
     usage: {
       input_tokens: result.usage?.prompt_tokens ?? 0,
       output_tokens: result.usage?.completion_tokens ?? 0,

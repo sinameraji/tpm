@@ -43,8 +43,13 @@ import type { RequestedFile } from "./classify-project-prompt.js";
 
 export const STAGE_B_WALK_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
 const STAGE_B_WALK_MAX_TOKENS = 4_000;
-const MAX_SEED_FILE_LINES = 300;
-const MAX_SEED_FILES = 12;
+// Qwen2.5-Coder-32B enforces a 24K total context on Workers AI.
+// Cloudflare's tokenizer counts ~40% higher than our char/3.5 heuristic
+// for dense code, so we budget conservatively: 5K output + ~2K system
+// prompt + ~2K JSON overhead + ~12K seed files ≈ 21K (room for drift).
+// 6 files × 100 lines × ~55 chars ≈ 33K chars → ~11K CF tokens.
+const MAX_SEED_FILE_LINES = 100;
+const MAX_SEED_FILES = 6;
 
 export interface StageBDeps {
   gateway: ModelGateway;
