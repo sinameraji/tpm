@@ -215,10 +215,15 @@ function translateError(err: unknown): Error {
     );
   }
   if (err instanceof BadRequestError) {
-    // Context-too-large errors come back as 400 with a specific
-    // message; surface it verbatim so the user sees the actual
-    // token/context numbers.
+    // 400 from Anthropic covers several distinct situations. Detect
+    // the common ones so the user gets an actionable message
+    // instead of a generic "invalid request".
     const msg = (err as { message?: string }).message ?? "bad request";
+    if (/credit balance is too low|insufficient.*credit/i.test(msg)) {
+      return new Error(
+        "Anthropic: your credit balance is too low to run this audit. Add credits at https://console.anthropic.com/settings/billing and re-run `tpm audit`.",
+      );
+    }
     if (/context|token|too (large|long)/i.test(msg)) {
       return new Error(`Anthropic: input exceeds context window. ${msg}`);
     }

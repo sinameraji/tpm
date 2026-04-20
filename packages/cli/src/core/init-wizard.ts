@@ -45,44 +45,88 @@ function isTTY(): boolean {
   return Boolean(process.stdin.isTTY && process.stdout.isTTY);
 }
 
-// Masked single-line input. readline doesn't expose this directly —
-// we disable terminal echo around the .question() call. Cleanup is
-// in a try/finally so the terminal state is always restored.
+// Masked single-line input. Bypasses readline entirely — readline's
+// default echo was the 1.2.0-beta.1 bug: pasted input hit the
+// terminal before our '*' handler ran, so the real key leaked to
+// scrollback. Here we drop into raw mode, read stdin byte-by-byte,
+// and echo '*' for each printable char (and '\b \b' on backspace).
+// No readline in the hot path = no echo race.
 async function readMaskedLine(prompt: string): Promise<string> {
-  return new Promise((resolve) => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    const stdin = process.stdin;
-    process.stderr.write(prompt + " ");
+  const stdin = process.stdin;
+  // If we can't disable terminal echo (unusual TTY), refuse to read
+  // the key rather than leak it. Caller handles the null return.
+  if (typeof stdin.setRawMode !== "function") {
+    process.stderr.write(
+      "\nThis terminal doesn't support masked input. Set ANTHROPIC_API_KEY in your shell env instead, or re-run tpm init in a standard terminal.\n",
+    );
+    throw new Error("terminal does not support raw mode");
+  }
 
-    // Replace each keystroke with '*' until Enter.
-    const onData = (chunk: Buffer): void => {
-      const str = chunk.toString("utf8");
-      // Echo '*' for printable chars so the user sees length.
-      for (const ch of str) {
-        if (ch === "\n" || ch === "\r") continue;
-        if (ch === "\u0003") {
-          // Ctrl-C
+  return new Promise((resolve) => {
+    process.stderr.write(prompt + " ");
+    const buffer: string[] = [];
+    const wasRaw = stdin.isRaw === true;
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding("utf8");
+
+    const cleanup = (): void => {
+      stdin.off("data", onData);
+      stdin.setRawMode(wasRaw);
+      // Don't call stdin.pause() unconditionally — other readers
+      // might be waiting on it next.
+    };
+
+    // Modern terminals (iTerm2, Terminal.app, Alacritty, etc.) emit
+    // bracketed-paste markers around pastes: "\e[200~" before,
+    // "\e[201~" after. Raw mode forwards these verbatim — if we
+    // didn't skip them, "[200~" would be echoed and stored as part
+    // of the key. Track an "in escape sequence" state so everything
+    // from '\e' through the terminator '~' is swallowed.
+    let inEscape = false;
+
+    const onData = (chunk: string): void => {
+      for (const ch of chunk) {
+        if (inEscape) {
+          if (ch === "~" || (ch >= "A" && ch <= "Z") || (ch >= "a" && ch <= "z")) {
+            inEscape = false;
+          }
+          continue;
+        }
+        if (ch === "\u001b") {
+          // Start of a CSI / escape sequence. Don't echo, don't
+          // accumulate — wait for the terminator.
+          inEscape = true;
+          continue;
+        }
+        if (ch === "\r" || ch === "\n") {
           process.stderr.write("\n");
-          rl.close();
+          cleanup();
+          resolve(buffer.join(""));
+          return;
+        }
+        if (ch === "\u0003") {
+          // Ctrl-C — restore terminal before exiting so the shell
+          // prompt isn't left in raw mode.
+          process.stderr.write("\n");
+          cleanup();
           process.exit(130);
         }
-        process.stdout.write("*");
+        if (ch === "\u007f" || ch === "\b") {
+          // Backspace / Delete — visually erase last '*'.
+          if (buffer.length > 0) {
+            buffer.pop();
+            process.stderr.write("\b \b");
+          }
+          continue;
+        }
+        if (ch < " ") continue; // skip other control chars silently
+        buffer.push(ch);
+        process.stderr.write("*");
       }
     };
 
-    // Ensure the raw keystroke listener is on. Paste via terminal
-    // still works because readline handles the buffered line ending.
-    const wasRaw = stdin.isRaw === true;
-    if (typeof stdin.setRawMode === "function") stdin.setRawMode(true);
     stdin.on("data", onData);
-
-    rl.question("", (answer: string) => {
-      stdin.off("data", onData);
-      if (typeof stdin.setRawMode === "function") stdin.setRawMode(wasRaw);
-      process.stderr.write("\n");
-      rl.close();
-      resolve(answer.trim());
-    });
   });
 }
 
@@ -126,17 +170,24 @@ export async function runKeyWizard(opts: {
   write(INTRO);
 
   let key = "";
-  while (!key) {
-    key = (await readMaskedLine("  >")).trim();
-    if (!key) {
-      write(`${DIM}Empty key — paste again, or Ctrl-C to cancel.${RESET}`);
-      continue;
+  try {
+    while (!key) {
+      key = (await readMaskedLine("  >")).trim();
+      if (!key) {
+        write(`${DIM}Empty key — paste again, or Ctrl-C to cancel.${RESET}`);
+        continue;
+      }
+      if (!key.startsWith("sk-ant-")) {
+        write(
+          `${DIM}That doesn't look like an Anthropic key (expected sk-ant-...). Accepting it anyway — Anthropic will reject it on the first call if it's wrong.${RESET}`,
+        );
+      }
     }
-    if (!key.startsWith("sk-ant-")) {
-      write(
-        `${DIM}That doesn't look like an Anthropic key (expected sk-ant-...). Accepting it anyway — Anthropic will reject it on the first call if it's wrong.${RESET}`,
-      );
-    }
+  } catch {
+    // readMaskedLine refuses to read when it can't disable terminal
+    // echo (because leaking the key would be worse than failing).
+    // The wizard bails; caller prints the follow-up pointer.
+    return { cfg, keySet: false };
   }
 
   cfg = setConfigValue(cfg, "anthropic_api_key", key);
