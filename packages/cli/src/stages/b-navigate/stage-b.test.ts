@@ -217,14 +217,16 @@ describe("runStageB — snapshot → classify → model → walk", () => {
     };
 
     const gateway = routedGateway({
+      // B-classify ported to Sonnet in C8.
+      "claude-sonnet-4-6": [{ text: JSON.stringify({ mode: "final", profile }) }],
+      // B-model ensemble (Modeler A/B/Synth) still on CF until C10.
       "@cf/qwen/qwen2.5-coder-32b-instruct": [
-        { text: JSON.stringify({ mode: "final", profile }) }, // B-classify
         { text: JSON.stringify(modelerAOutput) }, // Modeler A
       ],
       "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [
         { text: JSON.stringify(modelerBOutput) }, // Modeler B
         { text: JSON.stringify(synthesizerOutput) }, // Synthesizer
-        { text: JSON.stringify(walkerOutput) }, // B-walk persona (1.1.3: Llama, not Qwen3)
+        { text: JSON.stringify(walkerOutput) }, // B-walk persona (ports in C9)
       ],
     });
 
