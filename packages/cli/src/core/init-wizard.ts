@@ -68,8 +68,15 @@ async function readMaskedLine(prompt: string): Promise<string> {
     const cleanup = (): void => {
       stdin.off("data", onData);
       stdin.setRawMode(wasRaw);
-      // Don't call stdin.pause() unconditionally — other readers
-      // might be waiting on it next.
+      // Exit flowing mode AND release the event-loop hold. Without
+      // this the process hangs after the wizard: Node treats an
+      // open, resumed stdin as a reason to keep running, so
+      // `tpm init` never returns control to the shell. Any later
+      // readline.createInterface (e.g. the "Replace it?" confirm
+      // when a key is already set) will ref + resume stdin again
+      // as needed.
+      stdin.pause();
+      if (typeof stdin.unref === "function") stdin.unref();
     };
 
     // Modern terminals (iTerm2, Terminal.app, Alacritty, etc.) emit
