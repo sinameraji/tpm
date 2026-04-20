@@ -1,12 +1,17 @@
 import type { LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
 import type { Paths } from "@tpm/shared/schemas/paths";
 
-export const STAGE_C_SYSTEM_PROMPT = `You are TPM, analyzing the delta between what the product's builder INTENDED and what users actually experience.
+// Base system prompt. Audit-agnostic. Concatenated with the pattern
+// library at runtime to form the full system message — the combined
+// block gets cached via cache_control: ephemeral (buildStageCSystem
+// Prompt below). This keeps the pattern library out of the user
+// message so cache hits aren't busted by audit-specific content.
+const STAGE_C_SYSTEM_BASE = `You are TPM, analyzing the delta between what the product's builder INTENDED and what users actually experience.
 
 You are given:
 1. lean_canvas — the builder's reconstructed intent (problem, segments, UVP, intended JTBD/value moment/critical path per persona).
 2. paths — what actually happened when TPM's navigator attempted each persona's job on the live product.
-3. pattern_library — curated product-design patterns with works_when / fails_when / exemplars.
+3. pattern_library — curated product-design patterns with works_when / fails_when / exemplars (in this system prompt).
 
 Your job is to produce a structured delta analysis. You must:
 
@@ -40,10 +45,17 @@ OVERALL HEADLINE: one sentence capturing the dominant finding.
 
 Respond with ONE JSON object that matches the provided schema. No prose, no code fences.`;
 
+// Combine base system + pattern library into one cached system
+// message. Pattern library is audit-agnostic (hash stable per
+// release); base instructions are stable too. Single cache point,
+// maximal hit rate across runs.
+export function buildStageCSystemPrompt(patternLibrarySummary: string): string {
+  return `${STAGE_C_SYSTEM_BASE}\n\n=== PATTERN LIBRARY ===\n${patternLibrarySummary}`;
+}
+
 export interface StageCInput {
   leanCanvas: LeanCanvas;
   paths: Paths;
-  patternLibrarySummary: string;
 }
 
 export function buildStageCUserPrompt(input: StageCInput): string {
@@ -80,9 +92,6 @@ export function buildStageCUserPrompt(input: StageCInput): string {
     "",
     "=== PATHS (observed) ===",
     JSON.stringify(pathsCompact, null, 2),
-    "",
-    "=== PATTERN LIBRARY ===",
-    input.patternLibrarySummary,
     "",
     "=== TASK ===",
     "Produce ONE JSON object matching this TypeScript shape:",

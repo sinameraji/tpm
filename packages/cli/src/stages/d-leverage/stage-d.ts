@@ -8,7 +8,7 @@ import type { Logger } from "../../core/logger.js";
 import { runStage, jsonParse, zodValidate, type StageSpec } from "../_lib/stage-runner.js";
 import type { ValidationResult } from "../_lib/validators.js";
 
-export const STAGE_D_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+export const STAGE_D_MODEL = "claude-sonnet-4-6";
 const STAGE_D_MAX_TOKENS = 8_000;
 
 export const STAGE_D_SYSTEM_PROMPT = `You are TPM, prioritizing problems discovered in a product audit by LEVERAGE — expected impact over effort.
@@ -103,13 +103,14 @@ export async function runStageD(delta: Delta, deps: StageDDeps): Promise<StageDR
     label: "Stage D · ranking by leverage",
     model: STAGE_D_MODEL,
     maxTokens: STAGE_D_MAX_TOKENS,
-    temperature: 0.15,
+    temperature: 0.1,
     responseFormat: "json",
     systemPrompt: STAGE_D_SYSTEM_PROMPT,
     userPrompt: buildUserPrompt(delta),
     parse: (raw) => jsonParse(raw),
     validate: zodValidate(ProblemsSchema),
     semanticCheck: stageDSemanticCheck,
+    cacheSystem: true,
   };
 
   const result = await runStage<Problems>(spec, {

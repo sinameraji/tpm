@@ -10,7 +10,7 @@ import type { Logger } from "../../core/logger.js";
 import { runStage, textParse, type StageSpec } from "../_lib/stage-runner.js";
 import { combine, hasRequiredSections, minLength } from "../_lib/validators.js";
 
-export const STAGE_F_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+export const STAGE_F_MODEL = "claude-sonnet-4-6";
 const STAGE_F_MAX_TOKENS = 16_000;
 
 const STAGE_F_SYSTEM = `You are TPM's writer. Produce a spec.md document for a product audit.
@@ -107,6 +107,7 @@ export async function runStageF(i: StageFInputs, deps: StageFDeps): Promise<Stag
     validate: (parsed) => parsed as string,
     semanticCheck: (md) =>
       combine(hasRequiredSections(md, REQUIRED_SECTIONS), minLength(md, 1000, "spec.md")),
+    cacheSystem: true,
   };
 
   const result = await runStage<string>(spec, {

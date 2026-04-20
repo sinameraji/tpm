@@ -186,31 +186,41 @@ export class Orchestrator {
 
       const patterns = loadBuiltInPatterns();
       const patternLibrarySummary = summarizePatternLibrary(patterns);
-      const c = await withProgress("Stage C · analyzing delta", () =>
-        runStageC(
-          { leanCanvas: a.leanCanvas, paths: b.paths },
-          {
-            gateway: this.deps.gateway,
-            logger: log,
-            auditId,
-            sessionId: this.deps.sessionId,
-            artifactsDir,
-            patternLibrarySummary,
-          },
-        ),
+      const c = await withStageProgress(
+        {
+          sequence: [5, 7],
+          humanName: "Comparing what you claim vs what users experience",
+        },
+        (ctx) =>
+          runStageC(
+            { leanCanvas: a.leanCanvas, paths: b.paths },
+            {
+              gateway: wrapGatewayForProgress(this.deps.gateway, ctx),
+              logger: log,
+              auditId,
+              sessionId: this.deps.sessionId,
+              artifactsDir,
+              patternLibrarySummary,
+            },
+          ),
       );
       stages.C = { status: "ok", neurons: c.neurons };
       costPerStage.C = c.neurons;
       totalNeurons += c.neurons;
 
-      const d = await withProgress("Stage D · ranking by leverage", () =>
-        runStageD(c.delta, {
-          gateway: this.deps.gateway,
-          logger: log,
-          auditId,
-          sessionId: this.deps.sessionId,
-          artifactsDir,
-        }),
+      const d = await withStageProgress(
+        {
+          sequence: [6, 7],
+          humanName: "Ranking problems by leverage",
+        },
+        (ctx) =>
+          runStageD(c.delta, {
+            gateway: wrapGatewayForProgress(this.deps.gateway, ctx),
+            logger: log,
+            auditId,
+            sessionId: this.deps.sessionId,
+            artifactsDir,
+          }),
       );
       stages.D = { status: "ok", neurons: d.neurons };
       costPerStage.D = d.neurons;
@@ -233,24 +243,30 @@ export class Orchestrator {
       costPerStage.E = e.neurons;
       totalNeurons += e.neurons;
 
-      const f = await withProgress("Stage F · writing spec.md", () =>
-        runStageF(
-          {
-            leanCanvas: a.leanCanvas,
-            paths: b.paths,
-            delta: c.delta,
-            problems: d.problems,
-            solutions: e.solutions,
-          },
-          {
-            gateway: this.deps.gateway,
-            logger: log,
-            auditId,
-            sessionId: this.deps.sessionId,
-            artifactsDir,
-            ...(opts.renderPdf !== undefined ? { renderPdf: opts.renderPdf } : {}),
-          },
-        ),
+      const f = await withStageProgress(
+        {
+          sequence: [7, 7],
+          humanName: "Writing your audit report",
+          slowNote: "this is the longest stage, ~90s typical",
+        },
+        (ctx) =>
+          runStageF(
+            {
+              leanCanvas: a.leanCanvas,
+              paths: b.paths,
+              delta: c.delta,
+              problems: d.problems,
+              solutions: e.solutions,
+            },
+            {
+              gateway: wrapGatewayForProgress(this.deps.gateway, ctx),
+              logger: log,
+              auditId,
+              sessionId: this.deps.sessionId,
+              artifactsDir,
+              ...(opts.renderPdf !== undefined ? { renderPdf: opts.renderPdf } : {}),
+            },
+          ),
       );
       stages.F = { status: "ok", neurons: f.neurons };
       costPerStage.F = f.neurons;

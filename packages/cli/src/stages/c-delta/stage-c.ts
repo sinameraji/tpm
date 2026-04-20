@@ -6,11 +6,11 @@ import type { Paths } from "@tpm/shared/schemas/paths";
 import { DeltaSchema, type Delta } from "@tpm/shared/schemas/delta";
 import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
-import { STAGE_C_SYSTEM_PROMPT, buildStageCUserPrompt } from "./prompt.js";
+import { buildStageCSystemPrompt, buildStageCUserPrompt } from "./prompt.js";
 import { runStage, jsonParse, zodValidate, type StageSpec } from "../_lib/stage-runner.js";
 import type { ValidationResult } from "../_lib/validators.js";
 
-export const STAGE_C_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+export const STAGE_C_MODEL = "claude-sonnet-4-6";
 const STAGE_C_MAX_TOKENS = 16_000;
 
 export interface StageCDeps {
@@ -57,7 +57,6 @@ export async function runStageC(
   const userPrompt = buildStageCUserPrompt({
     leanCanvas: input.leanCanvas,
     paths: input.paths,
-    patternLibrarySummary: deps.patternLibrarySummary,
   });
 
   const spec: StageSpec<Delta> = {
@@ -65,13 +64,16 @@ export async function runStageC(
     label: "Stage C · computing delta",
     model: STAGE_C_MODEL,
     maxTokens: STAGE_C_MAX_TOKENS,
-    temperature: 0.15,
+    temperature: 0.1,
     responseFormat: "json",
-    systemPrompt: STAGE_C_SYSTEM_PROMPT,
+    // System prompt includes the audit-agnostic pattern library so
+    // ephemeral caching catches both in one block.
+    systemPrompt: buildStageCSystemPrompt(deps.patternLibrarySummary),
     userPrompt,
     parse: (raw) => jsonParse(raw),
     validate: zodValidate(DeltaSchema),
     semanticCheck: stageCSemanticCheck(input.leanCanvas),
+    cacheSystem: true,
   };
 
   const result = await runStage<Delta>(spec, {
