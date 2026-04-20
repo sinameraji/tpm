@@ -19,7 +19,8 @@ export interface InferRequest {
 
 const ALLOWED_MODELS = new Set<string>([
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-  "@cf/qwen/qwen3-30b-a3b-fp8",
+  "@cf/meta/llama-3.1-8b-instruct", // Circuit-breaker fallback for Stage B walker + Stage E spec/prototype
+  "@cf/qwen/qwen3-30b-a3b-fp8", // Returns OpenAI-shape; kept allowlisted but unused by default in 1.1.3+
   "@cf/qwen/qwen2.5-coder-32b-instruct", // B-classify + B-model modeler A (code specialist, JSON-mode native)
   "@cf/meta/llama-4-scout-17b-16e-instruct",
   "@cf/openai/gpt-oss-120b", // kept for experimentation; no stage uses it by default
@@ -67,15 +68,46 @@ function isAiRunResult(x: unknown): x is AiRunResult {
   return typeof x === "object" && x !== null && ("response" in x || "usage" in x);
 }
 
-function normalizeResponseText(response: unknown): string {
-  if (typeof response === "string") return response;
-  if (response === null || response === undefined) return "";
-  // Object → JSON string. The client was going to JSON.parse anyway.
-  try {
-    return JSON.stringify(response);
-  } catch {
-    return String(response);
+// Workers AI returns at least TWO distinct shapes across models:
+//   1. Native-chat shape:  { response: string, usage: {...} }
+//      — used by Llama 3.3 70B instruct, Llama 3.1 8B, Qwen2.5-Coder
+//        (when response comes back as a string). Qwen2.5-Coder with
+//        json_object returns response as a PARSED object — we stringify.
+//   2. OpenAI-compatible shape: { choices: [{message: {content: string}}], usage: {...} }
+//      — observed for @cf/qwen/qwen3-30b-a3b-fp8 (diag log confirmed
+//        top_level_keys: [id, object, created, model, choices, ...,
+//        usage]). The content field on choices[0].message IS the real
+//        reply. Reading result.response would be undefined → "" →
+//        empty-output retry → wasted neurons.
+// Both shapes exist in production today; we normalize to a string.
+function normalizeResponseText(raw: unknown): string {
+  if (typeof raw === "string") return raw;
+  if (raw === null || raw === undefined || typeof raw !== "object") return "";
+  const r = raw as Record<string, unknown>;
+
+  // Native shape — try response field first.
+  if (typeof r.response === "string") return r.response;
+  if (r.response && typeof r.response === "object") {
+    try {
+      return JSON.stringify(r.response);
+    } catch {
+      /* fall through */
+    }
   }
+
+  // OpenAI-compatible shape — choices[0].message.content.
+  const choices = r.choices as Array<{ message?: { content?: unknown } }> | undefined;
+  const content = choices?.[0]?.message?.content;
+  if (typeof content === "string") return content;
+  if (content && typeof content === "object") {
+    try {
+      return JSON.stringify(content);
+    } catch {
+      /* fall through */
+    }
+  }
+
+  return "";
 }
 
 // Workers AI pricing is expressed in "neurons" server-side. We approximate
@@ -127,6 +159,39 @@ export async function infer(request: Request, env: Env): Promise<Response> {
       throw serverError("unexpected AI response shape");
     }
     result = raw;
+
+    // Structured log of the shape Workers AI returned, so if a future
+    // model returns a third variant we notice it instead of silently
+    // emptying. Compact — just the classifier, not the raw object.
+    try {
+      const r = raw as Record<string, unknown>;
+      const hasResponseString = typeof r.response === "string";
+      const hasResponseObject = r.response !== null && typeof r.response === "object";
+      const hasChoicesContent =
+        Array.isArray(r.choices) &&
+        (r.choices as Array<{ message?: { content?: unknown } }>)[0]?.message?.content !==
+          undefined;
+      const shape = hasResponseString
+        ? "native_string"
+        : hasResponseObject
+          ? "native_object"
+          : hasChoicesContent
+            ? "openai_choices"
+            : "unknown";
+      // eslint-disable-next-line no-console
+      console.log(
+        JSON.stringify({
+          kind: "ai_shape",
+          model: body.model,
+          stage,
+          response_format: body.response_format ?? "text",
+          shape,
+          completion_tokens: (r.usage as { completion_tokens?: number })?.completion_tokens,
+        }),
+      );
+    } catch {
+      /* never let a diag crash a real call */
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "AI call failed";
     await env.DB.prepare(

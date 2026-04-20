@@ -224,9 +224,7 @@ describe("runStageB — snapshot → classify → model → walk", () => {
       "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [
         { text: JSON.stringify(modelerBOutput) }, // Modeler B
         { text: JSON.stringify(synthesizerOutput) }, // Synthesizer
-      ],
-      "@cf/qwen/qwen3-30b-a3b-fp8": [
-        { text: JSON.stringify(walkerOutput) }, // B-walk persona
+        { text: JSON.stringify(walkerOutput) }, // B-walk persona (1.1.3: Llama, not Qwen3)
       ],
     });
 

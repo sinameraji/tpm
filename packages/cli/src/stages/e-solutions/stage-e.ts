@@ -17,7 +17,13 @@ import {
 import { isValidHtmlDocument, type ValidationResult } from "../_lib/validators.js";
 
 export const STAGE_E_SPEC_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-export const STAGE_E_PROTOTYPE_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
+export const STAGE_E_SPEC_FALLBACK_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+// Prototype generator moved off @cf/qwen/qwen3-30b-a3b-fp8 in 1.1.3
+// for the same OpenAI-shape reason as Stage B walker. Llama 3.3 70B
+// writes acceptable HTML and returns the native-chat shape. If we see
+// quality regression on prototypes we'll evaluate a hybrid.
+export const STAGE_E_PROTOTYPE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+export const STAGE_E_PROTOTYPE_FALLBACK_MODEL = "@cf/meta/llama-3.1-8b-instruct";
 
 const SOLUTION_SYSTEM = `You are TPM's solution designer. For ONE problem from the prioritized audit, produce a concrete, implementable solution spec.
 
@@ -122,6 +128,7 @@ async function generateOneSpec(
     name: "E",
     label: `Stage E · spec ${input.problem.id}`,
     model: STAGE_E_SPEC_MODEL,
+    fallbackModel: STAGE_E_SPEC_FALLBACK_MODEL,
     maxTokens: 8_000,
     temperature: 0.2,
     responseFormat: "json",
@@ -158,6 +165,7 @@ async function generatePrototypeHtml(
     name: "E",
     label: `Stage E · prototype ${solution.id}`,
     model: STAGE_E_PROTOTYPE_MODEL,
+    fallbackModel: STAGE_E_PROTOTYPE_FALLBACK_MODEL,
     maxTokens: 4_000,
     temperature: 0.3,
     responseFormat: "text",
@@ -177,6 +185,30 @@ async function generatePrototypeHtml(
   return { html: result.output, neurons: result.totalNeurons };
 }
 
+// Small bounded-concurrency runner. Workers AI rate-limits and
+// 5-way Promise.all on the same model amplifies any transient failure
+// by 5×. 2-at-a-time keeps throughput without the amplification.
+const STAGE_E_CONCURRENCY = 2;
+
+async function mapWithConcurrency<In, Out>(
+  items: In[],
+  concurrency: number,
+  worker: (item: In, index: number) => Promise<Out>,
+): Promise<Out[]> {
+  const results: Out[] = new Array(items.length);
+  let next = 0;
+  async function pump(): Promise<void> {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      results[i] = await worker(items[i]!, i);
+    }
+  }
+  const pumps = Array.from({ length: Math.min(concurrency, items.length) }, () => pump());
+  await Promise.all(pumps);
+  return results;
+}
+
 export async function runStageE(
   input: { problems: Problems; delta: Delta },
   deps: StageEDeps,
@@ -184,15 +216,13 @@ export async function runStageE(
   const topN = deps.topN ?? 5;
   const top = input.problems.problems.slice(0, topN);
 
-  const results = await Promise.all(
-    top.map(async (problem) => {
-      const specGenInput: SpecGenInput = { problem, delta: input.delta };
-      if (deps.productBrandingHint) specGenInput.brandingHint = deps.productBrandingHint;
-      const spec = await generateOneSpec(specGenInput, deps);
-      const proto = await generatePrototypeHtml(spec.solution, deps);
-      return { spec, proto, problem };
-    }),
-  );
+  const results = await mapWithConcurrency(top, STAGE_E_CONCURRENCY, async (problem) => {
+    const specGenInput: SpecGenInput = { problem, delta: input.delta };
+    if (deps.productBrandingHint) specGenInput.brandingHint = deps.productBrandingHint;
+    const spec = await generateOneSpec(specGenInput, deps);
+    const proto = await generatePrototypeHtml(spec.solution, deps);
+    return { spec, proto, problem };
+  });
 
   fs.mkdirSync(deps.artifactsDir, { recursive: true });
   const prototypesDir = path.join(deps.artifactsDir, "prototypes");

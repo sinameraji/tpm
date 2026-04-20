@@ -41,7 +41,14 @@ import { classifyProject, ClassifyError } from "./classify-project.js";
 import { runBModel } from "./model-app.js";
 import type { RequestedFile } from "./classify-project-prompt.js";
 
-export const STAGE_B_WALK_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
+// Stage B walker moved off @cf/qwen/qwen3-30b-a3b-fp8 in 1.1.3. Qwen3-A3B
+// returns an OpenAI-compatible response shape (choices[0].message.content)
+// that the old backend normalizer mapped to empty string, causing every
+// walk to fail with "model returned empty output across 3 attempts."
+// Llama 3.3 70B is JSON-mode blessed, non-reasoning, and returns the
+// native-chat shape. See docs/model-failures.md for the full catalog.
+export const STAGE_B_WALK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+export const STAGE_B_WALK_FALLBACK_MODEL = "@cf/meta/llama-3.1-8b-instruct";
 const STAGE_B_WALK_MAX_TOKENS = 4_000;
 // Qwen2.5-Coder-32B enforces a 24K total context on Workers AI.
 // 1.1.1 grazed the ceiling (24,285 > 24,000 by 285 tokens), so trim
@@ -193,11 +200,16 @@ async function runBWalk(
       name: "B",
       label: `Stage B · walking persona ${jtbd.segment_id}`,
       model: STAGE_B_WALK_MODEL,
+      fallbackModel: STAGE_B_WALK_FALLBACK_MODEL,
       maxTokens: STAGE_B_WALK_MAX_TOKENS,
       temperature: 0.3,
       responseFormat: "json",
       systemPrompt: INFERRED_PATH_SYSTEM_PROMPT,
       userPrompt: buildInferredPathUserPrompt(briefing, appModel),
+      // Headless API / library projects are legitimately "no journey
+      // to walk" — accept the model's honest "skipped" output without
+      // retry, since it's semantically empty but protocol-valid.
+      acceptSemanticEmpty: (out) => out.outcome.status === "skipped" && out.steps.length === 0,
       parse: jsonParse,
       validate: zodValidate(PersonaResponseSchema),
       semanticCheck,

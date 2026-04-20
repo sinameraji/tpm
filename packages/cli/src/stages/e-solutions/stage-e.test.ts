@@ -63,10 +63,14 @@ function makeDelta(): Delta {
 }
 
 function stubGateway(): ModelGateway {
+  // Spec and prototype use the same model in 1.1.3 — disambiguate by
+  // the system prompt instead so the stub stays deterministic.
   return {
     name: "stub",
-    async complete(model) {
-      if (model === STAGE_E_SPEC_MODEL) {
+    async complete(model, messages) {
+      const sys = messages[0]?.content ?? "";
+      const isSpec = sys.includes("solution designer");
+      if (isSpec) {
         const spec = {
           id: "S001",
           problem_ref: "P001",
@@ -98,6 +102,7 @@ function stubGateway(): ModelGateway {
           usage: { inputTokens: 3000, outputTokens: 700, neurons: 0.06, latencyMs: 1500 },
         };
       }
+      void STAGE_E_SPEC_MODEL; // silence unused-import lint now that we routed by prompt
       // prototype — must clear the 500-char minimum and include doctype/body.
       const filler = "<p>Proposed self-serve flow section describing the change.</p>".repeat(12);
       return {

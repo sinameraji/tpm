@@ -25,6 +25,7 @@ export function estimateMessagesTokens(messages: Array<{ role: string; content: 
 // Conservative — we leave 1-2K for system overhead.
 export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast": 128_000,
+  "@cf/meta/llama-3.1-8b-instruct": 128_000,
   "@cf/qwen/qwen3-30b-a3b-fp8": 32_000,
   // Workers AI enforces a 24K total limit on Qwen2.5-Coder-32B (input
   // + max_output). Caught in production when a B-model call hit 30K

@@ -19,6 +19,9 @@ export type StageName = "A" | "B" | "C" | "D" | "E" | "F" | "meta";
 export interface Attempt {
   n: number;
   kind: "initial" | "retry-empty" | "retry-parse" | "retry-schema" | "retry-semantic";
+  // Which model this attempt actually hit (differs from spec.model
+  // once the circuit breaker swaps to the fallback).
+  model?: string;
   inputTokens: number;
   outputTokens: number;
   outputPreview: string;
@@ -50,6 +53,12 @@ export interface StageSpec<T> {
   name: StageName;
   label: string; // human-friendly progress label
   model: string;
+  // After this many consecutive empty responses from `model`, the
+  // runner swaps to `fallbackModel` for subsequent attempts. Guards
+  // against one broken model / shape monopolizing the retry budget.
+  // Defaults to 2; set fallbackModel to activate.
+  fallbackModel?: string;
+  emptyStreakBeforeFallback?: number;
   maxTokens: number;
   temperature: number;
   responseFormat: "text" | "json";
@@ -65,6 +74,12 @@ export interface StageSpec<T> {
 
   // Validate semantics (business rules beyond structure). Non-throwing.
   semanticCheck?: (out: T) => ValidationResult;
+
+  // If true, a parsed + validated output that would be treated as
+  // "semantically empty" by the stage is ACCEPTED rather than retried.
+  // e.g., `{steps: [], outcome: {status: "skipped"}}` for B-walk on a
+  // project with no user-facing journey. Set by the caller.
+  acceptSemanticEmpty?: (out: T) => boolean;
 
   maxRetries?: number; // default 2 extra attempts on top of initial
 }
@@ -127,6 +142,11 @@ export async function runStage<T>(
   // previous failed output + the correction instruction).
   let messages: Message[] = initialMessages;
   let currentMaxTokens = spec.maxTokens;
+  // Circuit breaker: after N consecutive empty responses from the
+  // active model, swap to the declared fallback.
+  let activeModel = spec.model;
+  let emptyStreak = 0;
+  const streakThreshold = spec.emptyStreakBeforeFallback ?? 2;
 
   for (let n = 1; n <= maxAttempts; n++) {
     const attempt: Attempt = {
@@ -148,8 +168,9 @@ export async function runStage<T>(
         stage: spec.name,
         maxTokens: currentMaxTokens,
       };
-      const completion = await deps.gateway.complete(spec.model, messages, opts);
+      const completion = await deps.gateway.complete(activeModel, messages, opts);
       rawText = completion.text ?? "";
+      attempt.model = activeModel;
       attempt.inputTokens = completion.usage.inputTokens;
       attempt.outputTokens = completion.usage.outputTokens;
       if (completion.usage.neurons !== undefined) attempt.neurons = completion.usage.neurons;
@@ -172,14 +193,41 @@ export async function runStage<T>(
       attempt.kind = n === 1 ? "initial" : "retry-empty";
       attempt.failure = "empty output";
       attempts.push(attempt);
+      emptyStreak += 1;
       deps.logger.warn(
         {
           stage: spec.name,
           attempt: n,
+          model: activeModel,
+          empty_streak: emptyStreak,
           usage: { inputTokens: attempt.inputTokens, outputTokens: attempt.outputTokens },
         },
-        "stage returned empty; retrying with 2× budget",
+        "stage returned empty",
       );
+      // Circuit breaker: if we've seen enough consecutive empties from
+      // this model and a fallback is declared, switch for the next
+      // attempt. Reset the conversation so the fallback doesn't
+      // inherit error-correction messages from the primary.
+      if (
+        emptyStreak >= streakThreshold &&
+        spec.fallbackModel &&
+        activeModel !== spec.fallbackModel
+      ) {
+        deps.logger.warn(
+          {
+            stage: spec.name,
+            from: activeModel,
+            to: spec.fallbackModel,
+            after_empty_streak: emptyStreak,
+          },
+          "stage circuit breaker opened: switching to fallback model",
+        );
+        activeModel = spec.fallbackModel;
+        emptyStreak = 0;
+        messages = initialMessages;
+        currentMaxTokens = spec.maxTokens;
+        continue;
+      }
       if (n >= maxAttempts) {
         throw new StageError(
           `Stage ${spec.name}: model returned empty output across ${maxAttempts} attempts. Last call: ${attempt.outputTokens} output tokens, ${attempt.inputTokens} input tokens.`,
@@ -191,6 +239,12 @@ export async function runStage<T>(
       currentMaxTokens *= 2;
       continue;
     }
+
+    // Non-empty response — the model IS working at the protocol layer.
+    // Reset the empty-streak so parse/schema retries don't trip the
+    // circuit breaker (a cleanly-formatted bad JSON is a prompt issue,
+    // not a model-broken issue).
+    emptyStreak = 0;
 
     // --- Parse ---
     const cleaned = stripCodeFences(rawText);
@@ -255,6 +309,23 @@ export async function runStage<T>(
         },
       ];
       continue;
+    }
+
+    // --- Semantic-empty early-accept ---
+    // If the caller marked this validated output as a legitimate
+    // "nothing to do" result (e.g., headless API with no user-facing
+    // journey → skipped outcome, zero steps), skip further checks and
+    // accept it. Prevents us from retrying a model that's correctly
+    // telling us there's nothing to produce.
+    if (spec.acceptSemanticEmpty?.(validated) === true) {
+      attempts.push(attempt);
+      const totalNeurons = attempts.reduce((s, a) => s + (a.neurons ?? 0), 0);
+      const totalLatencyMs = attempts.reduce((s, a) => s + a.latencyMs, 0);
+      deps.logger.info(
+        { stage: spec.name, attempt: n, model: activeModel, accepted: "semantic_empty" },
+        "stage accepted semantic-empty output without retry",
+      );
+      return { output: validated, attempts, totalNeurons, totalLatencyMs };
     }
 
     // --- Semantic validation (business rules) ---
