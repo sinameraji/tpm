@@ -1,5 +1,5 @@
 import * as os from "node:os";
-import type { CompletionOptions, CompletionResult, Message, ModelGateway } from "./index.js";
+import type { CompleteOptionsExt, CompletionResult, Message, ModelGateway } from "./index.js";
 import { ensureFreshToken, type TokenBundle } from "../auth/tokens.js";
 
 export interface WorkersAIGatewayConfig {
@@ -19,12 +19,6 @@ interface InferResponse {
     neurons: number;
     latency_ms: number;
   };
-}
-
-export interface CompleteOptionsExt extends CompletionOptions {
-  auditId?: string;
-  stage?: "A" | "B" | "C" | "D" | "E" | "F" | "meta";
-  sessionId?: string;
 }
 
 export class WorkersAIGateway implements ModelGateway {

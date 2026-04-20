@@ -9,8 +9,7 @@
 
 import { type z } from "zod";
 import type { Logger } from "../../core/logger.js";
-import type { ModelGateway, Message } from "../../gateway/index.js";
-import type { CompleteOptionsExt } from "../../gateway/workers-ai.js";
+import type { CompleteOptionsExt, ModelGateway, Message } from "../../gateway/index.js";
 import { estimateMessagesTokens, maxContextFor } from "./tokens.js";
 import type { ValidationResult } from "./validators.js";
 

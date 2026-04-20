@@ -13,8 +13,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { ClassifierResponse, type ProjectProfile } from "@tpm/shared/schemas/project-profile";
-import type { ModelGateway, Message } from "../../gateway/index.js";
-import type { CompleteOptionsExt } from "../../gateway/workers-ai.js";
+import type { CompleteOptionsExt, ModelGateway, Message } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
 import {
   CLASSIFY_PROJECT_SYSTEM_PROMPT,
