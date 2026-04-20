@@ -18,17 +18,22 @@
 // returns SSE — we consume it to drive the progress UI just like
 // the Anthropic gateway.
 //
-// Gotchas vs Anthropic direct:
-//   - Prompt caching (cache_control: ephemeral) is NOT attempted on
-//     this path. CF's Workers AI catalog entry for anthropic/* hasn't
-//     documented cache_control support yet. If we pass it and CF
-//     ignores it, we'd silently lose cache savings across audits.
-//     Callers should already tolerate "cache disabled" — the
-//     AnthropicGateway has the same silent-no-op for small prompts.
-//   - Cost is reported in CF Neurons, not per-kind Anthropic tokens.
-//     We still populate the four-kind Usage shape so cost-calc.ts
-//     prices at Anthropic-direct rates; real CF pricing may differ.
-//     Treat the cost display on this path as an estimate.
+// Pricing (as of 2026-04-21, from CF's Workers AI model catalog):
+//   Opus 4.7 — $5/$25/$0.50/$6.25 per MTok (input/output/cache-read/
+//   cache-creation). Roughly 1/3 of Anthropic's direct list for Opus.
+//   Sonnet 4.6 — assumed parity with Anthropic until CF confirms;
+//   update CLOUDFLARE_MODEL_PRICING in core/pricing.ts when it's
+//   known.
+//
+// Prompt caching IS supported on this path — CF's model page lists
+// cached-input and cache-creation token pricing explicitly. We send
+// cache_control: ephemeral for opt-in stages, same shape as the
+// Anthropic direct gateway.
+//
+// Streaming is supported by the API but not implemented in this
+// gateway yet (CF's SSE shape for anthropic/* needs a separate
+// parser). The progress UI ticks once on completion rather than
+// every delta on this path; end-of-stage cost/checkmark still land.
 
 import type {
   CompleteOptionsExt,
@@ -59,11 +64,31 @@ interface CloudflareRunResponse {
       output_tokens?: number;
       prompt_tokens?: number;
       completion_tokens?: number;
+      cache_read_input_tokens?: number | null;
+      cache_creation_input_tokens?: number | null;
     };
     model?: string;
   };
   errors?: Array<{ code: number; message: string }>;
   messages?: Array<{ code: number; message: string }>;
+}
+
+// Anthropic's system-message-with-cache shape: an array of text
+// content blocks, the cached one marked with cache_control.
+interface SystemTextBlock {
+  type: "text";
+  text: string;
+  cache_control?: { type: "ephemeral" };
+}
+
+// Cache floor (same as AnthropicGateway). Below this we send the
+// system message as a plain string — CF would accept cache_control
+// below the floor and silently not cache, making our Usage numbers
+// misleading.
+const CACHE_MIN_TOKENS = 1024;
+const CHARS_PER_TOKEN = 2.8;
+function estimateTokens(text: string): number {
+  return Math.ceil((text ?? "").length / CHARS_PER_TOKEN);
 }
 
 export class CloudflareGateway implements ModelGateway {
@@ -88,13 +113,14 @@ export class CloudflareGateway implements ModelGateway {
 
     const { system, conversation } = splitSystem(messages);
     const conversationForApi = applyJsonInstruction(conversation, opts.responseFormat);
+    const systemForApi = buildSystemParam(system, opts);
 
     const body: Record<string, unknown> = {
       messages: conversationForApi,
       max_tokens: opts.maxTokens ?? 4096,
       temperature: opts.temperature ?? 0.1,
     };
-    if (system !== null) body.system = system;
+    if (systemForApi !== undefined) body.system = systemForApi;
     // Streaming isn't wired in this iteration — the CF SSE shape for
     // anthropic/* models needs a separate parser. Non-streaming keeps
     // the gateway honest; the progress UI still shows elapsed/final
@@ -144,11 +170,13 @@ export class CloudflareGateway implements ModelGateway {
       inputTokens: parsed.result.usage?.input_tokens ?? parsed.result.usage?.prompt_tokens ?? 0,
       outputTokens:
         parsed.result.usage?.output_tokens ?? parsed.result.usage?.completion_tokens ?? 0,
-      // CF may or may not report cache-read/creation tokens for
-      // Anthropic partner models. Default to 0; cost-calc handles it.
-      cacheReadInputTokens: 0,
-      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: parsed.result.usage?.cache_read_input_tokens ?? 0,
+      cacheCreationInputTokens: parsed.result.usage?.cache_creation_input_tokens ?? 0,
       latencyMs: Date.now() - started,
+      // Marks the downstream cost table: CF's rates for Opus are
+      // ~1/3 of Anthropic-direct. Without this stamp, cost-calc
+      // would over-report.
+      source: "cloudflare",
     };
 
     // Fire onToken with the final output count so the progress UI
@@ -178,6 +206,27 @@ function splitSystem(messages: Message[]): {
     };
   }
   return { system: null, conversation: messages };
+}
+
+function buildSystemParam(
+  system: string | null,
+  opts: CompleteOptionsExt,
+): string | SystemTextBlock[] | undefined {
+  if (!system) return undefined;
+  if (!opts.cacheSystem) return system;
+  if (estimateTokens(system) < CACHE_MIN_TOKENS) {
+    // Below CF's (= Anthropic's) cache floor, cache_control would
+    // be a silent no-op. Return plain string so the Usage that comes
+    // back accurately reports zero cached tokens.
+    return system;
+  }
+  return [
+    {
+      type: "text",
+      text: system,
+      cache_control: { type: "ephemeral" },
+    },
+  ];
 }
 
 interface AnthropicStyleMessage {

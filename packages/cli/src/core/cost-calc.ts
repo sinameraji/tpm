@@ -19,7 +19,11 @@ export interface CostBreakdown {
 }
 
 export function calcCost(model: string, usage: Usage): CostBreakdown {
-  const rates = ratesFor(model);
+  // Gateway stamps `source` on Usage so cost-calc picks the right
+  // rate table — Anthropic-direct vs Cloudflare Workers AI prices
+  // differ ~3x for Opus. Unknown/unstamped usage defaults to
+  // Anthropic rates (conservative over-estimate on the CF path).
+  const rates = ratesFor(model, usage.source ?? "anthropic");
 
   // Cache-read and cache-creation tokens are *also* input tokens, but
   // Anthropic's usage accounting reports them separately and the
