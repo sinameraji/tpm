@@ -189,6 +189,26 @@ export async function infer(request: Request, env: Env): Promise<Response> {
           completion_tokens: (r.usage as { completion_tokens?: number })?.completion_tokens,
         }),
       );
+
+      // If normalization would yield an empty string, log a preview of
+      // the raw shape so we can debug without re-running. Bounded so
+      // we never dump secrets or full prompts to logs.
+      const normalized = normalizeResponseText(raw);
+      if (!normalized.trim()) {
+        const preview = JSON.stringify(raw).slice(0, 800);
+        // eslint-disable-next-line no-console
+        console.log(
+          JSON.stringify({
+            kind: "ai_empty",
+            model: body.model,
+            stage,
+            response_format: body.response_format ?? "text",
+            shape,
+            completion_tokens: (r.usage as { completion_tokens?: number })?.completion_tokens,
+            raw_preview: preview,
+          }),
+        );
+      }
     } catch {
       /* never let a diag crash a real call */
     }

@@ -48,7 +48,11 @@ import type { RequestedFile } from "./classify-project-prompt.js";
 // Llama 3.3 70B is JSON-mode blessed, non-reasoning, and returns the
 // native-chat shape. See docs/model-failures.md for the full catalog.
 export const STAGE_B_WALK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-export const STAGE_B_WALK_FALLBACK_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+// Fallback is cross-family (Qwen) so we actually escape the failure
+// mode instead of retrying a sibling model. Llama-3.1-8B was rejected
+// as a fallback — its 7.968K context can't hold a walker prompt
+// (~4K input + 4K output exceeds 7.968K).
+export const STAGE_B_WALK_FALLBACK_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct";
 const STAGE_B_WALK_MAX_TOKENS = 4_000;
 // Qwen2.5-Coder-32B enforces a 24K total context on Workers AI.
 // 1.1.1 grazed the ceiling (24,285 > 24,000 by 285 tokens), so trim

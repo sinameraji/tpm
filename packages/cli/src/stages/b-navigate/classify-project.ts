@@ -30,6 +30,11 @@ import type { RepoSnapshot } from "./snapshot.js";
 // ≈ 12K CF tokens. Plus ~1.5K snapshot + ~1.5K system + 3K output
 // ≈ 18K total. Margin of 6K for tokenizer variance.
 export const CLASSIFY_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct";
+// If the primary goes empty (observed in production 1.1.3), fall back
+// to Llama 3.3 70B. Different family, JSON-mode blessed, non-reasoning.
+// Fits inside Llama's 24K context because MAX_TOKENS and the prompt
+// are the same.
+export const CLASSIFY_FALLBACK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const MAX_TOKENS = 3_000;
 const TEMPERATURE = 0.1;
 const MAX_FILE_LINES = 100;
@@ -103,7 +108,8 @@ function validatePaths(
 async function callModel(
   messages: Message[],
   deps: ClassifyDeps,
-): Promise<{ text: string; neurons: number }> {
+  model: string = CLASSIFY_MODEL,
+): Promise<{ text: string; neurons: number; model: string }> {
   const opts: CompleteOptionsExt = {
     temperature: TEMPERATURE,
     responseFormat: "json",
@@ -112,11 +118,29 @@ async function callModel(
     stage: "B",
     maxTokens: MAX_TOKENS,
   };
-  const completion = await deps.gateway.complete(CLASSIFY_MODEL, messages, opts);
+  const completion = await deps.gateway.complete(model, messages, opts);
   return {
     text: completion.text ?? "",
     neurons: completion.usage.neurons ?? 0,
+    model,
   };
+}
+
+// Call primary, fall back once if primary returned empty. Mirrors
+// stage-runner's circuit breaker pattern for this hand-rolled path.
+async function callWithFallback(
+  messages: Message[],
+  deps: ClassifyDeps,
+): Promise<{ text: string; neurons: number; model: string }> {
+  const primary = await callModel(messages, deps, CLASSIFY_MODEL);
+  if (primary.text.trim()) return primary;
+  deps.logger.warn(
+    { stage: "B", from: CLASSIFY_MODEL, to: CLASSIFY_FALLBACK_MODEL },
+    "B-classify primary returned empty; trying fallback",
+  );
+  const fallback = await callModel(messages, deps, CLASSIFY_FALLBACK_MODEL);
+  // Accumulate neurons from both calls even though one returned empty.
+  return { ...fallback, neurons: primary.neurons + fallback.neurons };
 }
 
 export class ClassifyError extends Error {
@@ -142,7 +166,7 @@ export async function classifyProject(
     role: "user",
     content: buildClassifyUserPromptRound1(snap),
   };
-  const r1 = await callModel([systemMsg, round1User], deps);
+  const r1 = await callWithFallback([systemMsg, round1User], deps);
   totalNeurons += r1.neurons;
 
   if (!r1.text.trim()) {
@@ -209,7 +233,7 @@ export async function classifyProject(
     role: "user",
     content: buildClassifyUserPromptRound2(snap, files),
   };
-  const r2 = await callModel(
+  const r2 = await callWithFallback(
     [systemMsg, round1User, { role: "assistant", content: r1.text }, round2User],
     deps,
   );

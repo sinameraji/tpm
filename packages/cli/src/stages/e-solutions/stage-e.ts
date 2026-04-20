@@ -17,12 +17,17 @@ import {
 import { isValidHtmlDocument, type ValidationResult } from "../_lib/validators.js";
 
 export const STAGE_E_SPEC_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-export const STAGE_E_SPEC_FALLBACK_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+// Fallback is cross-family — Llama-3.1-8B's 7.968K context is too
+// small for the spec prompt (~1K input + 8K output).
+export const STAGE_E_SPEC_FALLBACK_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct";
 // Prototype generator moved off @cf/qwen/qwen3-30b-a3b-fp8 in 1.1.3
 // for the same OpenAI-shape reason as Stage B walker. Llama 3.3 70B
 // writes acceptable HTML and returns the native-chat shape. If we see
 // quality regression on prototypes we'll evaluate a hybrid.
 export const STAGE_E_PROTOTYPE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+// Prototype call is short enough to fit Llama 3.1 8B (~1K input + 4K
+// output = 5K, under the 7.968K cap). Keep the small-model fallback
+// for cost here.
 export const STAGE_E_PROTOTYPE_FALLBACK_MODEL = "@cf/meta/llama-3.1-8b-instruct";
 
 const SOLUTION_SYSTEM = `You are TPM's solution designer. For ONE problem from the prioritized audit, produce a concrete, implementable solution spec.
