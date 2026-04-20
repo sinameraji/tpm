@@ -18,7 +18,7 @@ import { runStageD } from "../stages/d-leverage/stage-d.js";
 import { runStageE } from "../stages/e-solutions/stage-e.js";
 import { runStageF } from "../stages/f-assembly/stage-f.js";
 import { loadBuiltInPatterns, summarizePatternLibrary } from "../patterns/loader.js";
-import { withProgress } from "./progress.js";
+import { withProgress, withStageProgress, wrapGatewayForProgress } from "./progress.js";
 import { TPM_VERSION } from "@tpm/shared";
 
 export interface OrchestratorDeps {
@@ -151,14 +151,19 @@ export class Orchestrator {
 
       const stageAInput: { map: typeof map; scraped?: ScrapedNs.ScrapedSurfaces } = { map };
       if (scraped !== undefined) stageAInput.scraped = scraped;
-      const a = await withProgress("Stage A · extracting intent", () =>
-        runStageA(stageAInput, {
-          gateway: this.deps.gateway,
-          logger: log,
-          auditId,
-          sessionId: this.deps.sessionId,
-          artifactsDir,
-        }),
+      const a = await withStageProgress(
+        {
+          sequence: [2, 7],
+          humanName: "Understanding what your product claims to do",
+        },
+        (ctx) =>
+          runStageA(stageAInput, {
+            gateway: wrapGatewayForProgress(this.deps.gateway, ctx),
+            logger: log,
+            auditId,
+            sessionId: this.deps.sessionId,
+            artifactsDir,
+          }),
       );
       stages.A = { status: "ok", neurons: a.neurons };
       costPerStage.A = a.neurons;

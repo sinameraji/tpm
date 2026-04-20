@@ -39,6 +39,10 @@ export function register(program: Command): void {
     .option("--no-sync", "Don't sync audit artifacts to backend")
     .option("--endpoint <url>", "Override the hosted backend URL (defaults to config.api_endpoint)")
     .option("--gateway <mode>", "Force gateway mode: hosted | byo (defaults to config.gateway)")
+    .option(
+      "--no-stream",
+      "Disable streaming progress UI. Use in CI / non-TTY pipelines where cursor manipulation would garble output.",
+    )
     .action(async function action(this: Command) {
       const runtime = bootstrap(this);
       const opts = this.opts<{
@@ -50,7 +54,13 @@ export function register(program: Command): void {
         sync?: boolean;
         endpoint?: string;
         gateway?: "hosted" | "byo";
+        stream?: boolean; // --no-stream → false
       }>();
+
+      // Plumb through an env var so the progress module (already
+      // imported transitively) can honor the flag without threading
+      // yet another option through every stage.
+      if (opts.stream === false) process.env["TPM_NO_STREAM"] = "1";
 
       const projectRoot = process.cwd();
       const projectCfg = loadProjectConfig(projectRoot);
