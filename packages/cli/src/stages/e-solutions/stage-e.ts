@@ -7,6 +7,7 @@ import type { Delta } from "@tpm/shared/schemas/delta";
 import { Solution, SolutionsSchema, type Solutions } from "@tpm/shared/schemas/solutions";
 import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
+import type { StageProgressCtx } from "../../core/progress.js";
 import {
   runStage,
   jsonParse,
@@ -16,19 +17,8 @@ import {
 } from "../_lib/stage-runner.js";
 import { isValidHtmlDocument, type ValidationResult } from "../_lib/validators.js";
 
-export const STAGE_E_SPEC_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-// Fallback is cross-family — Llama-3.1-8B's 7.968K context is too
-// small for the spec prompt (~1K input + 8K output).
-export const STAGE_E_SPEC_FALLBACK_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct";
-// Prototype generator moved off @cf/qwen/qwen3-30b-a3b-fp8 in 1.1.3
-// for the same OpenAI-shape reason as Stage B walker. Llama 3.3 70B
-// writes acceptable HTML and returns the native-chat shape. If we see
-// quality regression on prototypes we'll evaluate a hybrid.
-export const STAGE_E_PROTOTYPE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-// Prototype call is short enough to fit Llama 3.1 8B (~1K input + 4K
-// output = 5K, under the 7.968K cap). Keep the small-model fallback
-// for cost here.
-export const STAGE_E_PROTOTYPE_FALLBACK_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+export const STAGE_E_SPEC_MODEL = "claude-sonnet-4-6";
+export const STAGE_E_PROTOTYPE_MODEL = "claude-sonnet-4-6";
 
 const SOLUTION_SYSTEM = `You are TPM's solution designer. For ONE problem from the prioritized audit, produce a concrete, implementable solution spec.
 
@@ -60,6 +50,11 @@ export interface StageEDeps {
   artifactsDir: string;
   topN?: number;
   productBrandingHint?: string;
+  // When the orchestrator wraps Stage E in withStageProgress, this
+  // is the ctx from that wrapper. Stage E reports parallel progress
+  // (N/M done, which ids are streaming) through noteParallel so the
+  // UI shows a compact summary line instead of per-slot token counts.
+  progressCtx?: StageProgressCtx;
 }
 
 export interface StageEResult {
@@ -133,15 +128,15 @@ async function generateOneSpec(
     name: "E",
     label: `Stage E · spec ${input.problem.id}`,
     model: STAGE_E_SPEC_MODEL,
-    fallbackModel: STAGE_E_SPEC_FALLBACK_MODEL,
     maxTokens: 8_000,
-    temperature: 0.2,
+    temperature: 0.1,
     responseFormat: "json",
     systemPrompt: SOLUTION_SYSTEM,
     userPrompt: user,
     parse: (raw) => jsonParse(raw),
     validate: zodValidate(SolutionNoProto),
     semanticCheck: stageESpecSemanticCheck,
+    cacheSystem: true,
   };
 
   const result = await runStage(spec, {
@@ -170,7 +165,6 @@ async function generatePrototypeHtml(
     name: "E",
     label: `Stage E · prototype ${solution.id}`,
     model: STAGE_E_PROTOTYPE_MODEL,
-    fallbackModel: STAGE_E_PROTOTYPE_FALLBACK_MODEL,
     maxTokens: 4_000,
     temperature: 0.3,
     responseFormat: "text",
@@ -179,6 +173,7 @@ async function generatePrototypeHtml(
     parse: (raw) => textParse(raw),
     validate: (parsed) => parsed as string,
     semanticCheck: (html) => isValidHtmlDocument(html, { minChars: 500 }),
+    cacheSystem: true,
   };
 
   const result = await runStage<string>(spec, {
@@ -190,10 +185,12 @@ async function generatePrototypeHtml(
   return { html: result.output, neurons: result.totalNeurons };
 }
 
-// Small bounded-concurrency runner. Workers AI rate-limits and
-// 5-way Promise.all on the same model amplifies any transient failure
-// by 5×. 2-at-a-time keeps throughput without the amplification.
-const STAGE_E_CONCURRENCY = 2;
+// Bounded concurrency for the fan-out across solutions. v1.1.x kept
+// this at 2 because Workers AI rate-limited aggressively and a 5×
+// amplification of any transient failure was too costly. Anthropic
+// handles this comfortably, so bump to 4 — matches the default top-N
+// = 5 with 4 slots in flight at a time + one queued.
+const STAGE_E_CONCURRENCY = 4;
 
 async function mapWithConcurrency<In, Out>(
   items: In[],
@@ -221,12 +218,36 @@ export async function runStageE(
   const topN = deps.topN ?? 5;
   const top = input.problems.problems.slice(0, topN);
 
+  // Parallel-fanout progress: each solution holds a slot until both
+  // its spec and its prototype complete, then moves to doneIds. The
+  // renderer draws a single-line summary ("2/5 done (S001, S003) ·
+  // 3 streaming · $0.18") instead of per-slot streaming — keeps the
+  // TTY happy across varied terminal widths.
+  let inFlight = 0;
+  const doneIds: string[] = [];
+  const emitParallel = (): void => {
+    deps.progressCtx?.noteParallel({
+      total: top.length,
+      inFlight,
+      doneIds: [...doneIds],
+    });
+  };
+  emitParallel();
+
   const results = await mapWithConcurrency(top, STAGE_E_CONCURRENCY, async (problem) => {
-    const specGenInput: SpecGenInput = { problem, delta: input.delta };
-    if (deps.productBrandingHint) specGenInput.brandingHint = deps.productBrandingHint;
-    const spec = await generateOneSpec(specGenInput, deps);
-    const proto = await generatePrototypeHtml(spec.solution, deps);
-    return { spec, proto, problem };
+    inFlight++;
+    emitParallel();
+    try {
+      const specGenInput: SpecGenInput = { problem, delta: input.delta };
+      if (deps.productBrandingHint) specGenInput.brandingHint = deps.productBrandingHint;
+      const spec = await generateOneSpec(specGenInput, deps);
+      const proto = await generatePrototypeHtml(spec.solution, deps);
+      doneIds.push(spec.solution.id);
+      return { spec, proto, problem };
+    } finally {
+      inFlight--;
+      emitParallel();
+    }
   });
 
   fs.mkdirSync(deps.artifactsDir, { recursive: true });

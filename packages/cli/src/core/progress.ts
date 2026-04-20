@@ -119,6 +119,12 @@ export interface StageProgressCtx {
   onRetry: (kind: string, attemptNumber: number) => void;
   // Track input tokens too, so the UI can show "2,847 in".
   noteInput: (inputTokens: number) => void;
+  // Parallel-fanout mode (Stage E): report how many items are
+  // running / done so the UI can render a compact summary line
+  // instead of per-slot token counts. Items are identified by
+  // short ids (e.g. "S001"). When any parallel state is set, the
+  // renderer uses it in place of the single-attempt counters.
+  noteParallel: (state: { total: number; inFlight: number; doneIds: string[] }) => void;
 }
 
 function noOpCtx(): StageProgressCtx {
@@ -127,6 +133,7 @@ function noOpCtx(): StageProgressCtx {
     noteCost: () => {},
     onRetry: () => {},
     noteInput: () => {},
+    noteParallel: () => {},
   };
 }
 
@@ -137,6 +144,7 @@ interface StageState {
   costMicroUsd: number;
   retries: Array<{ kind: string; n: number }>;
   slowHintShown: boolean;
+  parallel: { total: number; inFlight: number; doneIds: string[] } | null;
 }
 
 function buildLine(meta: StageMeta, state: StageState, frame: string, startMs: number): string {
@@ -145,12 +153,25 @@ function buildLine(meta: StageMeta, state: StageState, frame: string, startMs: n
   const retryTag = lastRetry
     ? ` ${YELLOW}⚠ retry ${lastRetry.n}/3 (${lastRetry.kind})${RESET}`
     : "";
-  const input = state.inputTokens > 0 ? `${fmtCount(state.inputTokens)} in` : "";
-  const output =
-    state.currentAttemptOutputTokens > 0 ? `${fmtCount(state.currentAttemptOutputTokens)} out` : "";
   const cost = state.costMicroUsd > 0 ? `~${formatUsd(state.costMicroUsd)}` : "";
-  const pieces = [elapsed(startMs), input, output, cost].filter(Boolean);
-  return `\r\x1b[K${BRAND}${frame}${RESET} ${seq}${meta.humanName}${retryTag}\n       ${DIM}${pieces.join(" · ")}${RESET}\x1b[1A`;
+  // Parallel-fanout mode: compact "N/M done (ids) · K streaming" summary.
+  // Takes precedence over per-attempt token counts when set.
+  let detail: string;
+  if (state.parallel) {
+    const p = state.parallel;
+    const doneList = p.doneIds.length > 0 ? ` (${p.doneIds.join(", ")})` : "";
+    const streamingPart = p.inFlight > 0 ? `${p.inFlight} streaming` : "";
+    const donePart = `${p.doneIds.length}/${p.total} done${doneList}`;
+    detail = [elapsed(startMs), donePart, streamingPart, cost].filter(Boolean).join(" · ");
+  } else {
+    const input = state.inputTokens > 0 ? `${fmtCount(state.inputTokens)} in` : "";
+    const output =
+      state.currentAttemptOutputTokens > 0
+        ? `${fmtCount(state.currentAttemptOutputTokens)} out`
+        : "";
+    detail = [elapsed(startMs), input, output, cost].filter(Boolean).join(" · ");
+  }
+  return `\r\x1b[K${BRAND}${frame}${RESET} ${seq}${meta.humanName}${retryTag}\n       ${DIM}${detail}${RESET}\x1b[1A`;
 }
 
 export async function withStageProgress<T>(
@@ -182,6 +203,7 @@ export async function withStageProgress<T>(
     costMicroUsd: 0,
     retries: [],
     slowHintShown: false,
+    parallel: null,
   };
 
   let i = 0;
@@ -216,6 +238,9 @@ export async function withStageProgress<T>(
     },
     noteInput: (inputTokens) => {
       state.inputTokens += inputTokens;
+    },
+    noteParallel: (p) => {
+      state.parallel = p;
     },
   };
 

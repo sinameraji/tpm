@@ -120,11 +120,14 @@ export class Orchestrator {
     const costPerStage: Record<string, number> = {};
 
     try {
-      const map = await withProgress("Reading codebase", async () => {
-        const m = buildStaticMap(projectRoot);
-        writeMapYaml(m, path.join(artifactsDir, "map.yaml"));
-        return m;
-      });
+      const map = await withStageProgress(
+        { sequence: [1, 7], humanName: "Reading your codebase" },
+        async () => {
+          const m = buildStaticMap(projectRoot);
+          writeMapYaml(m, path.join(artifactsDir, "map.yaml"));
+          return m;
+        },
+      );
 
       let scraped: ScrapedNs.ScrapedSurfaces | undefined;
       if (opts.marketingUrl) {
@@ -198,7 +201,7 @@ export class Orchestrator {
       const patternLibrarySummary = summarizePatternLibrary(patterns);
       const c = await withStageProgress(
         {
-          sequence: [5, 7],
+          sequence: [4, 7],
           humanName: "Comparing what you claim vs what users experience",
         },
         (ctx) =>
@@ -220,7 +223,7 @@ export class Orchestrator {
 
       const d = await withStageProgress(
         {
-          sequence: [6, 7],
+          sequence: [5, 7],
           humanName: "Ranking problems by leverage",
         },
         (ctx) =>
@@ -236,18 +239,24 @@ export class Orchestrator {
       costPerStage.D = d.neurons;
       totalNeurons += d.neurons;
 
-      const e = await withProgress("Stage E · drafting solutions + prototypes", () =>
-        runStageE(
-          { problems: d.problems, delta: c.delta },
-          {
-            gateway: this.deps.gateway,
-            logger: log,
-            auditId,
-            sessionId: this.deps.sessionId,
-            artifactsDir,
-            ...(opts.topNSolutions !== undefined ? { topN: opts.topNSolutions } : {}),
-          },
-        ),
+      const e = await withStageProgress(
+        {
+          sequence: [6, 7],
+          humanName: "Writing solution specs + prototypes",
+        },
+        (ctx) =>
+          runStageE(
+            { problems: d.problems, delta: c.delta },
+            {
+              gateway: wrapGatewayForProgress(this.deps.gateway, ctx),
+              logger: log,
+              auditId,
+              sessionId: this.deps.sessionId,
+              artifactsDir,
+              ...(opts.topNSolutions !== undefined ? { topN: opts.topNSolutions } : {}),
+              progressCtx: ctx,
+            },
+          ),
       );
       stages.E = { status: "ok", neurons: e.neurons };
       costPerStage.E = e.neurons;

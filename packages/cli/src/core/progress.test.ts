@@ -48,6 +48,7 @@ function fakeCtx(): StageProgressCtx & {
     noteCost: (c) => costs.push(c),
     onRetry: (kind, n) => retries.push({ kind, n }),
     noteInput: (i) => inputs.push(i),
+    noteParallel: () => {},
   };
 }
 
