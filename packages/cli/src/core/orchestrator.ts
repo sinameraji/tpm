@@ -169,16 +169,26 @@ export class Orchestrator {
       costPerStage.A = a.neurons;
       totalNeurons += a.neurons;
 
-      const b = await withProgress("Stage B · imagining user journey", () =>
-        runStageB(a.leanCanvas, {
-          gateway: this.deps.gateway,
-          logger: log,
-          auditId,
-          sessionId: this.deps.sessionId,
-          artifactsDir,
-          projectRoot,
-          ...(opts.stepBudget !== undefined ? { stepBudget: opts.stepBudget } : {}),
-        }),
+      // Stage B groups classify → model → walk. One progress line
+      // aggregates tokens/cost across all three sub-calls. Internal
+      // sub-stage progress (e.g., "persona 2 of 3" during B-walk)
+      // is a follow-up; for now the human name covers the whole
+      // structure-mapping phase.
+      const b = await withStageProgress(
+        {
+          sequence: [3, 7],
+          humanName: "Mapping your app's structure",
+        },
+        (ctx) =>
+          runStageB(a.leanCanvas, {
+            gateway: wrapGatewayForProgress(this.deps.gateway, ctx),
+            logger: log,
+            auditId,
+            sessionId: this.deps.sessionId,
+            artifactsDir,
+            projectRoot,
+            ...(opts.stepBudget !== undefined ? { stepBudget: opts.stepBudget } : {}),
+          }),
       );
       stages.B = { status: "ok", neurons: b.neurons };
       costPerStage.B = b.neurons;

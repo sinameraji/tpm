@@ -41,25 +41,15 @@ import { classifyProject, ClassifyError } from "./classify-project.js";
 import { runBModel } from "./model-app.js";
 import type { RequestedFile } from "./classify-project-prompt.js";
 
-// Stage B walker moved off @cf/qwen/qwen3-30b-a3b-fp8 in 1.1.3. Qwen3-A3B
-// returns an OpenAI-compatible response shape (choices[0].message.content)
-// that the old backend normalizer mapped to empty string, causing every
-// walk to fail with "model returned empty output across 3 attempts."
-// Llama 3.3 70B is JSON-mode blessed, non-reasoning, and returns the
-// native-chat shape. See docs/model-failures.md for the full catalog.
-export const STAGE_B_WALK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-// Fallback is cross-family (Qwen) so we actually escape the failure
-// mode instead of retrying a sibling model. Llama-3.1-8B was rejected
-// as a fallback — its 7.968K context can't hold a walker prompt
-// (~4K input + 4K output exceeds 7.968K).
-export const STAGE_B_WALK_FALLBACK_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct";
+// B-walk on Claude Sonnet 4.6 in v1.2.0. Narrative-ish task (imagined
+// persona journey as JSON) — temp 0.3, same as before. 200K context
+// easily absorbs the seed files + profile JSON + walker output.
+export const STAGE_B_WALK_MODEL = "claude-sonnet-4-6";
 const STAGE_B_WALK_MAX_TOKENS = 4_000;
-// Qwen2.5-Coder-32B enforces a 24K total context on Workers AI.
-// 1.1.1 grazed the ceiling (24,285 > 24,000 by 285 tokens), so trim
-// further: 5 files × 80 lines × ~55 chars ≈ 22K chars → ~8K CF tokens
-// of seed files. Plus ~2K system + ~2K profile JSON + 5K output = ~17K.
-// Leaves 7K safety margin — enough to absorb tokenizer variance across
-// projects without another production overage.
+// Seed-file trimming was sized for Qwen's 24K Workers-AI cap. Sonnet
+// has 200K so the old limit is no longer load-bearing, but we keep
+// it — a tighter walker prompt is cheaper and sharper anyway (more
+// context isn't always better input).
 const MAX_SEED_FILE_LINES = 80;
 const MAX_SEED_FILES = 5;
 
@@ -204,7 +194,6 @@ async function runBWalk(
       name: "B",
       label: `Stage B · walking persona ${jtbd.segment_id}`,
       model: STAGE_B_WALK_MODEL,
-      fallbackModel: STAGE_B_WALK_FALLBACK_MODEL,
       maxTokens: STAGE_B_WALK_MAX_TOKENS,
       temperature: 0.3,
       responseFormat: "json",
@@ -217,6 +206,7 @@ async function runBWalk(
       parse: jsonParse,
       validate: zodValidate(PersonaResponseSchema),
       semanticCheck,
+      cacheSystem: true,
     };
 
     try {
