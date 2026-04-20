@@ -33,14 +33,33 @@ Requirements:
 
 Respond with ONE JSON object matching the Solution schema. Do NOT include prototype; that comes separately.`;
 
-const PROTOTYPE_SYSTEM = `You are TPM's prototype designer. Produce a SINGLE self-contained HTML file that visualizes the proposed change from the solution spec.
+const PROTOTYPE_SYSTEM = `You are TPM's prototype designer. Produce a SINGLE complete, self-contained HTML document that visualizes the proposed change from the solution spec.
 
-Requirements:
-- Standalone HTML: inline CSS, no external fonts/scripts except via <link> to a single CDN if absolutely required.
-- Annotated: include visible before/after annotations or inline comments near the changed element. Use a small sidebar or call-out box showing "Current state: X → Proposed: Y" + the rationale.
-- Realistic copy — use the product's actual branding hints if provided in the spec's scope. No Lorem Ipsum.
-- Match the product's existing visual language loosely (colors, typography, spacing hints from the spec). Default to a clean neutral system (system-ui, 1280px max width, plenty of whitespace) when no hints exist.
-- Returns ONLY the HTML. No prose, no code fences, no preamble.`;
+OUTPUT SHAPE — non-negotiable:
+Your response MUST be a full HTML5 document starting with <!doctype html> and containing <html>, <head>, and <body> elements. It is rendered as a standalone file — not embedded in a parent page. The TPM audit's semantic check will reject outputs that are HTML fragments (bare <div>s, partial snippets, no <body> tag) and retry, so get the structure right the first time.
+
+Template to follow:
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>…</title>
+  <style>
+    /* inline CSS */
+  </style>
+</head>
+<body>
+  <!-- annotated prototype markup here -->
+</body>
+</html>
+
+Content requirements:
+- Standalone: all CSS inline in a <style> block. No external scripts. One <link> to a CDN only if genuinely required (usually it isn't).
+- Annotated: include visible before/after annotations near the changed element — a small sidebar or call-out box showing "Current: X → Proposed: Y" + the one-line rationale.
+- Realistic copy. Use the product's actual branding hints from the spec's scope. No Lorem Ipsum.
+- Match the product's visual language loosely (colors, typography, spacing). Default to a clean neutral system (system-ui, ~1280px max width, generous whitespace) when no hints exist.
+
+Return ONLY the HTML document. No prose, no code fences, no preamble. Starts with <!doctype html>, ends with </html>.`;
 
 export interface StageEDeps {
   gateway: ModelGateway;
@@ -165,7 +184,11 @@ async function generatePrototypeHtml(
     name: "E",
     label: `Stage E · prototype ${solution.id}`,
     model: STAGE_E_PROTOTYPE_MODEL,
-    maxTokens: 4_000,
+    // 8K not 4K: a full annotated HTML doc with inline CSS + before/
+    // after call-outs routinely wants 5–7K tokens. 4K caused truncation
+    // and sometimes dropped the closing </body></html>, which the
+    // semantic check correctly caught but at the cost of full retries.
+    maxTokens: 8_000,
     temperature: 0.3,
     responseFormat: "text",
     systemPrompt: PROTOTYPE_SYSTEM,
@@ -199,11 +222,26 @@ async function mapWithConcurrency<In, Out>(
 ): Promise<Out[]> {
   const results: Out[] = new Array(items.length);
   let next = 0;
+  // Shared abort flag. When ANY pump's worker throws, we flip this,
+  // so idle pumps stop picking up new items. Without it, a failure
+  // on one track still lets the other N-1 tracks keep dispatching
+  // and retrying — wasting rate-limit budget on results that will
+  // never be consumed (the outer Promise.all already rejected).
+  // The in-flight item each surviving pump is currently running
+  // still runs to completion; cancelling the network call itself
+  // would need AbortSignal threading through the gateway, which is
+  // a larger refactor.
+  let aborted = false;
   async function pump(): Promise<void> {
-    while (true) {
+    while (!aborted) {
       const i = next++;
       if (i >= items.length) return;
-      results[i] = await worker(items[i]!, i);
+      try {
+        results[i] = await worker(items[i]!, i);
+      } catch (err) {
+        aborted = true;
+        throw err;
+      }
     }
   }
   const pumps = Array.from({ length: Math.min(concurrency, items.length) }, () => pump());
