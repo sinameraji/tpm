@@ -2,8 +2,10 @@ import type { Command } from "commander";
 import { Orchestrator } from "../core/orchestrator.js";
 import { WorkersAIGateway } from "../gateway/workers-ai.js";
 import { DirectWorkersAIGateway } from "../gateway/direct-workers-ai.js";
+import { AnthropicGateway } from "../gateway/anthropic.js";
+import { HybridGateway } from "../gateway/hybrid.js";
 import type { ModelGateway } from "../gateway/index.js";
-import { loadConfig } from "../core/config.js";
+import { loadConfig, resolveAnthropicKey } from "../core/config.js";
 import { loadProjectConfig, saveProjectConfig } from "../core/project-config.js";
 import { isValidHttpUrl, promptLine } from "../core/prompt.js";
 import { bootstrap, emit, emitText } from "./_runtime.js";
@@ -104,7 +106,19 @@ export function register(program: Command): void {
         saveProjectConfig({ ...projectCfg, marketing_url: marketingUrl }, projectRoot);
       }
 
-      let gateway: ModelGateway;
+      // Gateway selection during the v1.2.0 migration:
+      //   - Workers AI (hosted or BYO) carries stages that still use
+      //     "@cf/..." model IDs.
+      //   - AnthropicGateway carries stages that have been ported to
+      //     "claude-..." model IDs (starting with Stage A in C5).
+      //   - HybridGateway dispatches per call by model-ID prefix.
+      // Once every stage is on Anthropic (after C11) and the
+      // workers-ai gateway is deleted (C14), audit.ts constructs
+      // AnthropicGateway directly.
+      const anthropicKey = resolveAnthropicKey(cfg);
+      const anthropicGateway = anthropicKey ? new AnthropicGateway({ apiKey: anthropicKey }) : null;
+
+      let workersAIGateway: ModelGateway | null;
       let apiEndpointForOrchestrator: string | undefined;
       if (gatewayMode === "byo") {
         const byoAcct = cfg.legacy?.byo?.account_id;
@@ -118,15 +132,20 @@ export function register(program: Command): void {
           process.exitCode = 1;
           return;
         }
-        gateway = new DirectWorkersAIGateway({
+        workersAIGateway = new DirectWorkersAIGateway({
           accountId: byoAcct,
           apiToken: byoTok,
         });
         apiEndpointForOrchestrator = undefined;
       } else {
-        gateway = new WorkersAIGateway({ endpoint });
+        workersAIGateway = new WorkersAIGateway({ endpoint });
         apiEndpointForOrchestrator = endpoint;
       }
+
+      const gateway: ModelGateway = new HybridGateway({
+        anthropic: anthropicGateway,
+        workersAI: workersAIGateway,
+      });
 
       const orchestrator = new Orchestrator({
         logger: runtime.logger,

@@ -35,22 +35,20 @@ export function estimateMessagesTokens(messages: Array<{ role: string; content: 
 // window 24000" error when we assumed Llama 3.3 70B had a 128K
 // window; the actual CF limit is 24K.
 export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
-  // Llama 3.3 70B docs page claims 24K context (NOT the 128K model-card
-  // number). We trust CF's page.
+  // Anthropic Claude 4 family — 200K context window for Sonnet and
+  // Opus. Verified against https://docs.claude.com as of 2026-04-20.
+  "claude-sonnet-4-6": 200_000,
+  "claude-opus-4-7": 200_000,
+
+  // --- Deprecated v1.1.x Cloudflare Workers AI entries ---
+  // Kept for the duration of the 1.2.0 migration so stages that
+  // haven't been ported yet still pre-flight correctly. Removed in
+  // C14 along with the workers-ai gateway.
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast": 24_000,
-  // Llama 3.1 8B has a tiny 7,968 CF cap. Only usable for prompts
-  // under ~4K input + short max_tokens. NOT a fallback for Stage B
-  // walker (4-5K input + 4K output) or Stage E spec (8K output).
   "@cf/meta/llama-3.1-8b-instruct": 7_968,
   "@cf/qwen/qwen3-30b-a3b-fp8": 32_768,
-  // Docs say 32,768. CF's runtime returned a 5021 error citing "model
-  // context window limit (24000)" in 1.1.1-era testing. Keep the
-  // empirically-verified value until CF clarifies which is right.
   "@cf/qwen/qwen2.5-coder-32b-instruct": 24_000,
   "@cf/meta/llama-4-scout-17b-16e-instruct": 128_000,
-  // gpt-oss-120b uses the /ai/v1/responses endpoint (Responses API),
-  // not env.AI.run(). Our gateway can't call it as-is. Listed for
-  // completeness but marked non-functional.
   "@cf/openai/gpt-oss-120b": 128_000,
 };
 

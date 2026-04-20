@@ -29,6 +29,12 @@ export interface CompleteOptionsExt extends CompletionOptions {
   auditId?: string;
   stage?: GatewayStageName;
   sessionId?: string;
+  // Opt in to ephemeral prompt caching on the system prompt.
+  // Gateways that don't support caching silently ignore this. The
+  // Anthropic gateway additionally refuses to attach cache_control
+  // below its 1024-token floor so the caller never gets a silent
+  // no-op.
+  cacheSystem?: boolean;
 }
 
 export interface Usage {

@@ -81,6 +81,12 @@ export interface StageSpec<T> {
   acceptSemanticEmpty?: (out: T) => boolean;
 
   maxRetries?: number; // default 2 extra attempts on top of initial
+
+  // Opt in to ephemeral prompt caching on the system prompt. Only
+  // stages with a large, audit-agnostic system prompt should set
+  // this (A, C, D, F per the v1.2.0 plan). Gateways that don't
+  // support caching ignore it.
+  cacheSystem?: boolean;
 }
 
 const DEFAULT_MAX_RETRIES = 2;
@@ -166,6 +172,7 @@ export async function runStage<T>(
         sessionId: deps.sessionId,
         stage: spec.name,
         maxTokens: currentMaxTokens,
+        ...(spec.cacheSystem ? { cacheSystem: true } : {}),
       };
       const completion = await deps.gateway.complete(activeModel, messages, opts);
       rawText = completion.text ?? "";

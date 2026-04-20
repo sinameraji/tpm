@@ -10,10 +10,10 @@ import { STAGE_A_SYSTEM_PROMPT, buildStageAUserPrompt } from "./prompt.js";
 import { runStage, jsonParse, zodValidate, type StageSpec } from "../_lib/stage-runner.js";
 import type { ValidationResult } from "../_lib/validators.js";
 
-// Llama 3.3 70B FP8 Fast: Cloudflare's default on the /json endpoint.
-// 92% IFEval vs 72% for Qwen3-30B Multi-IF. Non-reasoning model, so
-// max_tokens = visible output — no hidden thinking-token burn.
-export const STAGE_A_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+// Claude Sonnet 4.6 is the v1.2.0 default for Stage A (and the whole
+// fast tier). Reliable JSON-mode via prompt instruction; non-reasoning
+// so max_tokens = visible output.
+export const STAGE_A_MODEL = "claude-sonnet-4-6";
 const STAGE_A_MAX_TOKENS = 16_000;
 
 export interface StageADeps {
@@ -88,6 +88,10 @@ export async function runStageA(
     parse: (raw) => jsonParse(raw),
     validate: zodValidate(LeanCanvasSchema),
     semanticCheck: stageASemanticCheck,
+    // Stage A's system prompt is audit-agnostic and reused across
+    // every run — opt in to ephemeral caching. Anthropic gateway
+    // guards against sub-1024-token content silently no-op'ing.
+    cacheSystem: true,
   };
 
   const result = await runStage<LeanCanvas>(spec, {

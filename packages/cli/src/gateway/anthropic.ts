@@ -55,17 +55,9 @@ function estimateTokens(text: string): number {
   return Math.ceil((text ?? "").length / CHARS_PER_TOKEN);
 }
 
-// Extended options the Anthropic gateway understands on top of the
-// shared CompleteOptionsExt. Callers pass these via the same opts
-// object — other gateways will ignore the extra fields.
-export interface AnthropicCompleteOptions extends CompleteOptionsExt {
-  // If true and the system prompt is large enough, attach
-  // cache_control: { type: "ephemeral" } so the system prefix is
-  // cached for 5 minutes of subsequent calls. Defaults to false —
-  // only the stages that reuse a long, audit-agnostic system prompt
-  // should opt in (A, C, D, F per the v1.2.0 plan).
-  cacheSystem?: boolean;
-}
+// `cacheSystem` lives on CompleteOptionsExt (gateway/index.ts) so
+// stages can opt in without importing anything Anthropic-specific.
+// The Anthropic gateway is the only current consumer.
 
 export class AnthropicGateway implements ModelGateway {
   readonly name = "anthropic";
@@ -85,7 +77,7 @@ export class AnthropicGateway implements ModelGateway {
   async complete(
     model: string,
     messages: Message[],
-    opts: AnthropicCompleteOptions = {},
+    opts: CompleteOptionsExt = {},
   ): Promise<CompletionResult> {
     const { system, conversation } = splitSystem(messages);
     const systemForApi = buildSystemParam(system, opts);
@@ -170,7 +162,7 @@ function splitSystem(messages: Message[]): {
 
 function buildSystemParam(
   system: string | null,
-  opts: AnthropicCompleteOptions,
+  opts: CompleteOptionsExt,
 ): string | TextBlockParam[] | undefined {
   if (!system) return undefined;
   if (!opts.cacheSystem) return system;
