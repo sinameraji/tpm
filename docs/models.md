@@ -1,67 +1,74 @@
-# Model Selection
+# Models
 
-TPM runs exclusively on **Cloudflare Workers AI**. No third-party LLMs.
+TPM v1.2.0 runs exclusively on Anthropic's Claude 4 family: Sonnet 4.6 and Opus 4.7. Model IDs referenced in this doc are the canonical ones from [docs.claude.com](https://docs.claude.com).
 
-## Selected models
+## Tiers
 
-| Job                                                     | Model                                      | Rationale                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Structured-output stages (A, C, D, E-spec, F)           | `@cf/meta/llama-3.3-70b-instruct-fp8-fast` | 92% IFEval (vs 72% Multi-IF for Qwen3-30B). Cloudflare's default on the `/json` endpoint — their production-proven JSON-mode model. Non-reasoning (no hidden thinking tokens), FP8 "fast" variant. Critical for stages that need strict schema adherence: Lean Canvas shape (Stage A), fixed 7-value step classification (C), contiguous 1..N problem ranks (D), solution spec shape (E), and the 7 required `spec.md` sections (F). |
-| B-classify (project-type agent) + B-model modeler A     | `@cf/qwen/qwen2.5-coder-32b-instruct`      | Code specialist, open-source, 128K context, non-reasoning. Native JSON-mode via `response_format: { type: "json_object" \| "json_schema" }`. Used by the project-type classifier (bounded agentic file-request loop) and as modeler A in the B-model ensemble. Counterweight to Llama's structural prior.                                                                                                                            |
-| B-model modeler B + B-model synthesizer                 | `@cf/meta/llama-3.3-70b-instruct-fp8-fast` | Same model as the structured stages — strong IFEval + JSON-mode discipline. As modeler B it brings structural consistency; as the synthesizer it reconciles disputes between modeler A and modeler B, cites evidence from disputed file excerpts.                                                                                                                                                                                    |
-| B-walk (persona journey through the verified app model) | `@cf/meta/llama-3.3-70b-instruct-fp8-fast` | Moved off Qwen3-A3B in 1.1.3 — that model returns an OpenAI-compatible response shape (`choices[0].message.content`) that our backend normalized to empty string, causing every walk to fail. Llama 3.3-70B returns the native-chat shape and is JSON-mode-blessed. Fallback via circuit breaker: `@cf/meta/llama-3.1-8b-instruct`. See `docs/model-failures.md`.                                                                    |
-| E prototype HTML                                        | `@cf/meta/llama-3.3-70b-instruct-fp8-fast` | Same Qwen3-A3B response-shape bug moved this off Qwen in 1.1.3. Llama writes acceptable HTML; we'll re-evaluate creativity if prototypes regress materially. Fallback: `@cf/meta/llama-3.1-8b-instruct`.                                                                                                                                                                                                                             |
-| Vision (optional, reserved)                             | `@cf/meta/llama-4-scout-17b-16e-instruct`  | Native multimodal. Kept in the allowlist for future screenshot-aware features; not wired in v1.                                                                                                                                                                                                                                                                                                                                      |
+`tpm config set model-tier <fast|deep>` picks a tier. Fast is the default.
 
-## Stage B architecture — why a multi-agent ensemble
+### Fast (default)
 
-Stage B ("understand the app") is the load-bearing step in the audit: if we get reality wrong, Stage C's delta, Stage D's leverage ranking, Stage E's solutions, and Stage F's spec.md are all downstream-wrong. Single-model reads of a codebase have systematic blind spots — different foundation models over-index on different idioms. We explicitly trade a modest token-cost increase for higher confidence via a jury pattern:
+Every stage on `claude-sonnet-4-6`. Target audit time: 8–12 min. Target cost: ~$1–3 per audit.
 
-1. **B-classify** (LLM agent with bounded file requests) — Qwen2.5-Coder receives an `ls`-style repo snapshot and can request up to 6 specific files to decide what kind of project this is. Output: a `project_profile` with a natural-language description (no predetermined "language_primary / deployment_target / auth_surface" slots — those facets are the model's to include or omit) plus candidate entry points and screen files for B-model to read.
-2. **B-model fan-out** — Qwen2.5-Coder and Llama 3.3-70B read the same seed files in parallel, each producing an independent `AppModel` (entry points, walls, screens, navigation graph). Disagreement is a feature: it flags where the code is ambiguous.
-3. **B-model fan-in** — Llama 3.3-70B synthesizes. Agreed claims pass through; disputed claims are resolved by citing evidence from the specific file passages that grounded the disagreement. Every resolution goes into `synthesis_notes` for auditability.
-4. **B-walk** — Qwen3-30B imagines each persona's journey over the verified navigation graph. Steps reference `screen_id`s from the app model; the walker cannot invent screens or URLs.
+### Deep
 
-Incremental cost: ~0.06–0.10 USD/audit vs ~0.03 USD single-model. Per-audit target is now **~$0.60–0.75** (up from the original $0.50). Worth it — the audit is useless if reality is wrong.
+Opus on the heavy-thinking stages; Sonnet on the rest. Target audit time: 18–25 min. Target cost: ~$6–10 per audit.
 
-## History / why we moved off `gpt-oss-120b`
+| Stage                   | fast              | deep                |
+| ----------------------- | ----------------- | ------------------- |
+| A — intent              | claude-sonnet-4-6 | claude-sonnet-4-6   |
+| B — classify project    | claude-sonnet-4-6 | claude-sonnet-4-6   |
+| B — model app           | claude-sonnet-4-6 | **claude-opus-4-7** |
+| B — walk personas       | claude-sonnet-4-6 | claude-sonnet-4-6   |
+| C — delta               | claude-sonnet-4-6 | **claude-opus-4-7** |
+| D — leverage            | claude-sonnet-4-6 | claude-sonnet-4-6   |
+| E — spec (per solution) | claude-sonnet-4-6 | **claude-opus-4-7** |
+| E — prototype HTML      | claude-sonnet-4-6 | claude-sonnet-4-6   |
+| F — assembly (spec.md)  | claude-sonnet-4-6 | **claude-opus-4-7** |
 
-Initial plan used `@cf/openai/gpt-oss-120b` for the heavy stages on the theory it was "best reasoning per neuron." In practice that bit us:
+The Opus stages are the ones where a stronger reasoner materially improves output quality — structural modeling (B-model), intent-vs-reality delta (C), solution design (E-spec), and final report assembly (F). Everything else is structured extraction where Sonnet 4.6 is already ceiling.
 
-1. **gpt-oss-120b is a reasoning model.** Its output tokens include hidden chain-of-thought. Cloudflare's `env.AI.run()` doesn't split `max_completion_tokens` from the total `max_tokens` budget, so the model could (and did) burn the entire output budget on internal thinking and return **empty visible text** — a hard-to-diagnose failure seen in production on a real repo.
-2. **It's not on Workers AI's JSON-mode supported list.** The 9 models Cloudflare explicitly blesses for `response_format: { type: "json_object" }` include Llama 3.1 / 3.3, DeepSeek R1, Hermes variants. gpt-oss-120b isn't among them, so JSON-mode adherence was best-effort at best.
-3. **We never set a `reasoning.effort` cap.** The model was free to think without bound.
+## Per-stage overrides
 
-Three failure modes stacked. Llama 3.3-70B FP8 Fast has none of them: non-reasoning, JSON-mode-blessed, 128K context, 20-point IFEval lead over Qwen. The cost per output token is ~6× higher, but at 5 structured calls per audit that's cents, and the failure-rate reduction more than pays for it (no retries, no wasted neurons on empty responses).
+`stage_models.<key>` in `~/.tpm/config.yaml` overrides the tier default for one stage:
 
-## Why no Anthropic, OpenAI direct, or AI Gateway
+```bash
+tpm config set stage_models.c claude-opus-4-7      # upgrade just Stage C
+tpm config set stage_models.b-model claude-sonnet-4-6   # downgrade on deep tier
+tpm config unset stage_models.c                    # remove override
+```
 
-1. **Unified billing story.** One Neuron unit across the entire audit simplifies pricing, quota, and cost reporting.
-2. **Single vendor trust surface.** Workers AI lives in the same Cloudflare account as D1, KV, R2, and the Worker itself. Less cross-vendor credential sprawl.
-3. **Latency.** Workers AI calls from a Worker stay inside Cloudflare — no hop to external providers.
-4. **Customer privacy story.** "Your prompts never leave Cloudflare" is simpler to verify than "your prompts go to provider X via gateway Y."
+Valid stage keys: `a`, `b-classify`, `b-model`, `b-walk`, `c`, `d`, `e-spec`, `e-proto`, `f`.
 
-## Config override
+## Temperature
 
-Per-stage model selection will live in `~/.tpm/config.yaml` once per-stage overrides ship (Phase 2 governance work). For now the models are hardcoded in each stage's `stage-*.ts` and the backend's `ALLOWED_MODELS` allowlist (`packages/backend/src/routes/infer.ts`). Adding a model requires both updating the allowlist and verifying it works on the hosted trial tier.
+Standardized across stages:
 
-## Cost calibration
+- **0.1** on structured-output stages (A, B-classify, B-model, C, D, E-spec). JSON reliability > creativity.
+- **0.3** on narrative stages (B-walk imagined journey, E-prototype HTML). Enough to produce varied, realistic prose without the structure falling apart.
+- **0.2** on Stage F (markdown assembly). In between — it's prose but constrained to section structure.
 
-Neurons are approximated server-side as `0.01 × (prompt_tokens + completion_tokens)` until real Cloudflare invoices calibrate this. Target per-audit spend: **~$0.60–0.75** after the Stage B redesign (was ~$0.50).
+You can't override temperature via config in 1.2.0. If you need to, open an issue.
 
-| Stage | Target     | Notes                                                                                                                                                                            |
-| ----- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A     | $0.10      | Single llama-3.3-70b call; compacted static map in, Lean Canvas JSON out                                                                                                         |
-| B     | $0.22–0.35 | B-classify (1–2 Qwen2.5-Coder calls) + B-model ensemble (Qwen2.5-Coder + Llama 3.3-70B in parallel + Llama synthesizer) + B-walk (1 Llama-3.3-70B call per persona, 1–2 typical) |
-| C     | $0.10      | Single llama-3.3-70b call                                                                                                                                                        |
-| D     | $0.05      | Single llama-3.3-70b call                                                                                                                                                        |
-| E     | $0.08      | 5 llama spec calls + 5 llama prototype calls, bounded concurrency=2 (1.1.3)                                                                                                      |
-| F     | $0.02      | Single llama-3.3-70b call, markdown out                                                                                                                                          |
+## Max tokens
 
-### JSON-mode multiplier (observed in production)
+Per stage, sized for the actual output envelope:
 
-Requesting `response_format: { type: "json_object" }` on Llama 3.3-70B triggers Workers AI's speculative-decoding backend (`@cf/meta/llama-3.3-70b-instruct-sd`). Neurons are billed against the `-sd` routing **in addition to** the base model call — effective cost is roughly **2.5× the sticker neuron price per JSON-mode call**. Real per-audit cost is closer to **$1.00–$1.25**, not the $0.60–$0.75 target above. The Workers AI usage dashboard under-reports this because its "Text Generation" aggregate card excludes the `-sd` routing bucket. See `docs/model-failures.md` for the full incident and remediation.
+- A: 16K · B-classify: 3K · B-model: 6K · B-walk: 4K
+- C: 16K · D: 8K · E-spec: 8K · E-prototype: 4K · F: 16K
 
-### Hosted-tier free allocation
+These are conservative upper bounds — actual output is usually smaller. Raising them has no effect on cost for unused tokens (Anthropic charges on actual usage).
 
-Cloudflare's free Workers AI tier is **10K neurons/day/account**. A full 6-stage TPM audit is ~8–12K neurons after the JSON-mode multiplier, so the free tier covers **~1 audit/day**. Upgrade to Workers Paid (or use BYO gateway against an account with Workers Paid enabled) for unlimited audits. Cloudflare for Startups Program members: your $250K credit pool covers Workers Paid usage — ask startups@cloudflare.com to enable the paid tier on your account.
+## Prompt caching
+
+System prompts on Stages A, B-classify, B-model, B-walk, C, D, E-spec, E-prototype, and F all opt in to `cache_control: { type: "ephemeral" }`. The gateway refuses to attach cache_control below Anthropic's ~1024-token cache floor (to avoid silent no-ops), so short system prompts silently behave as uncached.
+
+On a second audit against the same repo within the cache TTL (5 min for ephemeral), the system prompts read from cache at ~10% of normal input cost. The pattern library in Stage C's system prompt is a particularly meaty cache hit — it's the single largest block TPM sends.
+
+You can verify caching is working by looking at `cache_read_input_tokens` in the log output (`tpm audit --verbose`) or by observing that the cost of the second audit is materially lower than the first.
+
+## Why we moved off Cloudflare Workers AI (from 1.1.x)
+
+v1.1.x ran a mix of Llama 3.3 70B, Qwen 2.5-Coder-32B, Qwen 3-30B-A3B, and a 120B GPT-OSS on Cloudflare Workers AI. Each family had different quirks — response shapes, context window empirical ceilings, JSON-mode reliability, rate limits — and TPM's codebase accumulated a dozen compensations for running across them: an ensemble in B-model, cross-family fallbacks, a hand-rolled circuit breaker in B-classify, a Workers-AI proxy with `normalizeResponseText`, and context-window overrides. Most of that code is deleted in 1.2.0.
+
+Moving to one well-behaved model family on Anthropic let us delete most of that. The numbers argued for it too: on fast tier, the Sonnet-only 1.2.0 is cheaper end-to-end than the multi-family 1.1.x (because the ensemble overhead is gone) and latency is lower (fewer models means fewer cold starts, and prompt caching cuts input cost on repeat runs).

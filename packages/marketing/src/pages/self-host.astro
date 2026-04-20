@@ -1,70 +1,32 @@
 ---
 import Base from "../layouts/Base.astro";
 ---
-<Base title="Self-host TPM on your own Cloudflare Workers AI">
+<Base title="Self-host — moved (TPM 1.2.0)">
   <section style="padding: 3rem 0 2rem;">
-    <p><span class="badge">Open source · MIT</span></p>
-    <h1>Self-host TPM</h1>
-    <p style="font-size: 1.1rem; color: #4d4d4d; max-width: 40rem;">
-      Every device gets one free audit on the maintainer's Cloudflare Workers AI credits.
-      For unlimited audits, run TPM on your own Cloudflare account — 5 minutes of setup, then you
-      own the pipeline end-to-end.
+    <h1>Self-host is no longer a separate thing</h1>
+    <p style="max-width: 40rem; color: #4d4d4d;">
+      TPM v1.2.0 runs directly against <strong>your Anthropic account</strong> — there is no
+      TPM-operated backend to self-host around. Bring your own Anthropic API key, everything
+      else is local.
     </p>
-  </section>
+    <pre><code>npm install -g @sinameraji/tpm
 
-  <section style="padding: 1rem 0;">
-    <h2>1. Cloudflare setup</h2>
-    <ol style="max-width: 44rem;">
-      <li>
-        Sign up at <a href="https://dash.cloudflare.com/sign-up">dash.cloudflare.com/sign-up</a>
-        (free). The <a href="https://developers.cloudflare.com/workers-ai/">Workers AI</a>
-        free allowance covers plenty of audits; heavy usage is metered and cheap.
-      </li>
-      <li>
-        From the dashboard home, copy your <strong>Account ID</strong> (shown in the right
-        sidebar on any Cloudflare page).
-      </li>
-      <li>
-        Create an API token: <strong>My Profile → API Tokens → Create Token</strong>.
-        Use the <em>Custom token</em> template and grant <code>Workers AI → Read</code> and
-        <code>Workers AI → Run</code>. Save the token — Cloudflare only shows it once.
-      </li>
-    </ol>
-  </section>
-
-  <section style="padding: 1rem 0;">
-    <h2>2. Point TPM at your account</h2>
-    <pre><code>tpm config set gateway byo
-tpm config set byo.account_id &lt;your-account-id&gt;
-tpm config set byo.api_token &lt;your-api-token&gt;
-tpm config show</code></pre>
-    <p style="max-width: 44rem; color: #4d4d4d;">
-      The token is stored in <code>~/.tpm/config.yaml</code> with mode 0600 and never synced anywhere.
-      Audits in BYO mode talk directly to Cloudflare's AI REST API — no TPM proxy.
-    </p>
-  </section>
-
-  <section style="padding: 1rem 0;">
-    <h2>3. Run audits</h2>
-    <pre><code>cd your-product-repo
-tpm init
+tpm init       # paste your Anthropic API key
+cd your-product-repo
 tpm audit</code></pre>
-    <p style="max-width: 44rem;">
-      No URL argument. TPM reads the code in your current directory, reconstructs the intended
-      product, imagines the user journey from the code, and produces the audit artifacts.
+    <p style="max-width: 40rem;">
+      Your key is stored in <code>~/.tpm/config.yaml</code> (chmod 600) and only ever sent to
+      <code>api.anthropic.com</code>. No markup on inference. Your rate limits, your bill.
     </p>
-    <p style="max-width: 44rem;">
-      Cloudflare bills you directly for usage. Expect ~$0.10–$0.50 per full audit depending
-      on product complexity — the exact cost is printed after every run.
+    <p style="max-width: 40rem;">
+      Coming from TPM 1.1.x with a self-hosted Cloudflare Worker? Take it down — it's no longer
+      referenced. See
+      <a href="https://github.com/sinameraji/tpm/blob/main/docs/migration-from-1.1.md">the
+      migration notes</a>.
     </p>
-  </section>
-
-  <section style="padding: 2rem 0; border-top: 1px solid #e4e4e0;">
-    <h2>Prefer to stay on the hosted trial?</h2>
-    <p style="max-width: 44rem;">
-      Every device gets one free audit on our credits. If that's all you need, just
-      <code>cd</code> into your repo and run <code>tpm audit</code> with no config — the hosted
-      gateway is the default.
+    <p style="max-width: 40rem; margin-top: 2rem;">
+      <a href="/" class="button">Back to TPM</a>
+      <a href="/docs" class="button secondary" style="margin-left: 0.5rem;">Docs</a>
     </p>
   </section>
 </Base>

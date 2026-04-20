@@ -18,17 +18,23 @@ import Base from "../layouts/Base.astro";
     </p>
     <pre style="margin-top: 2rem; max-width: 40rem;"><code>npm install -g @sinameraji/tpm
 
+tpm init       # paste your Anthropic API key
 cd your-product-repo
-tpm init
 tpm audit</code></pre>
     <p style="color: #4d4d4d; font-size: 0.85rem; max-width: 40rem; margin-top: 0.5rem;">
       No install? <code>npx @sinameraji/tpm@latest audit</code> works too. macOS users hitting
       EACCES on global install: <a href="https://github.com/sinameraji/tpm/blob/main/packages/cli/README.md#if-npm-install--g-fails-with-eacces-macos-default">one-time prefix fix</a>.
     </p>
     <p style="color: #4d4d4d; font-size: 0.9rem; max-width: 40rem; margin-top: 1rem;">
-      First run prompts you for an optional marketing URL. Skip with Enter for a code-only audit.
-      Every new device gets one free audit on our hosted Cloudflare Workers AI credits. After
-      that, <a href="/self-host">self-host on your own Cloudflare</a> for unlimited audits.
+      TPM uses <strong>Claude (Sonnet 4.6 by default)</strong> for inference. You bring your own
+      Anthropic API key — your key, your rate limits, your bill. A typical audit takes about
+      8–12 minutes and costs roughly <strong>$1–3 in Anthropic API credits</strong> at your
+      account's rates. Deep-tier audits cost 3–5× more. See
+      <a href="https://www.anthropic.com/pricing">anthropic.com/pricing</a>.
+    </p>
+    <p style="color: #4d4d4d; font-size: 0.9rem; max-width: 40rem; margin-top: 0.75rem;">
+      Nothing is transmitted anywhere except <code>api.anthropic.com</code>. There is no TPM
+      backend. Your key is stored locally in <code>~/.tpm/config.yaml</code> (chmod 600).
     </p>
   </section>
 

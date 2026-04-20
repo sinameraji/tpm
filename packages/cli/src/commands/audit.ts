@@ -3,11 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { Orchestrator } from "../core/orchestrator.js";
-import { WorkersAIGateway } from "../gateway/workers-ai.js";
-import { DirectWorkersAIGateway } from "../gateway/direct-workers-ai.js";
 import { AnthropicGateway } from "../gateway/anthropic.js";
-import { HybridGateway } from "../gateway/hybrid.js";
-import type { ModelGateway } from "../gateway/index.js";
 import { detectLegacyConfig, loadConfig, resolveAnthropicKey } from "../core/config.js";
 import { loadProjectConfig, saveProjectConfig } from "../core/project-config.js";
 import { runKeyWizard } from "../core/init-wizard.js";
@@ -56,9 +52,6 @@ export function register(program: Command): void {
       (v: string) => Number(v),
     )
     .option("--no-pdf", "Skip PDF rendering in Stage F")
-    .option("--no-sync", "Don't sync audit artifacts to backend")
-    .option("--endpoint <url>", "Override the hosted backend URL (defaults to config.api_endpoint)")
-    .option("--gateway <mode>", "Force gateway mode: hosted | byo (defaults to config.gateway)")
     .option(
       "--no-stream",
       "Disable streaming progress UI. Use in CI / non-TTY pipelines where cursor manipulation would garble output.",
@@ -71,9 +64,6 @@ export function register(program: Command): void {
         stepBudget?: number;
         top?: number;
         pdf?: boolean;
-        sync?: boolean;
-        endpoint?: string;
-        gateway?: "hosted" | "byo";
         stream?: boolean; // --no-stream → false
       }>();
 
@@ -147,14 +137,6 @@ export function register(program: Command): void {
         }
       }
 
-      // Transitional: Workers-AI gateway still built for unported
-      // audit flows (legacy config with `gateway: byo`). Removed in
-      // C14 along with the workers-ai gateway and backend package.
-      const LEGACY_DEFAULT_ENDPOINT = "https://tpm-api.sina-b35.workers.dev";
-      const endpoint = opts.endpoint ?? cfg.legacy?.api_endpoint ?? LEGACY_DEFAULT_ENDPOINT;
-      const legacyGateway = cfg.legacy?.gateway === "byo" ? "byo" : "hosted";
-      const gatewayMode = opts.gateway ?? legacyGateway;
-
       // Marketing URL resolution: flag → project config → interactive prompt (TTY only) → none.
       let marketingUrl: string | undefined;
       if (opts.marketing === false) {
@@ -189,52 +171,15 @@ export function register(program: Command): void {
         saveProjectConfig({ ...projectCfg, marketing_url: marketingUrl }, projectRoot);
       }
 
-      // Gateway selection during the v1.2.0 migration:
-      //   - Workers AI (hosted or BYO) carries stages that still use
-      //     "@cf/..." model IDs.
-      //   - AnthropicGateway carries stages that have been ported to
-      //     "claude-..." model IDs (starting with Stage A in C5).
-      //   - HybridGateway dispatches per call by model-ID prefix.
-      // Once every stage is on Anthropic (after C11) and the
-      // workers-ai gateway is deleted (C14), audit.ts constructs
-      // AnthropicGateway directly.
-      const anthropicKey = resolveAnthropicKey(cfg);
-      const anthropicGateway = anthropicKey ? new AnthropicGateway({ apiKey: anthropicKey }) : null;
-
-      let workersAIGateway: ModelGateway | null;
-      let apiEndpointForOrchestrator: string | undefined;
-      if (gatewayMode === "byo") {
-        const byoAcct = cfg.legacy?.byo?.account_id;
-        const byoTok = cfg.legacy?.byo?.api_token;
-        if (!byoAcct || !byoTok) {
-          emitText(
-            runtime,
-            "BYO gateway requires both byo.account_id and byo.api_token. Run `tpm self-host` for setup.",
-          );
-          emit(runtime, { ok: false, error: "byo credentials missing" });
-          process.exitCode = 1;
-          return;
-        }
-        workersAIGateway = new DirectWorkersAIGateway({
-          accountId: byoAcct,
-          apiToken: byoTok,
-        });
-        apiEndpointForOrchestrator = undefined;
-      } else {
-        workersAIGateway = new WorkersAIGateway({ endpoint });
-        apiEndpointForOrchestrator = endpoint;
-      }
-
-      const gateway: ModelGateway = new HybridGateway({
-        anthropic: anthropicGateway,
-        workersAI: workersAIGateway,
-      });
+      // By this point the key-resolution branches above have guaranteed
+      // a key exists (either env, existing config, or wizard-set).
+      const anthropicKey = resolveAnthropicKey(cfg)!;
+      const gateway = new AnthropicGateway({ apiKey: anthropicKey });
 
       const orchestrator = new Orchestrator({
         logger: runtime.logger,
         gateway,
         sessionId: runtime.sessionId,
-        ...(apiEndpointForOrchestrator ? { apiEndpoint: apiEndpointForOrchestrator } : {}),
       });
 
       const artifactsOutputPath = path.join(".tpm", "artifacts", "<audit-id>", "spec.md");
@@ -255,7 +200,6 @@ export function register(program: Command): void {
           ...(opts.stepBudget !== undefined ? { stepBudget: opts.stepBudget } : {}),
           ...(opts.top !== undefined ? { topNSolutions: opts.top } : {}),
           renderPdf: opts.pdf !== false,
-          skipSync: opts.sync === false || gatewayMode === "byo",
         });
         const artifactsAbs = path.resolve(res.artifactsDir);
         const specMd = path.join(artifactsAbs, "spec.md");
@@ -313,7 +257,7 @@ export function register(program: Command): void {
           artifacts_dir: res.artifactsDir,
           codebase: projectRoot,
           marketing_url: marketingUrl ?? null,
-          gateway: gatewayMode,
+          gateway: "anthropic",
           total_micro_usd: Math.round(res.totalNeurons),
           duration_ms: res.durationMs,
           stages: res.stages,

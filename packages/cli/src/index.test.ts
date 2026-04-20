@@ -2,24 +2,17 @@ import { describe, it, expect } from "vitest";
 import { buildProgram } from "./index.js";
 
 describe("cli entry", () => {
-  it("registers the OSS command set (no Stripe commands)", () => {
+  it("registers the v1.2.0 command set (BYO Anthropic)", () => {
     const program = buildProgram();
     const names = program.commands.map((c) => c.name()).sort();
-    expect(names).toEqual(
-      ["audit", "config", "cost", "feedback", "init", "report", "self-host"].sort(),
-    );
+    expect(names).toEqual(["audit", "config", "cost", "feedback", "init", "report"].sort());
   });
 
-  it("aliases upgrade / activate / account to self-host", () => {
+  it("does not register legacy commands removed in 1.2.0", () => {
     const program = buildProgram();
-    const selfHost = program.commands.find((c) => c.name() === "self-host");
-    expect(selfHost).toBeDefined();
-    expect(selfHost?.aliases()).toEqual(expect.arrayContaining(["upgrade", "activate", "account"]));
-  });
-
-  it("does not register `chat` (v2-only per spec)", () => {
-    const program = buildProgram();
-    expect(program.commands.map((c) => c.name())).not.toContain("chat");
+    const names = program.commands.map((c) => c.name());
+    expect(names).not.toContain("self-host");
+    expect(names).not.toContain("chat");
   });
 
   it("declares the documented global flags", () => {

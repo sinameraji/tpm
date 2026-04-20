@@ -4,7 +4,6 @@ import { register as registerInit } from "./commands/init.js";
 import { register as registerAudit } from "./commands/audit.js";
 import { register as registerReport } from "./commands/report.js";
 import { register as registerConfig } from "./commands/config.js";
-import { register as registerSelfHost } from "./commands/self-host.js";
 import { register as registerCost } from "./commands/cost.js";
 import { register as registerFeedback } from "./commands/feedback.js";
 
@@ -27,7 +26,6 @@ export function buildProgram(): Command {
   registerAudit(program);
   registerReport(program);
   registerConfig(program);
-  registerSelfHost(program);
   registerCost(program);
   registerFeedback(program);
 

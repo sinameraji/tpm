@@ -3,8 +3,6 @@ import * as path from "node:path";
 import { v4 as uuidv4 } from "uuid";
 import type { Logger } from "./logger.js";
 import type { ModelGateway } from "../gateway/index.js";
-import { QuotaClient, formatUpgradeMessage } from "../billing/quota.js";
-import { AuditSync } from "../sync/audits.js";
 import { projectPaths } from "./paths.js";
 import { openDatabase } from "../db/init.js";
 import yaml from "js-yaml";
@@ -25,7 +23,6 @@ export interface OrchestratorDeps {
   logger: Logger;
   gateway: ModelGateway;
   sessionId: string;
-  apiEndpoint?: string;
 }
 
 export interface OrchestratorOptions {
@@ -34,7 +31,6 @@ export interface OrchestratorOptions {
   stepBudget?: number;
   topNSolutions?: number;
   renderPdf?: boolean;
-  skipSync?: boolean;
 }
 
 export interface AuditRunResult {
@@ -78,46 +74,8 @@ export class Orchestrator {
     );
     db.close();
 
-    // Quota pre-flight (best-effort; skip if not configured).
-    if (this.deps.apiEndpoint && !opts.skipSync) {
-      try {
-        const quota = new QuotaClient({ endpoint: this.deps.apiEndpoint });
-        const status = await quota.check();
-        if (!status.allowances.full_audit) {
-          log.warn({ mode: status.mode, used: status.used }, "hosted trial exhausted");
-          process.stderr.write(formatUpgradeMessage(status) + "\n");
-          throw new Error(
-            "hosted trial exhausted — see https://tpm-d3h.pages.dev/self-host or `tpm self-host`",
-          );
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (/trial exhausted/.test(msg)) throw err;
-        log.warn({ err: msg }, "quota pre-flight failed (continuing)");
-      }
-    }
-
-    const sync =
-      this.deps.apiEndpoint && !opts.skipSync
-        ? new AuditSync({ endpoint: this.deps.apiEndpoint })
-        : null;
-    if (sync) {
-      try {
-        await sync.createAudit({
-          auditId,
-          target: projectRoot,
-          tpmVersion: TPM_VERSION,
-          sessionId: this.deps.sessionId,
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        log.warn({ err: msg }, "backend audit create failed (continuing locally)");
-      }
-    }
-
     const stages: AuditRunResult["stages"] = {};
     let totalNeurons = 0;
-    const costPerStage: Record<string, number> = {};
 
     try {
       const map = await withStageProgress(
@@ -169,7 +127,6 @@ export class Orchestrator {
           }),
       );
       stages.A = { status: "ok", neurons: a.neurons };
-      costPerStage.A = a.neurons;
       totalNeurons += a.neurons;
 
       // Stage B groups classify → model → walk. One progress line
@@ -194,7 +151,6 @@ export class Orchestrator {
           }),
       );
       stages.B = { status: "ok", neurons: b.neurons };
-      costPerStage.B = b.neurons;
       totalNeurons += b.neurons;
 
       const patterns = loadBuiltInPatterns();
@@ -218,7 +174,6 @@ export class Orchestrator {
           ),
       );
       stages.C = { status: "ok", neurons: c.neurons };
-      costPerStage.C = c.neurons;
       totalNeurons += c.neurons;
 
       const d = await withStageProgress(
@@ -236,7 +191,6 @@ export class Orchestrator {
           }),
       );
       stages.D = { status: "ok", neurons: d.neurons };
-      costPerStage.D = d.neurons;
       totalNeurons += d.neurons;
 
       const e = await withStageProgress(
@@ -259,7 +213,6 @@ export class Orchestrator {
           ),
       );
       stages.E = { status: "ok", neurons: e.neurons };
-      costPerStage.E = e.neurons;
       totalNeurons += e.neurons;
 
       const f = await withStageProgress(
@@ -288,25 +241,7 @@ export class Orchestrator {
           ),
       );
       stages.F = { status: "ok", neurons: f.neurons };
-      costPerStage.F = f.neurons;
       totalNeurons += f.neurons;
-
-      if (sync) {
-        try {
-          await sync.uploadArtifacts(auditId, artifactsDir);
-          await sync.finishAudit({
-            auditId,
-            status: "succeeded",
-            totalNeurons,
-            costPerStage,
-          });
-        } catch (err) {
-          log.warn(
-            { err: err instanceof Error ? err.message : String(err) },
-            "sync on finish failed",
-          );
-        }
-      }
 
       const db2 = openDatabase(paths.dbFile);
       db2
@@ -321,9 +256,6 @@ export class Orchestrator {
         .prepare(`UPDATE audits SET ended_at = ?, status = ?, notes = ? WHERE id = ?`)
         .run(new Date().toISOString(), "failed", msg.slice(0, 500), auditId);
       db2.close();
-      if (sync) {
-        await sync.finishAudit({ auditId, status: "failed", totalNeurons }).catch(() => {});
-      }
       throw err;
     }
 

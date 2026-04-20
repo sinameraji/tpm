@@ -5,16 +5,16 @@
 ```bash
 npm install -g @sinameraji/tpm
 
+tpm init       # paste your Anthropic API key
 cd your-product-repo
-tpm init
 tpm audit
 ```
 
-**If `npm install -g` fails with EACCES on macOS**, your npm prefix points at a root-owned dir. Either move it to your home (one-time fix, never needs sudo again — see [cli README](./packages/cli/README.md#if-npm-install--g-fails-with-eacces-macos-default)) or just `sudo npm install -g @sinameraji/tpm`.
+TPM uses **Claude (Sonnet 4.6 by default, Opus 4.7 on the deep tier)** for inference. You bring your own Anthropic API key — your key, your rate limits, your bill. Nothing is transmitted anywhere except `api.anthropic.com`.
+
+A typical audit takes about **8–12 minutes** and costs roughly **$1–3 in Anthropic API credits** at your account's rates. Deep-tier audits cost 3–5× more. Latest published rates: [anthropic.com/pricing](https://www.anthropic.com/pricing).
 
 **Prefer not to install globally?** `npx @sinameraji/tpm@latest audit` works without any global install.
-
-First run prompts you for an optional marketing URL. Skip with Enter, or pre-set with `--marketing-url https://yourproduct.com`. The URL is remembered for subsequent runs.
 
 ## The mental model
 
@@ -38,16 +38,35 @@ Artifacts land in `.tpm/artifacts/{audit_id}/`:
 - `solutions.yaml` + `prototypes/*.html` — top-5 fixes with annotated HTML mockups
 - `spec.md` + `spec.html` — the PM deliverable
 
-## Hosted trial vs self-host
+## Why BYO
 
-- **Hosted trial** (default). Every device gets **one free audit** on the maintainer's Cloudflare Workers AI credits. Zero setup.
-- **Self-host** for unlimited audits. Point TPM at your own Cloudflare account (~5 min). See [`docs/self-host.md`](./docs/self-host.md) or run `tpm self-host`.
+**Your key, your control.** No hosted proxy. No shared quota. No markup on inference. Your key is stored locally (`~/.tpm/config.yaml`, chmod 600) and only ever sent to `api.anthropic.com`. Delete it any time with `tpm config unset anthropic-key`.
+
+**Rate limits are yours.** Deep-tier parallel stages will use up to 4 concurrent Anthropic requests. Pro accounts handle this comfortably; if you hit 429s, drop to `fast` tier or raise your limit with Anthropic.
+
+## Model tiers
+
+Pick on `tpm init`:
+
+| Stage                 | fast (default)    | deep              |
+| --------------------- | ----------------- | ----------------- |
+| A — intent            | claude-sonnet-4-6 | claude-sonnet-4-6 |
+| B — classify + walk   | claude-sonnet-4-6 | claude-sonnet-4-6 |
+| B — model (structure) | claude-sonnet-4-6 | claude-opus-4-7   |
+| C — delta             | claude-sonnet-4-6 | claude-opus-4-7   |
+| D — leverage          | claude-sonnet-4-6 | claude-sonnet-4-6 |
+| E — spec              | claude-sonnet-4-6 | claude-opus-4-7   |
+| E — prototype HTML    | claude-sonnet-4-6 | claude-sonnet-4-6 |
+| F — assembly          | claude-sonnet-4-6 | claude-opus-4-7   |
+
+Switch after `init`:
 
 ```bash
-tpm config set gateway byo
-tpm config set byo.account_id <your-account-id>
-tpm config set byo.api_token <your-api-token>
+tpm config set model-tier deep            # all deep stages upgrade to Opus
+tpm config set stage_models.c claude-opus-4-7   # or override one stage
 ```
+
+Prompt caching is on for every long, audit-agnostic system prompt (Stages A, C, D, F, plus B-classify/B-model/B-walk on the same system prefix across retries). Back-to-back audits on the same repo typically show `cache_read_input_tokens > 0` on the second run — knock a chunk off the input cost. See `tpm audit --verbose` to inspect.
 
 ## The method
 
@@ -55,7 +74,7 @@ Six-stage deterministic pipeline, fully specified by schema. See [`docs/the-meth
 
 ## Architecture
 
-CLI on your machine (Node 20+), optional thin Cloudflare Worker backend for the hosted trial, Workers AI for inference. No Playwright, no live-product automation. See [`docs/architecture.md`](./docs/architecture.md).
+CLI on your machine (Node 20+). No backend. No Playwright. No live-product automation. See [`docs/architecture.md`](./docs/architecture.md).
 
 ## Repo layout
 
@@ -63,7 +82,6 @@ CLI on your machine (Node 20+), optional thin Cloudflare Worker backend for the 
 packages/
   shared/     Zod schemas + TS types — single source of truth
   cli/        the `tpm` command-line tool
-  backend/    optional Cloudflare Worker (hosted trial)
   marketing/  tpm-d3h.pages.dev landing (Astro on Cloudflare Pages)
 ```
 
@@ -78,12 +96,18 @@ pnpm lint
 
 Node 20+ and pnpm 9+ required.
 
+## Upgrading from 1.1.x
+
+1.1.x ran on Cloudflare Workers AI with a hosted proxy and a device-flow JWT. 1.2.0 is BYO Anthropic, no backend. First `tpm audit` after upgrading prompts you to run `tpm init` for the key — details in [`docs/migration-from-1.1.md`](./docs/migration-from-1.1.md).
+
 ## Docs
 
 - [The method](./docs/the-method.md)
 - [Architecture](./docs/architecture.md)
-- [Self-host](./docs/self-host.md)
-- [Models](./docs/models.md)
+- [BYO Anthropic — what gets sent, what's stored](./docs/byo.md)
+- [Migration from 1.1.x](./docs/migration-from-1.1.md)
+- [Models and tiers](./docs/models.md)
+- [Cost + time — what to expect](./docs/cost-and-time.md)
 - [Authoring patterns](./docs/patterns-authoring.md)
 
 ## Author

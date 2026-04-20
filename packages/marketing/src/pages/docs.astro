@@ -8,8 +8,8 @@ import Base from "../layouts/Base.astro";
     <h2>Quick start</h2>
     <pre><code>npm install -g @sinameraji/tpm
 
+tpm init       # paste your Anthropic API key
 cd your-product-repo
-tpm init
 tpm audit</code></pre>
     <p style="max-width: 44rem; color: #4d4d4d; font-size: 0.9rem;">
       Don't want to install globally? <code>npx @sinameraji/tpm@latest audit</code> works without
@@ -23,8 +23,10 @@ tpm audit</code></pre>
       positioning. Skip with Enter.
     </p>
     <p style="max-width: 44rem; color: #4d4d4d;">
-      First audit runs on our hosted Cloudflare Workers AI (one per device).
-      For unlimited audits, <a href="/self-host">self-host on your own Cloudflare</a>.
+      TPM uses <strong>Claude (Sonnet 4.6 by default, Opus 4.7 on the deep tier)</strong>. You
+      bring your own Anthropic API key — your key, your rate limits, your bill. A typical audit
+      takes 8–12 minutes and costs roughly $1–3 at your account's rates. Nothing is transmitted
+      anywhere except <code>api.anthropic.com</code>.
     </p>
 
     <h2>The six-stage method</h2>
@@ -41,23 +43,22 @@ tpm audit</code></pre>
 
     <h2>Commands</h2>
     <ul>
-      <li><code>tpm init</code> — initialize <code>.tpm/</code> in the current project</li>
+      <li><code>tpm init</code> — initialize <code>.tpm/</code> and walk you through Anthropic key + tier</li>
       <li><code>tpm audit</code> — run the full audit on this codebase</li>
-      <li><code>tpm audit --gateway byo</code> — force BYO mode for this run</li>
-      <li><code>tpm report [audit_id]</code> — show a prior spec.md</li>
-      <li><code>tpm config get/set/show</code> — inspect or change config</li>
-      <li><code>tpm self-host</code> — print the BYO setup guide</li>
-      <li><code>tpm cost</code> — show Neuron spend per audit / per stage / per model</li>
+      <li><code>tpm audit --no-stream</code> — disable the streaming progress UI for CI</li>
+      <li><code>tpm report [audit_id]</code> — show a prior spec.md / spec.html</li>
+      <li><code>tpm config get/set/unset/show</code> — inspect or change config</li>
+      <li><code>tpm cost</code> — show what your audits cost, aggregated locally</li>
+      <li><code>tpm feedback</code> — how to send feedback about an audit</li>
     </ul>
 
     <h2>Privacy &amp; security</h2>
     <p style="max-width: 44rem;">
-      TPM runs on your machine. In <strong>hosted-trial mode</strong>, prompts flow through
-      our Cloudflare Worker proxy — logged server-side as token counts only (not content),
-      unless you opt into debug mode. In <strong>BYO mode</strong>, prompts go directly from
-      your CLI to your own Cloudflare account; nothing touches our infrastructure.
+      TPM runs on your machine. Prompts go directly to <code>api.anthropic.com</code> using your
+      API key. There is no TPM-operated backend; no analytics; no phone-home. Your source code
+      never leaves your machine except as inference prompts you can inspect in
+      <code>tpm audit --verbose</code>.
     </p>
-    <p style="max-width: 44rem;">Source code never leaves your machine in either mode.</p>
 
     <h2>More</h2>
     <ul>

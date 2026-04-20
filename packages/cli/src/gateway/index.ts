@@ -63,4 +63,4 @@ export interface ModelGateway {
   ): Promise<CompletionResult>;
 }
 
-export { WorkersAIGateway } from "./workers-ai.js";
+export { AnthropicGateway } from "./anthropic.js";

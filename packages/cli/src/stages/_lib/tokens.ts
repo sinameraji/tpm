@@ -39,19 +39,12 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
   // Opus. Verified against https://docs.claude.com as of 2026-04-20.
   "claude-sonnet-4-6": 200_000,
   "claude-opus-4-7": 200_000,
-
-  // --- Deprecated v1.1.x Cloudflare Workers AI entries ---
-  // Kept for the duration of the 1.2.0 migration so stages that
-  // haven't been ported yet still pre-flight correctly. Removed in
-  // C14 along with the workers-ai gateway.
-  "@cf/meta/llama-3.3-70b-instruct-fp8-fast": 24_000,
-  "@cf/meta/llama-3.1-8b-instruct": 7_968,
-  "@cf/qwen/qwen3-30b-a3b-fp8": 32_768,
-  "@cf/qwen/qwen2.5-coder-32b-instruct": 24_000,
-  "@cf/meta/llama-4-scout-17b-16e-instruct": 128_000,
-  "@cf/openai/gpt-oss-120b": 128_000,
 };
 
+// Fallback is generous because the cost of being wrong (a stage
+// hitting the ceiling late) outweighs the cost of a conservative
+// estimate. 100K is well below Sonnet/Opus 200K but above anything
+// TPM actually sends today.
 export function maxContextFor(model: string): number {
-  return MODEL_CONTEXT_WINDOWS[model] ?? 32_000;
+  return MODEL_CONTEXT_WINDOWS[model] ?? 100_000;
 }

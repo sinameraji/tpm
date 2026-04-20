@@ -8,15 +8,17 @@
 npm install -g @sinameraji/tpm
 ```
 
-Then from any project directory:
+Then:
 
 ```bash
+tpm init       # paste your Anthropic API key (stored at ~/.tpm/config.yaml, chmod 600)
 cd your-product-repo
-tpm init
 tpm audit
 ```
 
-First run prompts for an optional marketing URL (skip with Enter). The URL is remembered for subsequent runs.
+TPM uses **Claude (Sonnet 4.6 by default)** for inference. You bring your own Anthropic API key — your key, your rate limits, your bill. A typical audit takes 8–12 minutes and costs roughly $1–3 in Anthropic API credits at your account's rates. See [anthropic.com/pricing](https://www.anthropic.com/pricing) for the latest rates.
+
+First-run flow prompts for the key and a default tier (fast / deep). Subsequent `tpm audit` runs optionally prompt for a marketing URL (skip with Enter); the URL is remembered per project.
 
 ### If `npm install -g` fails with EACCES (macOS default)
 
@@ -70,30 +72,29 @@ Artifacts land in `.tpm/artifacts/{audit_id}/`:
 ## Commands
 
 ```bash
-tpm init                           # set up .tpm/ in the current repo
-tpm audit                          # run the full six-stage audit
-tpm audit --marketing-url <url>    # pre-set marketing URL, skip prompt
-tpm audit --no-marketing           # skip marketing entirely
-tpm audit --gateway byo            # use your own Cloudflare Workers AI
-tpm report                         # show a prior audit's spec.md
-tpm config get|set|show            # inspect / change config
-tpm self-host                      # print the BYO setup guide
-tpm cost                           # Neuron spend per audit / stage / model
+tpm init                               # initialize .tpm/ + walk you through key + tier
+tpm audit                              # run the full six-stage audit
+tpm audit --marketing-url <url>        # pre-set marketing URL, skip prompt
+tpm audit --no-marketing               # skip marketing entirely
+tpm audit --no-stream                  # disable the streaming progress UI (CI)
+tpm report                             # show a prior audit's spec.md / spec.html
+tpm config get|set|unset|show          # inspect / change config
+tpm config set model-tier deep         # switch to Opus on B-model/C/E-spec/F
+tpm config set stage_models.c claude-opus-4-7   # per-stage override
+tpm cost                               # what your audits cost, in USD
+tpm feedback                           # how to send feedback
 ```
 
-## Hosted trial vs self-host
+## Model tiers + BYO
 
-- **Hosted trial** (default). Every device gets **one free audit** on the maintainer's Cloudflare Workers AI credits. Zero setup.
-- **Self-host** for unlimited audits. Point TPM at your own Cloudflare account (~5 min setup — you pay Cloudflare directly, typically $0.10–$0.50 per audit):
+Pick a tier on `tpm init`:
 
-```bash
-tpm config set gateway byo
-tpm config set byo.account_id <your-account-id>
-tpm config set byo.api_token <workers-ai-read-run-token>
-tpm audit
-```
+- **fast** (default) — Sonnet 4.6 throughout. ~8–12 min, ~$1–3 per audit.
+- **deep** — Opus 4.7 on B-model, C, E-spec, F; Sonnet on the rest. ~18–25 min, ~$6–10.
 
-Create the API token at [dash.cloudflare.com → My Profile → API Tokens](https://dash.cloudflare.com/) with `Workers AI: Read + Run` permissions.
+Switch later with `tpm config set model-tier deep`. Override individual stages with `tpm config set stage_models.<stage> <model>`.
+
+Your Anthropic key lives in `~/.tpm/config.yaml` (chmod 600) and only ever travels to `api.anthropic.com`. `tpm config show` masks it (`sk-ant-…XYZ9`). Remove it with `tpm config unset anthropic-key`. Env var `ANTHROPIC_API_KEY` overrides the config file when set.
 
 ## The six-stage method
 
@@ -110,7 +111,7 @@ See [the method doc](https://github.com/sinameraji/tpm/blob/main/docs/the-method
 
 ## Privacy
 
-TPM runs on your machine. In hosted-trial mode, prompts flow through a Cloudflare Worker proxy — logged server-side as token counts only, not content. In BYO mode, prompts go directly from your CLI to your own Cloudflare account; nothing touches TPM infrastructure. **Source code never leaves your machine.**
+TPM runs entirely on your machine. Prompts go directly to `api.anthropic.com` using your API key — there is no TPM-operated backend, no analytics, no phone-home. Your source code never leaves your machine except as inference prompts you can inspect with `tpm audit --verbose`.
 
 ## Links
 

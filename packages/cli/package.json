@@ -1,13 +1,14 @@
 {
   "name": "@sinameraji/tpm",
-  "version": "1.1.4",
-  "description": "Technical Product Manager CLI — audits software products via a deterministic six-stage pipeline.",
+  "version": "1.2.0",
+  "description": "Technical Product Manager CLI — audits software products via a deterministic six-stage pipeline on Claude (BYO Anthropic key).",
   "keywords": [
     "pm",
     "audit",
     "product-management",
     "cli",
-    "workers-ai"
+    "anthropic",
+    "claude"
   ],
   "type": "module",
   "license": "MIT",
