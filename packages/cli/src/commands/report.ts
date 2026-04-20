@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import type { Command } from "commander";
 import { projectPaths } from "../core/paths.js";
 import { openDatabase } from "../db/init.js";
+import { formatUsd } from "../core/pricing.js";
 import { bootstrap, emit, emitText } from "./_runtime.js";
 
 interface AuditRow {
@@ -109,8 +110,11 @@ export function register(program: Command): void {
           return;
         }
         for (const a of audits) {
-          const neurons = a.total_neurons !== null ? a.total_neurons.toFixed(1) : "—";
-          emitText(runtime, `  ${a.id}  ${a.started_at}  ${a.status}  ${neurons} neurons`);
+          // total_neurons has been integer micro-USD since v1.2.0
+          // (see db/schema.ts COST_COLUMN_SEMANTIC). Format as $ even
+          // though the column name is preserved for back-compat.
+          const cost = a.total_neurons !== null ? formatUsd(a.total_neurons) : "—";
+          emitText(runtime, `  ${a.id}  ${a.started_at}  ${a.status}  ${cost}`);
         }
         emit(runtime, { ok: true, audits });
         return;

@@ -10,6 +10,7 @@
 import { type z } from "zod";
 import type { Logger } from "../../core/logger.js";
 import type { CompleteOptionsExt, ModelGateway, Message } from "../../gateway/index.js";
+import { calcCost } from "../../core/cost-calc.js";
 import { estimateMessagesTokens, maxContextFor } from "./tokens.js";
 import type { ValidationResult } from "./validators.js";
 
@@ -26,6 +27,10 @@ export interface Attempt {
   outputPreview: string;
   failure?: string;
   latencyMs: number;
+  // Repurposed 1.2.0+: integer micro-USD cost for this attempt.
+  // Computed here from the gateway's Usage via core/cost-calc.ts so
+  // the gateway stays agnostic about pricing. See db/schema.ts
+  // COST_COLUMN_SEMANTIC for how this flows into SQLite.
   neurons?: number;
 }
 
@@ -179,7 +184,11 @@ export async function runStage<T>(
       attempt.model = activeModel;
       attempt.inputTokens = completion.usage.inputTokens;
       attempt.outputTokens = completion.usage.outputTokens;
-      if (completion.usage.neurons !== undefined) attempt.neurons = completion.usage.neurons;
+      // Price the attempt in integer micro-USD. Anthropic usage
+      // carries the four-kind breakdown we need (input, output,
+      // cache-read, cache-creation). Workers-AI usage lacks the
+      // cache fields — calcCost treats the missing ones as zero.
+      attempt.neurons = calcCost(activeModel, completion.usage).totalMicroUsd;
       attempt.latencyMs = completion.usage.latencyMs ?? Date.now() - started;
       attempt.outputPreview = preview(rawText);
     } catch (err) {

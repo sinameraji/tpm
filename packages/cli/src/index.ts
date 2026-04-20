@@ -6,6 +6,7 @@ import { register as registerReport } from "./commands/report.js";
 import { register as registerConfig } from "./commands/config.js";
 import { register as registerSelfHost } from "./commands/self-host.js";
 import { register as registerCost } from "./commands/cost.js";
+import { register as registerFeedback } from "./commands/feedback.js";
 
 export function buildProgram(): Command {
   const program = new Command();
@@ -28,6 +29,7 @@ export function buildProgram(): Command {
   registerConfig(program);
   registerSelfHost(program);
   registerCost(program);
+  registerFeedback(program);
 
   return program;
 }

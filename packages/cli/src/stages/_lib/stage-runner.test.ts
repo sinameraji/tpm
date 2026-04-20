@@ -41,7 +41,7 @@ function specOf(overrides: Partial<StageSpec<Shape>> = {}): StageSpec<Shape> {
   return {
     name: "A",
     label: "test",
-    model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    model: "claude-sonnet-4-6",
     maxTokens: 1000,
     temperature: 0,
     responseFormat: "json",
@@ -68,7 +68,11 @@ describe("runStage", () => {
     expect(res.output.id).toBe("x");
     expect(res.attempts).toHaveLength(1);
     expect(res.attempts[0]?.kind).toBe("initial");
-    expect(res.totalNeurons).toBeCloseTo(0.01, 5);
+    // `totalNeurons` has meant integer micro-USD since v1.2.0 (see
+    // db/schema.ts COST_COLUMN_SEMANTIC). The default scripted usage
+    // reports 100 input + 50 output tokens at Sonnet rates:
+    // 100 × $3/MTok + 50 × $15/MTok = 0.0003 + 0.00075 USD = 1050 μUSD.
+    expect(res.totalNeurons).toBe(1050);
   });
 
   it("empty output → retry with doubled budget → success", async () => {

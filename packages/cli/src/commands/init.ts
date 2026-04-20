@@ -4,6 +4,7 @@ import type { Command } from "commander";
 import { projectPaths, ensureDir } from "../core/paths.js";
 import { openDatabase } from "../db/init.js";
 import { saveProjectConfig, type ProjectConfig } from "../core/project-config.js";
+import { runKeyWizard } from "../core/init-wizard.js";
 import { bootstrap, emit, emitText } from "./_runtime.js";
 
 export function register(program: Command): void {
@@ -40,6 +41,14 @@ export function register(program: Command): void {
       emitText(runtime, ` - db:        ${path.relative(cwd, paths.dbFile)}`);
       emitText(runtime, ` - artifacts: ${path.relative(cwd, paths.artifactsDir)}/`);
       emitText(runtime, ` - config:    ${path.relative(cwd, paths.configYaml)}`);
+
+      // v1.2.0: also walk the user through the Anthropic key + tier
+      // on first init. TTY-only; CI / scripted init stays quiet and
+      // the user can set the key via `tpm config set anthropic-key`.
+      if (!runtime.isJson) {
+        await runKeyWizard({ allowReplace: true });
+      }
+
       emitText(runtime, "\nNow run:  tpm audit");
       emit(runtime, {
         ok: true,

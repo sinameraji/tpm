@@ -5,7 +5,9 @@ describe("cli entry", () => {
   it("registers the OSS command set (no Stripe commands)", () => {
     const program = buildProgram();
     const names = program.commands.map((c) => c.name()).sort();
-    expect(names).toEqual(["audit", "config", "cost", "init", "report", "self-host"].sort());
+    expect(names).toEqual(
+      ["audit", "config", "cost", "feedback", "init", "report", "self-host"].sort(),
+    );
   });
 
   it("aliases upgrade / activate / account to self-host", () => {
