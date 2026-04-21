@@ -4,7 +4,7 @@ import type { LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
 import type { Paths } from "@tpm/shared/schemas/paths";
 import type { Delta } from "@tpm/shared/schemas/delta";
 import type { Problems } from "@tpm/shared/schemas/problems";
-import type { Solutions } from "@tpm/shared/schemas/solutions";
+import type { Solution, Solutions } from "@tpm/shared/schemas/solutions";
 import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
 import type { ProductContext } from "../../core/project-config.js";
@@ -15,71 +15,58 @@ import { combine, hasRequiredSections, minLength } from "../_lib/validators.js";
 export const STAGE_F_MODEL = "claude-sonnet-4-6";
 const STAGE_F_MAX_TOKENS = 16_000;
 
-// Compact "Slack thread" structure. A real user's review of the
-// previous long-form spec.md called out two failures: the report
-// read like a code review (too negative, graded a personal tool
-// against distribution criteria) and was too long (nobody reads
-// 4,000 words). The fix here is structural: lead with what works,
-// keep the top of the doc Slack-message-short, put the full analysis
-// behind a <details> fold for anyone who wants it.
+// spec.md is now an ultra-short narrative — one founder-voice essay
+// explaining what TPM saw. The detailed per-solution specs live as
+// separate files (solutions/S001-*.md) that TPM writes
+// deterministically from solutions.yaml after Stage F finishes.
+// spec.md links to those + the prototypes prominently; it does not
+// repeat their content.
 //
-// Tone expectation: a senior PM giving peer feedback, not a security
-// auditor writing findings. Credit what works before naming friction.
-const STAGE_F_SYSTEM = `You are TPM's writer. Produce a CONCISE spec.md that a senior PM would actually read.
+// A real user's feedback on beta.13's spec.md was "still too much
+// text. I prefer specs separate from explanation, like an Intercom
+// Intermission-style article that links to detailed specs." Also
+// "as a founder I want strategic/tactical advice, not class names."
+// That's what this prompt aims for.
+const STAGE_F_SYSTEM = `You are writing a short narrative spec.md for a product audit. Think Intercom-style editorial post: an essay explaining what you saw, linking to the detailed specs as separate files.
 
-A senior PM does three things this writing must also do:
-  1. Credit what works before naming what doesn't. The first thing the reader sees is "you built something, here's what's strong about it." This isn't flattery — it's accurate observation of the parts of the audit data that show intent being delivered on.
-  2. Use constructive framing. "The biggest leverage here is X" instead of "the product is structurally broken." "Worth investing in Y" instead of "critical defect." The audit found real things; how you name them shapes whether the reader acts on them or gets defensive.
-  3. Keep it scannable. The top of the doc is readable in 30 seconds; the full thing in under 3 minutes. Anyone who wants more detail opens the <details> block. Do not repeat the same finding in multiple sections.
+VOICE: a founder-to-founder peer talking over coffee. Strategic and tactical. NOT a code reviewer.
 
-STRUCTURE — produce EXACTLY these sections in this order, using the ## heading syntax shown:
+HARD RULES on content:
+- NO file names, class names, function names, component names. Say "the dashboard" not "DashboardView.tsx". Say "the sign-in flow" not "AuthContext.tsx".
+- NO code snippets, TypeScript types, or implementation language.
+- NO "edit this line to do that" instructions. Detailed implementation lives in the solutions/*.md files (written separately).
+- The narrative is product-level observation. The specs are technical. Keep them in their own lanes.
 
-# TPM · <short project label>
+STRUCTURE — produce EXACTLY these sections in this order:
 
-## What works
+# <Product name>
 
-Two to four short bullets. Each names one concrete strength observed in the code or the audit data — a file, a flow, an architectural choice. Be specific, not generic. Examples: "PIN setup (steps 1–5) is cleanly structured with an appropriately protective confirmation step"; "The SQLite-with-session-id schema makes audit state recoverable mid-run." Avoid empty praise like "well-organized code."
+One paragraph (2–4 sentences) naming what this product is, what it's clearly doing well, and the single biggest thing worth polishing. Written as observation, not verdict. No bullet points in this opener.
 
-## Top move
+## Do these next
 
-One short paragraph (≤3 sentences) naming the single highest-leverage change. Phrase as an invitation, not a verdict. Name the specific file(s) or screen(s) affected. If there isn't a clear top move because the product is in good shape, say that instead.
+Numbered list, ≤3 items. Each item is TWO LINES:
+- Line 1: **<one-line title of the move>** — effort: S / M / L
+- Line 2: One sentence explaining why it matters NOW (the strategic rationale — what does it unlock, what pain does it remove). Then: "→ [spec](./solutions/<id>.md) · [prototype](./prototypes/<filename>.html)"
 
-## Other friction
+Solution IDs and prototype filenames will be provided in the input under "solutions_index" — use those exact paths for the links. Do not invent them.
 
-Two to four short bullets. One sentence each: the issue + why it matters. No long explanations.
+## What to notice
 
-## Recommended moves
+Optional section, only include if there's a product-level observation worth naming that isn't implicit in "Do these next." Two to four short bullets. Product-level, not code-level. Examples: "The auth flow is load-bearing for the whole experience, not just a gate"; "Your metrics answer the exact question the app exists for — nothing is noise." Do NOT repeat anything from "Do these next."
 
-Numbered list of 3–5 short items. One line each: the change, plus an effort tag (S / M / L).
+TOTAL LENGTH: target 180–280 words for the whole doc. Hard max 350. If you're writing longer, you're padding.
 
-<details>
-<summary>Full analysis</summary>
+TONE CHECK:
+- No "structurally broken" / "critical defect" / "does not serve" language.
+- No inventing personas or scope not in the audit data or product context.
+- Do NOT list every problem TPM found. Pick the moves that matter and link to the detailed specs for the rest.
 
-Longer-form content for anyone who wants the intent → reality delta, per-persona paths, pattern matches, and full leverage arguments. Same material that used to live in sections like "Intended Product", "Observed Reality", "The Delta" — but re-ordered and tightened. Put the verbose analysis here, not above.
+Return only markdown. No code fences around the doc. No preamble.`;
 
-Include:
-- **Intent** — the reconstructed Lean Canvas in ≤6 lines (problem, segments if any, UVP, JTBD per persona).
-- **Paths observed** — one line per persona: did they reach the value moment? If not, where did they stop.
-- **Delta details** — ≤8 lines of the per-persona breakdown, only if it adds signal beyond "Other friction" above.
-- **Problems ranked 1–N** — one line per problem: rank, title, one-sentence leverage argument.
-- **Solutions** — one line per solution: ID, title, link to prototype HTML path.
-- **Methodology note** — two sentences at most.
-
-</details>
-
-LENGTH BUDGET:
-- Everything OUTSIDE the <details> block: target 250–400 words, hard max 600. If you're writing longer than that, you're padding.
-- Inside the <details>: however long it needs to be, but trim obvious repetition.
-
-TONE CHECK before returning:
-- Did you name what works first, specifically?
-- Did you frame the top move as invitation, not verdict?
-- Did you avoid "structurally broken" / "configuration theater" / "this serves exactly one user" type language?
-- Did you use product-context appropriate framing (a personal tool's "missing config UI" is not a defect; a WIP's unbuilt features are roadmap, not failures)?
-
-Return only markdown. No code fences around the whole doc. No preamble.`;
-
-const REQUIRED_SECTIONS = ["What works", "Top move", "Other friction", "Recommended moves"];
+// Narrative-style structure; the required-sections check now just
+// validates the two top-level sections that every spec.md must have.
+const REQUIRED_SECTIONS = ["Do these next"];
 
 export interface StageFInputs {
   leanCanvas: LeanCanvas;
@@ -105,36 +92,151 @@ export interface StageFResult {
   neurons: number;
 }
 
+function slugifyTitle(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 50);
+}
+
+// Exact filenames for the per-solution spec markdown files. Stage F
+// uses these both for writing the files AND for giving Claude the
+// links to put in spec.md so they line up on disk.
+export function solutionSpecFilename(id: string, title: string): string {
+  const slug = slugifyTitle(title);
+  return slug ? `${id}-${slug}.md` : `${id}.md`;
+}
+
 function buildUserPrompt(i: StageFInputs): string {
-  const compact = {
-    lean_canvas: i.leanCanvas.lean_canvas,
-    intended_jtbd: i.leanCanvas.intended_jtbd_per_segment,
-    intended_value_moments: i.leanCanvas.intended_value_moments,
-    intended_critical_paths: i.leanCanvas.intended_critical_paths,
+  // solutions_index is the exact link manifest Stage F must use when
+  // writing "Do these next". Giving Claude the pre-computed filenames
+  // prevents it from inventing paths that don't match what we write
+  // to disk below.
+  const solutionsIndex = i.solutions.solutions.map((s) => ({
+    id: s.id,
+    title: s.title,
+    effort: s.effort_estimate.size,
+    rationale: s.why_right_fix,
+    spec_path: `./solutions/${solutionSpecFilename(s.id, s.title)}`,
+    prototype_path: s.prototype?.path ? `./${s.prototype.path}` : null,
+  }));
+
+  // Audit context Claude needs to write the narrative — product-level
+  // facts, not implementation details. We deliberately DON'T pass the
+  // full solutions objects (implementation_outline, scope, risks) —
+  // those belong in solutions/*.md, not spec.md. Giving Claude that
+  // data tempts it to mention file names.
+  const narrativeInput = {
+    lean_canvas_summary: {
+      problem: i.leanCanvas.lean_canvas.problem.items.map((p) => p.statement),
+      uvp: i.leanCanvas.lean_canvas.unique_value_proposition.statement,
+      segments: i.leanCanvas.lean_canvas.customer_segments.items.map((s) => s.segment),
+    },
     paths_outcomes: i.paths.paths.map((p) => ({
       persona: p.persona,
-      outcome: p.outcome,
+      value_moment_reached: p.outcome.value_moment_reached,
       steps_taken: p.steps_taken,
+      stuck_reason: p.outcome.stuck_reason,
     })),
-    delta: i.delta,
-    problems: i.problems.problems,
-    solutions: i.solutions.solutions.map((s) => ({
-      id: s.id,
-      problem_ref: s.problem_ref,
-      title: s.title,
-      change: s.change,
-      why_right_fix: s.why_right_fix,
-      effort_estimate: s.effort_estimate,
-      success_metric: s.success_metric,
-      prototype_path: s.prototype?.path,
+    overall_health: i.delta.overall_health,
+    top_problems: i.problems.problems.slice(0, 5).map((p) => ({
+      id: p.id,
+      rank: p.rank,
+      title: p.title,
+      leverage_argument: p.leverage_argument,
     })),
+    solutions_index: solutionsIndex,
   };
+
   return [
-    "=== FULL AUDIT DATA (JSON) ===",
-    JSON.stringify(compact, null, 2),
+    "=== PRODUCT-LEVEL AUDIT CONTEXT ===",
+    JSON.stringify(narrativeInput, null, 2),
     "",
-    "Write the spec.md now, following the structure in your system prompt exactly.",
+    "Write spec.md now. Use the `solutions_index.spec_path` and `solutions_index.prototype_path` values EXACTLY as the links in the 'Do these next' section — don't invent filenames. Product-level narrative only; no class/file/function names.",
   ].join("\n");
+}
+
+// ---- Per-solution markdown spec emitter --------------------------------
+//
+// Solutions/*.md are written deterministically from solutions.yaml — no
+// LLM call needed. spec.md (the narrative) links to each of these.
+// Splits the detailed implementation content out of spec.md so the
+// narrative stays short and the technical detail stays accessible to
+// whoever's going to implement.
+function emitSolutionMarkdown(s: Solution): string {
+  const lines: string[] = [];
+  lines.push(`# ${s.id} — ${s.title}`);
+  lines.push("");
+  lines.push(`**Problem:** ${s.problem_ref}`);
+  lines.push(
+    `**Effort:** ${s.effort_estimate.size}${s.effort_estimate.weeks_estimate ? ` (~${s.effort_estimate.weeks_estimate})` : ""}`,
+  );
+  lines.push("");
+  lines.push("## What changes");
+  lines.push("");
+  lines.push(s.change.what);
+  if (s.change.scope && s.change.scope.length > 0) {
+    lines.push("");
+    lines.push("**Scope:**");
+    for (const item of s.change.scope) {
+      lines.push(`- ${item}`);
+    }
+  }
+  lines.push("");
+  lines.push("## Why this is the right fix");
+  lines.push("");
+  lines.push(s.why_right_fix);
+  if (s.unblocks && s.unblocks.length > 0) {
+    lines.push("");
+    lines.push("**Unblocks:**");
+    for (const u of s.unblocks) {
+      lines.push(`- **${u.problem_id}** — ${u.rationale}`);
+    }
+  }
+  if (s.implementation_outline && s.implementation_outline.length > 0) {
+    lines.push("");
+    lines.push("## Implementation outline");
+    lines.push("");
+    for (const step of s.implementation_outline) {
+      lines.push(`- ${step}`);
+    }
+  }
+  if (s.effort_estimate.rationale) {
+    lines.push("");
+    lines.push("## Effort rationale");
+    lines.push("");
+    lines.push(s.effort_estimate.rationale);
+  }
+  if (s.risks_and_tradeoffs && s.risks_and_tradeoffs.length > 0) {
+    lines.push("");
+    lines.push("## Risks and tradeoffs");
+    lines.push("");
+    for (const r of s.risks_and_tradeoffs) {
+      lines.push(`- **${r.risk}** — ${r.mitigation}`);
+    }
+  }
+  lines.push("");
+  lines.push("## Success metric");
+  lines.push("");
+  lines.push(`**Primary:** ${s.success_metric.primary}`);
+  lines.push(`**Target:** ${s.success_metric.target}`);
+  lines.push(`**Measurement window:** ${s.success_metric.measurement_window}`);
+  if (s.success_metric.secondary && s.success_metric.secondary.length > 0) {
+    lines.push("");
+    lines.push("**Secondary:**");
+    for (const m of s.success_metric.secondary) {
+      lines.push(`- ${m}`);
+    }
+  }
+  if (s.prototype?.path) {
+    lines.push("");
+    lines.push("## Prototype");
+    lines.push("");
+    lines.push(`[→ ${s.prototype.path}](../${s.prototype.path})`);
+  }
+  lines.push("");
+  return lines.join("\n");
 }
 
 export async function runStageF(i: StageFInputs, deps: StageFDeps): Promise<StageFResult> {
@@ -176,6 +278,19 @@ export async function runStageF(i: StageFInputs, deps: StageFDeps): Promise<Stag
 
   const htmlPath = path.join(deps.artifactsDir, "spec.html");
   fs.writeFileSync(htmlPath, renderMarkdownToHtml(markdown));
+
+  // Write one markdown file per solution under ./solutions/. Stage F's
+  // narrative spec.md links to these; they carry the technical detail
+  // (scope, implementation outline, risks, success metric) so spec.md
+  // can stay product-level. Purely formatting over solutions.yaml
+  // data — no LLM call.
+  const solutionsDir = path.join(deps.artifactsDir, "solutions");
+  fs.mkdirSync(solutionsDir, { recursive: true });
+  for (const solution of i.solutions.solutions) {
+    const filename = solutionSpecFilename(solution.id, solution.title);
+    const solutionMd = emitSolutionMarkdown(solution);
+    fs.writeFileSync(path.join(solutionsDir, filename), solutionMd);
+  }
 
   return {
     markdownPath: mdPath,

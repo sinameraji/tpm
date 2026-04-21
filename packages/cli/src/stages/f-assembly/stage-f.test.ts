@@ -48,40 +48,23 @@ describe("renderMarkdownToHtml", () => {
 });
 
 function stubGateway(): ModelGateway {
-  // Emits a markdown skeleton that passes the v1.2.0-beta.11 Stage F
-  // semantic check: four required section headings (What works / Top
-  // move / Other friction / Recommended moves) plus the minimum length
-  // of 400 chars. We use the **bold** heading style the prompt asks
-  // for so the validator matches on substring.
+  // Emits a narrative-style spec.md matching the v1.2.0-beta.14 shape:
+  // one opener paragraph + "Do these next" section with links that
+  // use the exact paths from solutions_index. Validator requires the
+  // "Do these next" heading + 400 char minimum.
   const md = [
-    "# TPM · test-project",
+    "# Test Project",
     "",
-    "## What works",
+    "This is a compact product that ships one clean value moment and closes the loop cleanly. The biggest polish worth investing in is tightening the initial orientation — not every first-run user lands where the metrics are most visible, and one small reorder closes that gap.",
     "",
-    "- Clean six-stage pipeline that checkpoints each output.",
-    "- Schema validation catches shape bugs before they reach spec.md.",
+    "## Do these next",
     "",
-    "## Top move",
+    "1. **Sharpen the first-run surface** — effort: S",
+    "   The fastest win is making sure the first thing a user sees is the thing the product exists to show. → [spec](./solutions/S001-test.md) · [prototype](./prototypes/S001_test.html)",
     "",
-    "Consider tightening the first-run experience — the quickest leverage here is a shorter path from install to first report.",
+    "## What to notice",
     "",
-    "## Other friction",
-    "",
-    "- Retries are invisible to users unless verbose.",
-    "- Cost display is an estimate on some gateways.",
-    "",
-    "## Recommended moves",
-    "",
-    "1. Show retries in the progress line (effort: S).",
-    "2. Surface cache-hit savings in the completion block (effort: S).",
-    "3. Ship a --quiet flag for CI (effort: S).",
-    "",
-    "<details>",
-    "<summary>Full analysis</summary>",
-    "",
-    "Long-form audit content placeholder for test purposes.",
-    "",
-    "</details>",
+    "- The core loop is already doing its job — this audit is about polish, not foundational change.",
     "",
   ].join("\n");
   return {
@@ -178,8 +161,7 @@ describe("runStageF", () => {
     );
     expect(fs.existsSync(result.markdownPath)).toBe(true);
     const md = fs.readFileSync(result.markdownPath, "utf8");
-    expect(md).toMatch(/What works/);
-    expect(md).toMatch(/Top move/);
+    expect(md).toMatch(/Do these next/);
     expect(result.pdfPath).toBeNull();
     fs.rmSync(root, { recursive: true, force: true });
   });
