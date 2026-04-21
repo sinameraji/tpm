@@ -105,7 +105,7 @@ export function register(program: Command): void {
       if (opts.all) {
         const audits = listAudits(projectRoot);
         if (audits.length === 0) {
-          emitText(runtime, "No audits in this project. Run `tpm audit` first.");
+          emitText(runtime, "No audits in this project. Run `pm audit` first.");
           emit(runtime, { ok: true, audits: [] });
           return;
         }
@@ -124,7 +124,7 @@ export function register(program: Command): void {
       if (!dir) {
         const hint = auditId
           ? `No audit matches "${auditId}". Try \`tpm report --all\` to list audits.`
-          : "No audits in this project. Run `tpm audit` first.";
+          : "No audits in this project. Run `pm audit` first.";
         emitText(runtime, hint);
         emit(runtime, { ok: false, error: "audit not found" });
         process.exitCode = 1;

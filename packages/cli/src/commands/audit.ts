@@ -95,21 +95,21 @@ export function register(program: Command): void {
           "Cloudflare Workers AI support was removed in 1.2.0. PM now uses your own Anthropic API key.",
         );
         if (hasTTY) {
-          const ans = (await promptLine("Run tpm init now? [Y/n]: ")) ?? "y";
+          const ans = (await promptLine("Run pm init now? [Y/n]: ")) ?? "y";
           if (ans.toLowerCase() === "n" || ans.toLowerCase() === "no") {
-            emitText(runtime, "Run `tpm init` when you're ready. No changes made.");
+            emitText(runtime, "Run `pm init` when you're ready. No changes made.");
             emit(runtime, { ok: false, error: "legacy config, user declined wizard" });
             return;
           }
           const wizardResult = await runKeyWizard({ allowReplace: true });
           if (!wizardResult || !resolveAnthropicKey(wizardResult.cfg)) {
-            emitText(runtime, "Wizard didn't complete. Run `tpm init` to try again.");
+            emitText(runtime, "Wizard didn't complete. Run `pm init` to try again.");
             emit(runtime, { ok: false, error: "wizard did not set a key" });
             return;
           }
           cfg = wizardResult.cfg;
         } else {
-          emitText(runtime, "Run `tpm init` to set your Anthropic key, then re-run `tpm audit`.");
+          emitText(runtime, "Run `pm init` to set your Anthropic key, then re-run `pm audit`.");
           emit(runtime, { ok: false, error: "legacy config, non-interactive environment" });
           return;
         }
@@ -121,7 +121,7 @@ export function register(program: Command): void {
         if (hasTTY) {
           const wizardResult = await runKeyWizard({ allowReplace: false });
           if (!wizardResult || !resolveAnthropicKey(wizardResult.cfg)) {
-            emitText(runtime, "No Anthropic API key configured. Run `tpm init` to set one.");
+            emitText(runtime, "No Anthropic API key configured. Run `pm init` to set one.");
             emit(runtime, { ok: false, error: "no anthropic key" });
             process.exitCode = 1;
             return;
@@ -130,7 +130,7 @@ export function register(program: Command): void {
         } else {
           emitText(
             runtime,
-            "No Anthropic API key configured. Run `tpm init` or set ANTHROPIC_API_KEY in the environment.",
+            "No Anthropic API key configured. Run `pm init` or set ANTHROPIC_API_KEY in the environment.",
           );
           emit(runtime, { ok: false, error: "no anthropic key" });
           process.exitCode = 1;

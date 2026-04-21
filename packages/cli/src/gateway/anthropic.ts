@@ -206,7 +206,7 @@ function applyJsonInstruction(
 function translateError(err: unknown): Error {
   if (err instanceof AuthenticationError) {
     return new Error(
-      "Anthropic rejected the API key (401). Run `tpm config set anthropic-key <key>` or export ANTHROPIC_API_KEY. Keys are at https://console.anthropic.com/settings/keys",
+      "Anthropic rejected the API key (401). Run `pm config set anthropic-key <key>` or export ANTHROPIC_API_KEY. Keys are at https://console.anthropic.com/settings/keys",
     );
   }
   if (err instanceof RateLimitError) {
@@ -221,7 +221,7 @@ function translateError(err: unknown): Error {
     const msg = (err as { message?: string }).message ?? "bad request";
     if (/credit balance is too low|insufficient.*credit/i.test(msg)) {
       return new Error(
-        "Anthropic: your credit balance is too low to run this audit. Add credits at https://console.anthropic.com/settings/billing and re-run `tpm audit`.",
+        "Anthropic: your credit balance is too low to run this audit. Add credits at https://console.anthropic.com/settings/billing and re-run `pm audit`.",
       );
     }
     if (/context|token|too (large|long)/i.test(msg)) {

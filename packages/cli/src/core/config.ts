@@ -31,7 +31,7 @@ export type ModelTier = "fast" | "deep";
 // the stage-runner. Any subset may be present; absent keys fall back
 // to the model tier's default in core/model-tiers.ts.
 //
-// Known keys (kept as a const array so `tpm config set` can validate
+// Known keys (kept as a const array so `pm config set` can validate
 // the key without importing the stage module):
 export const STAGE_MODEL_KEYS = [
   "a",
@@ -76,7 +76,7 @@ const DEFAULT: UserConfig = {
 
 // ---- key normalization -----------------------------------------------
 //
-// The brief chose flat keys for ergonomics (`tpm config set
+// The brief chose flat keys for ergonomics (`pm config set
 // stage_models.c claude-opus-4-7`). We also accept a few friendly
 // aliases so users don't have to remember the underscored form:
 //   - anthropic-key / anthropic_api_key
@@ -282,7 +282,7 @@ export function configSummary(cfg: UserConfig): ConfigSummary {
 }
 
 // Returns true if the loaded config has 1.1.x-era keys that are no
-// longer honored. `tpm audit` uses this to decide whether to show
+// longer honored. `pm audit` uses this to decide whether to show
 // the upgrade prompt / migration note (see C12 for the wiring).
 export function detectLegacyConfig(cfg: UserConfig): boolean {
   const l = cfg.legacy;

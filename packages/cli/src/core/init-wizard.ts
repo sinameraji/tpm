@@ -1,9 +1,9 @@
 // First-run wizard for the Anthropic key + model tier.
 //
-// Runs from `tpm init` (explicit) and from `tpm audit` (implicit,
+// Runs from `pm init` (explicit) and from `pm audit` (implicit,
 // when no key is configured and stdin is a TTY). Non-TTY = skipped,
 // return null, caller decides what to do (for audit: exit with a
-// pointer to `tpm init`).
+// pointer to `pm init`).
 //
 // Key input is read via readline with echo suppression so the key
 // doesn't land in shell scrollback / screen recordings. On TTYs
@@ -51,7 +51,7 @@ async function readMaskedLine(prompt: string): Promise<string> {
   // the key rather than leak it. Caller handles the null return.
   if (typeof stdin.setRawMode !== "function") {
     process.stderr.write(
-      "\nThis terminal doesn't support masked input. Set ANTHROPIC_API_KEY in your shell env instead, or re-run tpm init in a standard terminal.\n",
+      "\nThis terminal doesn't support masked input. Set ANTHROPIC_API_KEY in your shell env instead, or re-run pm init in a standard terminal.\n",
     );
     throw new Error("terminal does not support raw mode");
   }
@@ -70,7 +70,7 @@ async function readMaskedLine(prompt: string): Promise<string> {
       // Exit flowing mode AND release the event-loop hold. Without
       // this the process hangs after the wizard: Node treats an
       // open, resumed stdin as a reason to keep running, so
-      // `tpm init` never returns control to the shell. Any later
+      // `pm init` never returns control to the shell. Any later
       // readline.createInterface (e.g. the "Replace it?" confirm
       // when a key is already set) will ref + resume stdin again
       // as needed.
@@ -194,7 +194,7 @@ export async function runKeyWizard(opts: {
   cfg = setConfigValue(cfg, "anthropic_api_key", key);
   // Default tier is fast (Sonnet 4.6 everywhere). We intentionally
   // don't ask the user to pick — first-run should have zero cryptic
-  // choices. Power users discover the `deep` tier through `tpm config`
+  // choices. Power users discover the `deep` tier through `pm config`
   // output or the pointer printed below.
   cfg = setConfigValue(cfg, "model_tier", "fast");
 
@@ -208,7 +208,7 @@ export async function runKeyWizard(opts: {
   write(
     `${DIM}Using the ${RESET}fast${DIM} tier (Sonnet 4.6). For deeper analysis on large codebases, upgrade later with:${RESET}`,
   );
-  write(`${DIM}  tpm config set model-tier deep${RESET}`);
+  write(`${DIM}  pm config set model-tier deep${RESET}`);
   write("");
   return { cfg, keySet: true };
 }

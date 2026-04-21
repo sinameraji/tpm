@@ -1,4 +1,4 @@
-// Pre-flight + completion blocks for `tpm audit`.
+// Pre-flight + completion blocks for `pm audit`.
 //
 // Pre-flight (before Stage A): sets expectations — tier, codebase,
 // marketing, output path, ~time + ~cost. Explicit cost range is how
@@ -19,7 +19,7 @@ const DIM = "\x1b[2m";
 const GREEN = "\x1b[32m";
 const RESET = "\x1b[0m";
 
-// One-liner pitch. Shown at the top of `tpm init` and `tpm audit` so
+// One-liner pitch. Shown at the top of `pm init` and `pm audit` so
 // first-time users know what they're running before they commit to
 // it. Kept short so it's not noise on repeat invocations.
 export function printPitch(): void {
@@ -46,7 +46,7 @@ export const TIME_COST_ESTIMATES = {
 // internal concept we haven't surfaced to first-run users. A user
 // who sees "Tier: fast" reasonably wonders what other tiers exist,
 // and the answer pulls them into a decision they don't need to make.
-// Users who've opted into deep via `tpm config set model-tier deep`
+// Users who've opted into deep via `pm config set model-tier deep`
 // see both model names, which is self-explanatory.
 function modelTagline(tier: ModelTier): string {
   return tier === "deep" ? "Claude Opus 4.7 + Claude Sonnet 4.6" : "Claude Sonnet 4.6";

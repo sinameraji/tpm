@@ -29,7 +29,7 @@ export interface ProjectConfig {
   project_path: string;
   // Optional marketing/landing URL. Auxiliary evidence only — the
   // primary source of truth is the codebase. User can set via
-  //   tpm audit --marketing-url https://...
+  //   pm audit --marketing-url https://...
   // or interactively at audit time, or leave blank entirely.
   marketing_url?: string;
   product_context?: ProductContext;

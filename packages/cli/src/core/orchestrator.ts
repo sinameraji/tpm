@@ -32,7 +32,7 @@ export interface OrchestratorOptions {
   stepBudget?: number;
   topNSolutions?: number;
   renderPdf?: boolean;
-  // Supplied by `tpm init` / `tpm audit` from the project config.
+  // Supplied by `pm init` / `pm audit` from the project config.
   // Threaded to Stage A + Stage F so their prompts can adapt the
   // grading lens to what the user actually intends.
   productContext?: ProductContext;

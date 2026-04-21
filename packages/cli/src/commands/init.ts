@@ -9,7 +9,7 @@ import { printPitch } from "../core/pre-flight.js";
 import { askProductContext } from "../core/product-context-prompt.js";
 import { bootstrap, emit, emitText } from "./_runtime.js";
 
-// `tpm init` is idempotent: run it as many times as you want. It
+// `pm init` is idempotent: run it as many times as you want. It
 // does two independent things:
 //   1. Project-level init — creates .tpm/ with a SQLite db and a
 //      project config yaml. Safe to re-run; everything here uses
@@ -58,12 +58,12 @@ export function register(program: Command): void {
       }
 
       // Key wizard is TTY-only; CI / scripted init stays quiet and
-      // the user can set the key via `tpm config set anthropic-key`.
+      // the user can set the key via `pm config set anthropic-key`.
       if (!runtime.isJson) {
         await runKeyWizard({ allowReplace: true });
       }
 
-      emitText(runtime, "Now run:  tpm audit");
+      emitText(runtime, "Now run:  pm audit");
       emit(runtime, {
         ok: true,
         initialized: true,

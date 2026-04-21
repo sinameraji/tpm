@@ -1,5 +1,5 @@
 // Interactive picker for the product-context field. Called from
-// `tpm init` (explicit) and from `tpm audit` (if the project has
+// `pm init` (explicit) and from `pm audit` (if the project has
 // never had a context set and stdin is a TTY). Non-TTY skips and
 // returns undefined; the caller decides whether to proceed with the
 // neutral "not specified" lens.
