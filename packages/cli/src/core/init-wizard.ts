@@ -133,6 +133,13 @@ async function readMaskedLine(prompt: string): Promise<string> {
 
 async function readLine(prompt: string): Promise<string> {
   return new Promise((resolve) => {
+    // readMaskedLine's cleanup pauses + unref's stdin so `pm init`
+    // doesn't hang on exit. If readLine runs after that (e.g. the
+    // depth picker that follows the masked key paste), Node sees
+    // nothing ref'd and exits before the user can answer. Re-ref +
+    // resume here so the readline prompt actually blocks on input.
+    if (typeof process.stdin.ref === "function") process.stdin.ref();
+    process.stdin.resume();
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     rl.question(prompt + " ", (answer) => {
       rl.close();

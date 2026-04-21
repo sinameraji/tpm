@@ -11,4 +11,4 @@ export * as License from "./schemas/license.js";
 export * as ProjectProfile from "./schemas/project-profile.js";
 export * as AppModel from "./schemas/app-model.js";
 
-export const PM_VERSION = "1.2.0-beta.21";
+export const PM_VERSION = "1.2.0-beta.22";
