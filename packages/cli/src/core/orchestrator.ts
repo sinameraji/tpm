@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { v4 as uuidv4 } from "uuid";
 import type { Logger } from "./logger.js";
 import type { ModelGateway } from "../gateway/index.js";
+import type { ProductContext } from "./project-config.js";
 import { projectPaths } from "./paths.js";
 import { openDatabase } from "../db/init.js";
 import yaml from "js-yaml";
@@ -31,6 +32,10 @@ export interface OrchestratorOptions {
   stepBudget?: number;
   topNSolutions?: number;
   renderPdf?: boolean;
+  // Supplied by `tpm init` / `tpm audit` from the project config.
+  // Threaded to Stage A + Stage F so their prompts can adapt the
+  // grading lens to what the user actually intends.
+  productContext?: ProductContext;
 }
 
 export interface AuditRunResult {
@@ -124,6 +129,7 @@ export class Orchestrator {
             auditId,
             sessionId: this.deps.sessionId,
             artifactsDir,
+            ...(opts.productContext ? { productContext: opts.productContext } : {}),
           }),
       );
       stages.A = { status: "ok", neurons: a.neurons };
@@ -237,6 +243,7 @@ export class Orchestrator {
               sessionId: this.deps.sessionId,
               artifactsDir,
               ...(opts.renderPdf !== undefined ? { renderPdf: opts.renderPdf } : {}),
+              ...(opts.productContext ? { productContext: opts.productContext } : {}),
             },
           ),
       );

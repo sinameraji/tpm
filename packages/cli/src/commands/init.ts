@@ -5,6 +5,7 @@ import { projectPaths, ensureDir } from "../core/paths.js";
 import { openDatabase } from "../db/init.js";
 import { saveProjectConfig, type ProjectConfig } from "../core/project-config.js";
 import { runKeyWizard } from "../core/init-wizard.js";
+import { askProductContext } from "../core/product-context-prompt.js";
 import { bootstrap, emit, emitText } from "./_runtime.js";
 
 // `tpm init` is idempotent: run it as many times as you want. It
@@ -33,6 +34,13 @@ export function register(program: Command): void {
       db.close();
 
       const cfg: ProjectConfig = { schema_version: 1, project_path: cwd };
+      // Ask for product context on first init (TTY only). Saves the
+      // audit from defaulting to "distributable product" + inventing
+      // target personas when the repo is a personal/internal/WIP tool.
+      if (!runtime.isJson) {
+        const ctx = await askProductContext();
+        if (ctx) cfg.product_context = ctx;
+      }
       saveProjectConfig(cfg, cwd);
 
       if (already) {

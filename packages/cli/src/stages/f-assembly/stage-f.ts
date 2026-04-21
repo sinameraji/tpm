@@ -7,36 +7,79 @@ import type { Problems } from "@tpm/shared/schemas/problems";
 import type { Solutions } from "@tpm/shared/schemas/solutions";
 import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
+import type { ProductContext } from "../../core/project-config.js";
+import { stageFContextPreamble } from "../../core/product-context.js";
 import { runStage, textParse, type StageSpec } from "../_lib/stage-runner.js";
 import { combine, hasRequiredSections, minLength } from "../_lib/validators.js";
 
 export const STAGE_F_MODEL = "claude-sonnet-4-6";
 const STAGE_F_MAX_TOKENS = 16_000;
 
-const STAGE_F_SYSTEM = `You are TPM's writer. Produce a spec.md document for a product audit.
+// Compact "Slack thread" structure. A real user's review of the
+// previous long-form spec.md called out two failures: the report
+// read like a code review (too negative, graded a personal tool
+// against distribution criteria) and was too long (nobody reads
+// 4,000 words). The fix here is structural: lead with what works,
+// keep the top of the doc Slack-message-short, put the full analysis
+// behind a <details> fold for anyone who wants it.
+//
+// Tone expectation: a senior PM giving peer feedback, not a security
+// auditor writing findings. Credit what works before naming friction.
+const STAGE_F_SYSTEM = `You are TPM's writer. Produce a CONCISE spec.md that a senior PM would actually read.
 
-Structure EXACTLY:
-1. "# Executive Summary" — 3-5 sentences. Headline findings.
-2. "## Intended Product" — Lean Canvas prose: the problem the builder is naming, who they're targeting, the UVP, the derived JTBD and value moments per persona.
-3. "## Observed Reality" — per-persona journey summaries with key friction points.
-4. "## The Delta" — intent vs reality. Key mismatches. Overall health. The implicit-vs-stated job analysis.
-5. "## Top Problems" — ranked with the leverage argument for each.
-6. "## Recommended Actions" — one subsection per top solution with what changes, why it's the right fix, effort, success metric. Link to the prototype HTML file.
-7. "## Appendix — Methodology" — brief, one paragraph.
+A senior PM does three things this writing must also do:
+  1. Credit what works before naming what doesn't. The first thing the reader sees is "you built something, here's what's strong about it." This isn't flattery — it's accurate observation of the parts of the audit data that show intent being delivered on.
+  2. Use constructive framing. "The biggest leverage here is X" instead of "the product is structurally broken." "Worth investing in Y" instead of "critical defect." The audit found real things; how you name them shapes whether the reader acts on them or gets defensive.
+  3. Keep it scannable. The top of the doc is readable in 30 seconds; the full thing in under 3 minutes. Anyone who wants more detail opens the <details> block. Do not repeat the same finding in multiple sections.
 
-Markdown formatting. No HTML. Concise, PM-readable, professional. Don't pad.
+STRUCTURE — produce EXACTLY these sections in this order, using the ## heading syntax shown:
 
-Return only markdown.`;
+# TPM · <short project label>
 
-const REQUIRED_SECTIONS = [
-  "Executive Summary",
-  "Intended Product",
-  "Observed Reality",
-  "The Delta",
-  "Top Problems",
-  "Recommended Actions",
-  "Appendix",
-];
+## What works
+
+Two to four short bullets. Each names one concrete strength observed in the code or the audit data — a file, a flow, an architectural choice. Be specific, not generic. Examples: "PIN setup (steps 1–5) is cleanly structured with an appropriately protective confirmation step"; "The SQLite-with-session-id schema makes audit state recoverable mid-run." Avoid empty praise like "well-organized code."
+
+## Top move
+
+One short paragraph (≤3 sentences) naming the single highest-leverage change. Phrase as an invitation, not a verdict. Name the specific file(s) or screen(s) affected. If there isn't a clear top move because the product is in good shape, say that instead.
+
+## Other friction
+
+Two to four short bullets. One sentence each: the issue + why it matters. No long explanations.
+
+## Recommended moves
+
+Numbered list of 3–5 short items. One line each: the change, plus an effort tag (S / M / L).
+
+<details>
+<summary>Full analysis</summary>
+
+Longer-form content for anyone who wants the intent → reality delta, per-persona paths, pattern matches, and full leverage arguments. Same material that used to live in sections like "Intended Product", "Observed Reality", "The Delta" — but re-ordered and tightened. Put the verbose analysis here, not above.
+
+Include:
+- **Intent** — the reconstructed Lean Canvas in ≤6 lines (problem, segments if any, UVP, JTBD per persona).
+- **Paths observed** — one line per persona: did they reach the value moment? If not, where did they stop.
+- **Delta details** — ≤8 lines of the per-persona breakdown, only if it adds signal beyond "Other friction" above.
+- **Problems ranked 1–N** — one line per problem: rank, title, one-sentence leverage argument.
+- **Solutions** — one line per solution: ID, title, link to prototype HTML path.
+- **Methodology note** — two sentences at most.
+
+</details>
+
+LENGTH BUDGET:
+- Everything OUTSIDE the <details> block: target 250–400 words, hard max 600. If you're writing longer than that, you're padding.
+- Inside the <details>: however long it needs to be, but trim obvious repetition.
+
+TONE CHECK before returning:
+- Did you name what works first, specifically?
+- Did you frame the top move as invitation, not verdict?
+- Did you avoid "structurally broken" / "configuration theater" / "this serves exactly one user" type language?
+- Did you use product-context appropriate framing (a personal tool's "missing config UI" is not a defect; a WIP's unbuilt features are roadmap, not failures)?
+
+Return only markdown. No code fences around the whole doc. No preamble.`;
+
+const REQUIRED_SECTIONS = ["What works", "Top move", "Other friction", "Recommended moves"];
 
 export interface StageFInputs {
   leanCanvas: LeanCanvas;
@@ -53,6 +96,7 @@ export interface StageFDeps {
   sessionId: string;
   artifactsDir: string;
   renderPdf?: boolean;
+  productContext?: ProductContext;
 }
 
 export interface StageFResult {
@@ -94,6 +138,11 @@ function buildUserPrompt(i: StageFInputs): string {
 }
 
 export async function runStageF(i: StageFInputs, deps: StageFDeps): Promise<StageFResult> {
+  // Product-context preamble prepended to the user prompt; system
+  // prompt stays audit-agnostic so cache hits still work across audits.
+  const contextPreamble = stageFContextPreamble(deps.productContext);
+  const userPrompt = `${contextPreamble}\n\n${buildUserPrompt(i)}`;
+
   const spec: StageSpec<string> = {
     name: "F",
     label: "Stage F · assembling spec.md",
@@ -102,11 +151,14 @@ export async function runStageF(i: StageFInputs, deps: StageFDeps): Promise<Stag
     temperature: 0.2,
     responseFormat: "text",
     systemPrompt: STAGE_F_SYSTEM,
-    userPrompt: buildUserPrompt(i),
+    userPrompt,
     parse: (raw) => textParse(raw),
     validate: (parsed) => parsed as string,
+    // Spec.md should be tight — the new prompt budgets 250-400 words
+    // for the scannable top. Minimum drops from 1000 → 400 chars to
+    // match. Required sections reflect the new structure.
     semanticCheck: (md) =>
-      combine(hasRequiredSections(md, REQUIRED_SECTIONS), minLength(md, 1000, "spec.md")),
+      combine(hasRequiredSections(md, REQUIRED_SECTIONS), minLength(md, 400, "spec.md")),
     cacheSystem: true,
   };
 
@@ -134,8 +186,10 @@ export async function runStageF(i: StageFInputs, deps: StageFDeps): Promise<Stag
 
 // Minimal markdown→HTML for the PDF. Not a full MD renderer — handles
 // the subset Stage F emits: #/##/### headings, **bold**, *italic*,
-// inline `code`, paragraphs, bullet lists, and `[text](url)` links.
-// Pretty enough for a PM spec; not a general-purpose library.
+// inline `code`, paragraphs, bullet lists, `[text](url)` links, and
+// GitHub-flavored <details>/<summary> fold blocks (so the "Full
+// analysis" section collapses in the rendered HTML the same way it
+// does on GitHub).
 export function renderMarkdownToHtml(md: string): string {
   const css = `
     body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.5;
@@ -147,10 +201,18 @@ export function renderMarkdownToHtml(md: string): string {
     code { background: #f2f2f2; padding: 1px 4px; border-radius: 3px; font-size: 0.9em; }
     ul { padding-left: 1.2rem; }
     a { color: #0654ba; }
+    details { margin: 1.5rem 0; border-top: 1px solid #ddd; padding-top: 1rem; }
+    details summary { cursor: pointer; font-weight: 600; color: #4d4d4d; }
+    details[open] summary { margin-bottom: 1rem; }
     .brand { color: #0654ba; font-weight: 600; letter-spacing: 0.03em; }
   `;
   const escape = (s: string): string =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  // Lines that pass through verbatim — HTML tags Stage F emits that
+  // we don't want escaped. Pattern is "starts with an opening or
+  // closing <details>/<summary> tag". Keeps the rest of the line
+  // handling simple.
+  const passthroughRe = /^<\/?(details|summary)\b[^>]*>\s*/i;
   const body: string[] = [];
   const lines = md.split(/\r?\n/);
   let inList = false;
@@ -160,6 +222,22 @@ export function renderMarkdownToHtml(md: string): string {
       if (inList) {
         body.push("</ul>");
         inList = false;
+      }
+      continue;
+    }
+    if (passthroughRe.test(line)) {
+      // <details>/</details>/<summary>...</summary> lines. If a
+      // <summary> line has inner text after the opening tag, escape
+      // just the inner portion; otherwise emit verbatim.
+      if (inList) {
+        body.push("</ul>");
+        inList = false;
+      }
+      const summaryWithText = /^<summary\b[^>]*>(.+)<\/summary>\s*$/i.exec(line);
+      if (summaryWithText) {
+        body.push(`<summary>${inlineMd(escape(summaryWithText[1] ?? ""))}</summary>`);
+      } else {
+        body.push(line);
       }
       continue;
     }

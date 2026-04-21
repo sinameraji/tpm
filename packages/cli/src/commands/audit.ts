@@ -7,6 +7,7 @@ import { AnthropicGateway } from "../gateway/anthropic.js";
 import { detectLegacyConfig, loadConfig, resolveAnthropicKey } from "../core/config.js";
 import { loadProjectConfig, saveProjectConfig } from "../core/project-config.js";
 import { runKeyWizard } from "../core/init-wizard.js";
+import { askProductContext } from "../core/product-context-prompt.js";
 import { printCompletion, printPreFlight } from "../core/pre-flight.js";
 import { isValidHttpUrl, promptLine } from "../core/prompt.js";
 import { bootstrap, emit, emitText } from "./_runtime.js";
@@ -73,7 +74,7 @@ export function register(program: Command): void {
       if (opts.stream === false) process.env["TPM_NO_STREAM"] = "1";
 
       const projectRoot = process.cwd();
-      const projectCfg = loadProjectConfig(projectRoot);
+      let projectCfg = loadProjectConfig(projectRoot);
       if (!projectCfg) {
         emitText(runtime, "No .tpm/ in this directory. Run:  tpm init");
         emit(runtime, { ok: false, error: "not initialized" });
@@ -168,7 +169,21 @@ export function register(program: Command): void {
 
       // Persist the URL so subsequent audits don't re-prompt.
       if (marketingUrl && marketingUrl !== projectCfg.marketing_url) {
-        saveProjectConfig({ ...projectCfg, marketing_url: marketingUrl }, projectRoot);
+        projectCfg = { ...projectCfg, marketing_url: marketingUrl };
+        saveProjectConfig(projectCfg, projectRoot);
+      }
+
+      // Product context: if the project was init'd before beta.11, the
+      // field won't be set. Ask once (TTY only), save, and use it.
+      // Without this, Stage A defaults to a generic "distributable
+      // product" framing and invents target personas — which produced
+      // confidently-wrong reports on personal/internal/WIP tools.
+      if (!projectCfg.product_context && !runtime.isJson) {
+        const ctx = await askProductContext();
+        if (ctx) {
+          projectCfg = { ...projectCfg, product_context: ctx };
+          saveProjectConfig(projectCfg, projectRoot);
+        }
       }
 
       // Pre-audit guards above have guaranteed an Anthropic key
@@ -200,6 +215,7 @@ export function register(program: Command): void {
           ...(opts.stepBudget !== undefined ? { stepBudget: opts.stepBudget } : {}),
           ...(opts.top !== undefined ? { topNSolutions: opts.top } : {}),
           renderPdf: opts.pdf !== false,
+          ...(projectCfg?.product_context ? { productContext: projectCfg.product_context } : {}),
         });
         const artifactsAbs = path.resolve(res.artifactsDir);
         const specMd = path.join(artifactsAbs, "spec.md");

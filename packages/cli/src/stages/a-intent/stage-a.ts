@@ -6,6 +6,8 @@ import type { Map as MapNs, Scraped as ScrapedNs } from "@tpm/shared";
 import { LeanCanvasSchema, type LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
 import type { Logger } from "../../core/logger.js";
 import type { ModelGateway } from "../../gateway/index.js";
+import type { ProductContext } from "../../core/project-config.js";
+import { stageAContextPreamble } from "../../core/product-context.js";
 import { STAGE_A_SYSTEM_PROMPT, buildStageAUserPrompt } from "./prompt.js";
 import { runStage, jsonParse, zodValidate, type StageSpec } from "../_lib/stage-runner.js";
 import type { ValidationResult } from "../_lib/validators.js";
@@ -22,6 +24,7 @@ export interface StageADeps {
   auditId: string;
   sessionId: string;
   artifactsDir: string;
+  productContext?: ProductContext;
 }
 
 export interface StageAResult {
@@ -76,6 +79,12 @@ export async function runStageA(
   if (input.scraped !== undefined) promptInput.scraped = input.scraped;
   const userPrompt = buildStageAUserPrompt(promptInput);
 
+  // Product-context preamble front-loaded into the user prompt —
+  // Stage A's system prompt is audit-agnostic (cached across runs),
+  // so per-project grounding goes in the user message.
+  const contextPreamble = stageAContextPreamble(deps.productContext);
+  const userPromptWithContext = `${contextPreamble}\n\n${userPrompt}`;
+
   const spec: StageSpec<LeanCanvas> = {
     name: "A",
     label: "Stage A · extracting intent",
@@ -84,7 +93,7 @@ export async function runStageA(
     temperature: 0.1,
     responseFormat: "json",
     systemPrompt: STAGE_A_SYSTEM_PROMPT,
-    userPrompt,
+    userPrompt: userPromptWithContext,
     parse: (raw) => jsonParse(raw),
     validate: zodValidate(LeanCanvasSchema),
     semanticCheck: stageASemanticCheck,

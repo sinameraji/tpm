@@ -48,38 +48,40 @@ describe("renderMarkdownToHtml", () => {
 });
 
 function stubGateway(): ModelGateway {
-  // Emits a markdown skeleton that passes the Stage F semantic check
-  // (7 required sections + 1000-char minimum). Filler is deliberate:
-  // we're testing orchestration, not prose quality.
-  const filler = "Synthesized prose for test purposes. ".repeat(40);
+  // Emits a markdown skeleton that passes the v1.2.0-beta.11 Stage F
+  // semantic check: four required section headings (What works / Top
+  // move / Other friction / Recommended moves) plus the minimum length
+  // of 400 chars. We use the **bold** heading style the prompt asks
+  // for so the validator matches on substring.
   const md = [
-    "# Executive Summary",
+    "# TPM · test-project",
     "",
-    `No persona reached the value moment. ${filler}`,
+    "## What works",
     "",
-    "## Intended Product",
+    "- Clean six-stage pipeline that checkpoints each output.",
+    "- Schema validation catches shape bugs before they reach spec.md.",
     "",
-    `Bank automation platform for compliance teams. ${filler}`,
+    "## Top move",
     "",
-    "## Observed Reality",
+    "Consider tightening the first-run experience — the quickest leverage here is a shorter path from install to first report.",
     "",
-    `Users get stuck at the demo-request gate. ${filler}`,
+    "## Other friction",
     "",
-    "## The Delta",
+    "- Retries are invisible to users unless verbose.",
+    "- Cost display is an estimate on some gateways.",
     "",
-    `Promise and product diverge at the entry. ${filler}`,
+    "## Recommended moves",
     "",
-    "## Top Problems",
+    "1. Show retries in the progress line (effort: S).",
+    "2. Surface cache-hit savings in the completion block (effort: S).",
+    "3. Ship a --quiet flag for CI (effort: S).",
     "",
-    `P001 dominates — entry funnel is broken. ${filler}`,
+    "<details>",
+    "<summary>Full analysis</summary>",
     "",
-    "## Recommended Actions",
+    "Long-form audit content placeholder for test purposes.",
     "",
-    `Ship a self-serve template gallery. ${filler}`,
-    "",
-    "## Appendix — Methodology",
-    "",
-    `Six-stage TPM pipeline. ${filler}`,
+    "</details>",
     "",
   ].join("\n");
   return {
@@ -176,7 +178,8 @@ describe("runStageF", () => {
     );
     expect(fs.existsSync(result.markdownPath)).toBe(true);
     const md = fs.readFileSync(result.markdownPath, "utf8");
-    expect(md).toMatch(/Executive Summary/);
+    expect(md).toMatch(/What works/);
+    expect(md).toMatch(/Top move/);
     expect(result.pdfPath).toBeNull();
     fs.rmSync(root, { recursive: true, force: true });
   });
