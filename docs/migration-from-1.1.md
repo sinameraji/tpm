@@ -6,8 +6,8 @@
 
 ```bash
 npm install -g @sinameraji/pm@latest    # pulls 1.2.0 once it's published
-pm init                                  # paste your Anthropic API key, pick tier
 cd your-product-repo
+pm init                                  # paste your Anthropic API key, pick tier
 pm audit
 ```
 

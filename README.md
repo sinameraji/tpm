@@ -5,8 +5,8 @@
 ```bash
 npm install -g @sinameraji/pm
 
-pm init       # paste your Anthropic API key
 cd your-product-repo
+pm init       # paste your Anthropic API key
 pm audit
 ```
 

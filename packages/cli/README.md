@@ -11,8 +11,8 @@ npm install -g @sinameraji/pm
 Then:
 
 ```bash
-pm init       # paste your Anthropic API key (stored at ~/.pm/config.yaml, chmod 600)
 cd your-product-repo
+pm init       # paste your Anthropic API key (stored at ~/.pm/config.yaml, chmod 600)
 pm audit
 ```
 
