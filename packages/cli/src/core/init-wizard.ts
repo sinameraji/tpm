@@ -24,10 +24,9 @@ const RESET = "\x1b[0m";
 
 const INTRO = `TPM needs an Anthropic API key to run audits.
 
-TPM uses Claude (Sonnet 4.6 by default) to read your code and produce a
-PM-grade spec. A typical audit takes 8-12 minutes and costs $1-3 in API
-credits at your account's rates. Large repos and deep-tier audits take
-longer and cost more.
+TPM uses Claude (Sonnet 4.6) to read your code and produce a PM-grade
+spec. A typical audit takes 8-12 minutes and costs $1-3 in API credits
+at your account's rates. Large repos take longer.
 
 1. Create a key:  https://console.anthropic.com/settings/keys
 2. Paste it here (starts with sk-ant-...):`;

@@ -5,6 +5,7 @@ import { projectPaths, ensureDir } from "../core/paths.js";
 import { openDatabase } from "../db/init.js";
 import { saveProjectConfig, type ProjectConfig } from "../core/project-config.js";
 import { runKeyWizard } from "../core/init-wizard.js";
+import { printPitch } from "../core/pre-flight.js";
 import { askProductContext } from "../core/product-context-prompt.js";
 import { bootstrap, emit, emitText } from "./_runtime.js";
 
@@ -23,6 +24,7 @@ export function register(program: Command): void {
     .description("Initialize TPM for the current project and set up your Anthropic API key.")
     .action(async function action(this: Command) {
       const runtime = bootstrap(this);
+      if (!runtime.isJson) printPitch();
       const cwd = process.cwd();
       const paths = projectPaths(cwd);
       const already = fs.existsSync(paths.root);

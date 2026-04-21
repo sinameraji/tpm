@@ -20,10 +20,6 @@ const QUESTION = `Before we start — how do you think of this product today?
 
 Pick 1-5 (default 3):`;
 
-const WHY = `(This grounds the audit's framing. Without it, TPM would guess from code,
- and for personal/internal tools that guess is usually wrong — see
- docs/product-context.md if you want the longer story.)`;
-
 function write(line: string): void {
   process.stderr.write(line + "\n");
 }
@@ -43,7 +39,6 @@ export async function askProductContext(): Promise<ProductContext | undefined> {
 
   write("");
   write(QUESTION);
-  write(`${DIM}${WHY}${RESET}`);
   const pick = (await readLine("  >")).trim();
 
   let kind: ProductContextKind;

@@ -19,6 +19,16 @@ const DIM = "\x1b[2m";
 const GREEN = "\x1b[32m";
 const RESET = "\x1b[0m";
 
+// One-liner pitch. Shown at the top of `tpm init` and `tpm audit` so
+// first-time users know what they're running before they commit to
+// it. Kept short so it's not noise on repeat invocations.
+export function printPitch(): void {
+  process.stderr.write(`\n${BRAND}TPM${RESET} — Technical Product Manager\n`);
+  process.stderr.write(
+    `${DIM}Reads your codebase and suggests a few high-leverage improvements (specs + prototypes).${RESET}\n`,
+  );
+}
+
 // Refresh from real-audit data after the 5-repo test matrix (C13)
 // lands. Numbers here are the pre-matrix estimate from the brief.
 export const TIME_COST_ESTIMATES = {
@@ -56,8 +66,9 @@ function writeStderr(line: string): void {
 
 export function printPreFlight(input: PreFlightInput): void {
   const est = TIME_COST_ESTIMATES[input.tier];
+  printPitch();
   writeStderr("");
-  writeStderr(`${BRAND}TPM audit${RESET} · ${input.repoName}`);
+  writeStderr(`${BRAND}Audit${RESET} · ${input.repoName}`);
   writeStderr("");
   writeStderr(`${DIM}This will take ${est.timeLabel} and cost ${est.costLabel}${RESET}`);
   writeStderr(`${DIM}(based on your account's current rates). Large repos take longer.${RESET}`);
