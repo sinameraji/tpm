@@ -32,10 +32,14 @@ export const TIME_COST_ESTIMATES = {
   },
 } as const;
 
-function tierTagline(tier: ModelTier): string {
-  return tier === "deep"
-    ? "deep (Opus 4.7 on the heavy stages, Sonnet 4.6 on the rest)"
-    : "fast (Sonnet 4.6 throughout)";
+// Just the model names — "tier" terminology (fast/deep) is an
+// internal concept we haven't surfaced to first-run users. A user
+// who sees "Tier: fast" reasonably wonders what other tiers exist,
+// and the answer pulls them into a decision they don't need to make.
+// Users who've opted into deep via `tpm config set model-tier deep`
+// see both model names, which is self-explanatory.
+function modelTagline(tier: ModelTier): string {
+  return tier === "deep" ? "Claude Opus 4.7 + Claude Sonnet 4.6" : "Claude Sonnet 4.6";
 }
 
 export interface PreFlightInput {
@@ -56,10 +60,9 @@ export function printPreFlight(input: PreFlightInput): void {
   writeStderr(`${BRAND}TPM audit${RESET} · ${input.repoName}`);
   writeStderr("");
   writeStderr(`${DIM}This will take ${est.timeLabel} and cost ${est.costLabel}${RESET}`);
-  writeStderr(`${DIM}(based on your account's current rates). Large repos take longer;${RESET}`);
-  writeStderr(`${DIM}deep-tier audits cost 3-5x more than fast.${RESET}`);
+  writeStderr(`${DIM}(based on your account's current rates). Large repos take longer.${RESET}`);
   writeStderr("");
-  writeStderr(`${DIM}Tier:${RESET}      ${tierTagline(input.tier)}`);
+  writeStderr(`${DIM}Model:${RESET}     ${modelTagline(input.tier)}`);
   writeStderr(`${DIM}Codebase:${RESET}  ${input.projectPath}`);
   writeStderr(`${DIM}Marketing:${RESET} ${input.marketingUrl ?? "(none — code-only)"}`);
   writeStderr(`${DIM}Output:${RESET}    ${input.outputPath}`);
