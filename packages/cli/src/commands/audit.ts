@@ -4,14 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { Orchestrator } from "../core/orchestrator.js";
 import { AnthropicGateway } from "../gateway/anthropic.js";
-import { CloudflareGateway } from "../gateway/cloudflare.js";
-import type { ModelGateway } from "../gateway/index.js";
-import {
-  detectLegacyConfig,
-  loadConfig,
-  resolveAnthropicKey,
-  resolveCloudflareCreds,
-} from "../core/config.js";
+import { detectLegacyConfig, loadConfig, resolveAnthropicKey } from "../core/config.js";
 import { loadProjectConfig, saveProjectConfig } from "../core/project-config.js";
 import { runKeyWizard } from "../core/init-wizard.js";
 import { printCompletion, printPreFlight } from "../core/pre-flight.js";
@@ -94,17 +87,11 @@ export function register(program: Command): void {
       // `api_endpoint`, or `byo.*` top-level keys means the user is
       // coming from v1.1.x. TTY: prompt to run init inline. Non-TTY
       // (CI/pipe): print the note, exit 0 with a pointer.
-      // "User has a working inference path" = either an Anthropic
-      // key OR a Cloudflare (account_id + api_token) pair. Either
-      // clears the pre-audit guards.
-      const hasInferencePath = (): boolean =>
-        Boolean(resolveAnthropicKey(cfg) || resolveCloudflareCreds(cfg));
-
-      if (detectLegacyConfig(cfg) && !hasInferencePath()) {
+      if (detectLegacyConfig(cfg) && !resolveAnthropicKey(cfg)) {
         const hasTTY = process.stdin.isTTY && process.stdout.isTTY;
         emitText(
           runtime,
-          "Cloudflare Workers AI support was removed in 1.2.0. TPM now uses your own Anthropic API key (or Cloudflare Workers AI via `tpm config set cloudflare-account-id <id>` + `tpm config set cloudflare-api-key <token>`).",
+          "Cloudflare Workers AI support was removed in 1.2.0. TPM now uses your own Anthropic API key.",
         );
         if (hasTTY) {
           const ans = (await promptLine("Run tpm init now? [Y/n]: ")) ?? "y";
@@ -127,8 +114,8 @@ export function register(program: Command): void {
         }
       }
 
-      // No legacy config but also no inference path configured → first-run.
-      if (!hasInferencePath()) {
+      // No legacy config but also no key configured → first-run.
+      if (!resolveAnthropicKey(cfg)) {
         const hasTTY = process.stdin.isTTY && process.stdout.isTTY;
         if (hasTTY) {
           const wizardResult = await runKeyWizard({ allowReplace: false });
@@ -142,9 +129,9 @@ export function register(program: Command): void {
         } else {
           emitText(
             runtime,
-            "No inference path configured. Run `tpm init` (Anthropic), or set ANTHROPIC_API_KEY, or set cloudflare-account-id + cloudflare-api-key via `tpm config set`.",
+            "No Anthropic API key configured. Run `tpm init` or set ANTHROPIC_API_KEY in the environment.",
           );
-          emit(runtime, { ok: false, error: "no inference path" });
+          emit(runtime, { ok: false, error: "no anthropic key" });
           process.exitCode = 1;
           return;
         }
@@ -184,24 +171,10 @@ export function register(program: Command): void {
         saveProjectConfig({ ...projectCfg, marketing_url: marketingUrl }, projectRoot);
       }
 
-      // Gateway selection: Cloudflare Workers AI wins if both CF
-      // creds are set (billed in Neurons from your CF account).
-      // Else Anthropic direct. The pre-audit guards above have
-      // guaranteed at least one of these is configured.
-      const cfCreds = resolveCloudflareCreds(cfg);
-      const anthropicKey = resolveAnthropicKey(cfg);
-      let gateway: ModelGateway;
-      let gatewayLabel: string;
-      if (cfCreds) {
-        gateway = new CloudflareGateway({
-          accountId: cfCreds.accountId,
-          apiToken: cfCreds.apiToken,
-        });
-        gatewayLabel = "cloudflare-workers-ai";
-      } else {
-        gateway = new AnthropicGateway({ apiKey: anthropicKey! });
-        gatewayLabel = "anthropic";
-      }
+      // Pre-audit guards above have guaranteed an Anthropic key
+      // exists (env, config, or wizard-set).
+      const anthropicKey = resolveAnthropicKey(cfg)!;
+      const gateway = new AnthropicGateway({ apiKey: anthropicKey });
 
       const orchestrator = new Orchestrator({
         logger: runtime.logger,
@@ -284,7 +257,7 @@ export function register(program: Command): void {
           artifacts_dir: res.artifactsDir,
           codebase: projectRoot,
           marketing_url: marketingUrl ?? null,
-          gateway: gatewayLabel,
+          gateway: "anthropic",
           total_micro_usd: Math.round(res.totalNeurons),
           duration_ms: res.durationMs,
           stages: res.stages,

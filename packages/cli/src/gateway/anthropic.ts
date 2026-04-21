@@ -133,7 +133,6 @@ export class AnthropicGateway implements ModelGateway {
           cacheReadInputTokens: usage.cache_read_input_tokens ?? 0,
           cacheCreationInputTokens: usage.cache_creation_input_tokens ?? 0,
           latencyMs: Date.now() - started,
-          source: "anthropic",
         },
       };
     } catch (err) {

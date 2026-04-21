@@ -7,9 +7,13 @@ export interface LoggerOptions {
 }
 
 export function createLogger(opts: LoggerOptions): Logger {
-  // Quiet by default so the progress spinner isn't drowned in pino lines.
-  // --verbose restores info/debug. Env var still wins so CI can force any level.
-  const level = opts.verbose ? "debug" : (process.env["TPM_LOG_LEVEL"] ?? "warn");
+  // Quiet by default — only actual errors print to the terminal. The
+  // stage-runner's semantic-retry WARNs ("stage output failed semantic
+  // checks, violations: [...]") are internal debugging: users saw
+  // "file_path not in seed_files" and reasonably asked what that
+  // meant. Those belong behind --verbose, not in the happy path.
+  // TPM_LOG_LEVEL env still wins so CI can force any level.
+  const level = opts.verbose ? "debug" : (process.env["TPM_LOG_LEVEL"] ?? "error");
 
   const base = {
     level,

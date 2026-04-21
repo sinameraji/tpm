@@ -32,12 +32,6 @@ export type StageModelOverrides = Partial<Record<StageModelKey, string>>;
 export interface UserConfig {
   schema_version: 1;
   anthropic_api_key?: string;
-  // Cloudflare Workers AI alternative path (added 1.2.0-beta.7).
-  // When both account id + api token are set, audit.ts prefers CF
-  // over Anthropic-direct. Billing is in Neurons from your CF
-  // account, not USD to Anthropic.
-  cloudflare_account_id?: string;
-  cloudflare_api_token?: string;
   model_tier: ModelTier;
   stage_models?: StageModelOverrides;
   // Deprecated 1.1.x keys, kept optional so a stale config.yaml
@@ -68,10 +62,6 @@ const DEFAULT: UserConfig = {
 const KEY_ALIASES: Record<string, string> = {
   "anthropic-key": "anthropic_api_key",
   "anthropic-api-key": "anthropic_api_key",
-  "cloudflare-account-id": "cloudflare_account_id",
-  "cloudflare-key": "cloudflare_api_token",
-  "cloudflare-api-key": "cloudflare_api_token",
-  "cloudflare-api-token": "cloudflare_api_token",
   "model-tier": "model_tier",
 };
 
@@ -109,12 +99,6 @@ export function loadConfig(homeDir: string = os.homedir()): UserConfig {
 
     if (typeof parsed.anthropic_api_key === "string" && parsed.anthropic_api_key.trim()) {
       cfg.anthropic_api_key = parsed.anthropic_api_key;
-    }
-    if (typeof parsed.cloudflare_account_id === "string" && parsed.cloudflare_account_id.trim()) {
-      cfg.cloudflare_account_id = parsed.cloudflare_account_id;
-    }
-    if (typeof parsed.cloudflare_api_token === "string" && parsed.cloudflare_api_token.trim()) {
-      cfg.cloudflare_api_token = parsed.cloudflare_api_token;
     }
 
     if (parsed.stage_models && typeof parsed.stage_models === "object") {
@@ -163,8 +147,6 @@ export function saveConfig(cfg: UserConfig, homeDir: string = os.homedir()): voi
     model_tier: cfg.model_tier,
   };
   if (cfg.anthropic_api_key) toWrite.anthropic_api_key = cfg.anthropic_api_key;
-  if (cfg.cloudflare_account_id) toWrite.cloudflare_account_id = cfg.cloudflare_account_id;
-  if (cfg.cloudflare_api_token) toWrite.cloudflare_api_token = cfg.cloudflare_api_token;
   if (cfg.stage_models && Object.keys(cfg.stage_models).length > 0) {
     toWrite.stage_models = cfg.stage_models;
   }
@@ -184,16 +166,6 @@ export function resolveAnthropicKey(
   return cfg.anthropic_api_key?.trim() || undefined;
 }
 
-export function resolveCloudflareCreds(
-  cfg: UserConfig,
-  env: NodeJS.ProcessEnv = process.env,
-): { accountId: string; apiToken: string } | undefined {
-  const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim() || cfg.cloudflare_account_id?.trim();
-  const apiToken = env.CLOUDFLARE_API_TOKEN?.trim() || cfg.cloudflare_api_token?.trim();
-  if (!accountId || !apiToken) return undefined;
-  return { accountId, apiToken };
-}
-
 // ---- set / get / unset ----------------------------------------------
 
 export function setConfigValue(cfg: UserConfig, rawKey: string, value: string): UserConfig {
@@ -203,16 +175,6 @@ export function setConfigValue(cfg: UserConfig, rawKey: string, value: string): 
   if (key === "anthropic_api_key") {
     if (!value.trim()) throw new Error("anthropic_api_key cannot be empty");
     next.anthropic_api_key = value.trim();
-    return next;
-  }
-  if (key === "cloudflare_account_id") {
-    if (!value.trim()) throw new Error("cloudflare_account_id cannot be empty");
-    next.cloudflare_account_id = value.trim();
-    return next;
-  }
-  if (key === "cloudflare_api_token") {
-    if (!value.trim()) throw new Error("cloudflare_api_token cannot be empty");
-    next.cloudflare_api_token = value.trim();
     return next;
   }
   if (key === "model_tier") {
@@ -238,14 +200,6 @@ export function unsetConfigValue(cfg: UserConfig, rawKey: string): UserConfig {
     delete next.anthropic_api_key;
     return next;
   }
-  if (key === "cloudflare_account_id") {
-    delete next.cloudflare_account_id;
-    return next;
-  }
-  if (key === "cloudflare_api_token") {
-    delete next.cloudflare_api_token;
-    return next;
-  }
   if (key === "model_tier") {
     // model_tier always has a value — reset to default rather than
     // leave the field undefined.
@@ -266,8 +220,6 @@ export function unsetConfigValue(cfg: UserConfig, rawKey: string): UserConfig {
 export function getConfigValue(cfg: UserConfig, rawKey: string): string | undefined {
   const key = normalizeKey(rawKey);
   if (key === "anthropic_api_key") return maskKey(cfg.anthropic_api_key);
-  if (key === "cloudflare_account_id") return cfg.cloudflare_account_id;
-  if (key === "cloudflare_api_token") return maskKey(cfg.cloudflare_api_token);
   if (key === "model_tier") return cfg.model_tier;
   const stageKey = parseStageModelsKey(key);
   if (stageKey) return cfg.stage_models?.[stageKey];
@@ -291,8 +243,6 @@ export interface ConfigSummary {
   schema_version: 1;
   model_tier: ModelTier;
   anthropic_api_key: string | null; // masked or null
-  cloudflare_account_id: string | null;
-  cloudflare_api_token: string | null; // masked or null
   stage_models: StageModelOverrides | null;
   legacy_detected: boolean;
 }
@@ -302,8 +252,6 @@ export function configSummary(cfg: UserConfig): ConfigSummary {
     schema_version: cfg.schema_version,
     model_tier: cfg.model_tier,
     anthropic_api_key: maskKey(cfg.anthropic_api_key) ?? null,
-    cloudflare_account_id: cfg.cloudflare_account_id ?? null,
-    cloudflare_api_token: maskKey(cfg.cloudflare_api_token) ?? null,
     stage_models:
       cfg.stage_models && Object.keys(cfg.stage_models).length > 0 ? cfg.stage_models : null,
     legacy_detected: detectLegacyConfig(cfg),

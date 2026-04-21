@@ -46,10 +46,6 @@ export interface Usage {
   cacheReadInputTokens?: number;
   cacheCreationInputTokens?: number;
   latencyMs: number;
-  // Where the inference ran. Affects which rate table cost-calc
-  // uses — CF's Workers AI prices Claude Opus at ~1/3 Anthropic's
-  // direct list. Defaults to "anthropic" if a gateway omits it.
-  source?: "anthropic" | "cloudflare";
 }
 
 export interface CompletionResult {
