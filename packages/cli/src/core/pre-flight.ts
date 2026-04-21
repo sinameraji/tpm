@@ -42,14 +42,14 @@ export const TIME_COST_ESTIMATES = {
   },
 } as const;
 
-// Just the model names — "tier" terminology (fast/deep) is an
-// internal concept we haven't surfaced to first-run users. A user
-// who sees "Tier: fast" reasonably wonders what other tiers exist,
-// and the answer pulls them into a decision they don't need to make.
-// Users who've opted into deep via `pm config set model-tier deep`
-// see both model names, which is self-explanatory.
-function modelTagline(tier: ModelTier): string {
-  return tier === "deep" ? "Claude Opus 4.7 + Claude Sonnet 4.6" : "Claude Sonnet 4.6";
+// The init wizard surfaces fast/deep as the user-facing depth
+// choice (with cost + time tradeoffs). The pre-flight block echoes
+// that choice back so the user remembers which one is active.
+// Model names are an implementation detail intentionally omitted
+// here — they were in the user's field of vision during init only
+// if they needed them.
+function depthTagline(tier: ModelTier): string {
+  return tier;
 }
 
 export interface PreFlightInput {
@@ -73,7 +73,7 @@ export function printPreFlight(input: PreFlightInput): void {
   writeStderr(`${DIM}This will take ${est.timeLabel} and cost ${est.costLabel}${RESET}`);
   writeStderr(`${DIM}(based on your account's current rates). Large repos take longer.${RESET}`);
   writeStderr("");
-  writeStderr(`${DIM}Model:${RESET}     ${modelTagline(input.tier)}`);
+  writeStderr(`${DIM}Depth:${RESET}     ${depthTagline(input.tier)}`);
   writeStderr(`${DIM}Codebase:${RESET}  ${input.projectPath}`);
   writeStderr(`${DIM}Marketing:${RESET} ${input.marketingUrl ?? "(none — code-only)"}`);
   writeStderr(`${DIM}Output:${RESET}    ${input.outputPath}`);

@@ -192,11 +192,27 @@ export async function runKeyWizard(opts: {
   }
 
   cfg = setConfigValue(cfg, "anthropic_api_key", key);
-  // Default tier is fast (Sonnet 4.6 everywhere). We intentionally
-  // don't ask the user to pick — first-run should have zero cryptic
-  // choices. Power users discover the `deep` tier through `pm config`
-  // output or the pointer printed below.
-  cfg = setConfigValue(cfg, "model_tier", "fast");
+
+  // Depth choice. The first version of this wizard asked users to
+  // pick between "fast" and "deep" with technical jargon ("Opus on
+  // B-model, C, E-spec, F") that a first-time user couldn't parse.
+  // Then we removed the choice entirely for a while. Bringing it
+  // back now with concrete tradeoffs (time + cost + what it's good
+  // for) so the user can make a real decision without knowing what
+  // a "stage" is.
+  write("");
+  write("Pick an audit depth (you can change this anytime):");
+  write("");
+  write(`  ${RESET}[1] fast${DIM}   ~8-12 min, ~$1-3 per audit`);
+  write(`      Good for most projects. Quick turnaround, solid quality.${RESET}`);
+  write("");
+  write(`  ${RESET}[2] deep${DIM}   ~18-25 min, ~$6-10 per audit`);
+  write(`      Slower, more nuanced reasoning. Worth the extra cost on`);
+  write(`      larger or more complex codebases where subtle tradeoffs matter.${RESET}`);
+  write("");
+  const depthAns = (await readLine("Pick 1-2 (default 1):")).trim();
+  const tier = depthAns === "2" ? "deep" : "fast";
+  cfg = setConfigValue(cfg, "model_tier", tier);
 
   saveConfig(cfg);
   write("");
@@ -205,10 +221,9 @@ export async function runKeyWizard(opts: {
     `${DIM}Key stored locally only. PM will never transmit it except to api.anthropic.com.${RESET}`,
   );
   write("");
-  write(
-    `${DIM}Using the ${RESET}fast${DIM} tier (Sonnet 4.6). For deeper analysis on large codebases, upgrade later with:${RESET}`,
-  );
-  write(`${DIM}  pm config set model-tier deep${RESET}`);
+  const otherTier = tier === "fast" ? "deep" : "fast";
+  write(`${DIM}Depth set to ${RESET}${tier}${DIM}. Switch later with:${RESET}`);
+  write(`${DIM}  pm config set model-tier ${otherTier}${RESET}`);
   write("");
   return { cfg, keySet: true };
 }
