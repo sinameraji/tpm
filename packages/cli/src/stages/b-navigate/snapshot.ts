@@ -39,6 +39,7 @@ const IGNORE_DIRS = new Set([
   "__pycache__",
   ".venv",
   "venv",
+  ".pm",
   ".tpm",
   ".wrangler",
   ".pnpm-store",

@@ -19,7 +19,7 @@ export function createLogger(opts: LoggerOptions): Logger {
 
   const base = {
     level,
-    base: { session_id: opts.sessionId, tpm: "cli" },
+    base: { session_id: opts.sessionId, pm: "cli" },
     timestamp: pino.stdTimeFunctions.isoTime,
   };
 

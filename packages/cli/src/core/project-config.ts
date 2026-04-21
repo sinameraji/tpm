@@ -4,7 +4,7 @@ import { projectPaths, ensureDir } from "./paths.js";
 
 // Product-stage context set at init or first audit. Changes how Stage A
 // extracts intent and how Stage F frames the report. Without this,
-// TPM defaulted to "distributable product" and invented target personas
+// PM defaulted to "distributable product" and invented target personas
 // from code — see the beta.11 fix note in CHANGELOG for the specific
 // failure mode that drove adding this field.
 //

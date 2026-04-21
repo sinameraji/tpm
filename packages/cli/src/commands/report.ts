@@ -123,7 +123,7 @@ export function register(program: Command): void {
       const dir = resolveAuditDir(projectRoot, auditId);
       if (!dir) {
         const hint = auditId
-          ? `No audit matches "${auditId}". Try \`tpm report --all\` to list audits.`
+          ? `No audit matches "${auditId}". Try \`pm report --all\` to list audits.`
           : "No audits in this project. Run `pm audit` first.";
         emitText(runtime, hint);
         emit(runtime, { ok: false, error: "audit not found" });

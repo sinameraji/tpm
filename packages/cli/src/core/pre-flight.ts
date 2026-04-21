@@ -122,6 +122,6 @@ export function printCompletion(input: CompletionInput): void {
     writeStderr(`  ${DIM}cache savings: ${formatUsd(input.cacheHitMicroUsd)}${RESET}`);
   }
   writeStderr("");
-  writeStderr(`  ${DIM}How was this audit? tpm feedback${RESET}`);
+  writeStderr(`  ${DIM}How was this audit? pm feedback${RESET}`);
   writeStderr("");
 }

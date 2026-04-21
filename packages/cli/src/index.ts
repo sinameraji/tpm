@@ -10,7 +10,7 @@ import { register as registerFeedback } from "./commands/feedback.js";
 export function buildProgram(): Command {
   const program = new Command();
   program
-    .name("tpm")
+    .name("pm")
     .description(
       "PM — Product Manager. Audits software products via a deterministic six-stage pipeline.",
     )

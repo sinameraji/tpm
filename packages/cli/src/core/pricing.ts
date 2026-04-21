@@ -1,4 +1,4 @@
-// Anthropic pricing table for the models TPM uses.
+// Anthropic pricing table for the models PM uses.
 //
 // Rates are per 1M tokens, USD. Anthropic publishes these at
 // https://www.anthropic.com/pricing — update here when they change.

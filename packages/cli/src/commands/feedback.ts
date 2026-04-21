@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import { bootstrap, emit, emitText } from "./_runtime.js";
 
 // Stub command per the v1.2.0 plan. Closes the UX loop referenced in
-// the audit completion block ("How was this audit? tpm feedback")
+// the audit completion block ("How was this audit? pm feedback")
 // without requiring a real feedback sink. v1.3.0 decision to build
 // something richer if the traffic justifies it.
 //

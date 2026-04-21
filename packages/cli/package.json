@@ -1,6 +1,6 @@
 {
   "name": "@sinameraji/pm",
-  "version": "1.2.0-beta.19",
+  "version": "1.2.0-beta.20",
   "description": "PM — a Product Manager CLI. Reads your codebase and suggests a few high-leverage improvements (specs + prototypes) on Claude (BYO Anthropic key).",
   "keywords": [
     "pm",

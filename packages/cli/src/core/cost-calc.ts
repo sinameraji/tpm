@@ -1,7 +1,7 @@
 // Pure cost calculator. Takes a model ID and a gateway Usage record
 // and returns a micro-USD total plus the per-kind breakdown. Used by
 // stage-runner (to populate model_calls.cost), by the progress UI
-// (to tick up the live cost counter), and by the `tpm cost` command
+// (to tick up the live cost counter), and by the `pm cost` command
 // (to render historical totals).
 //
 // Pure: no I/O, no logging, no mutation. Keeps the surface testable

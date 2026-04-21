@@ -264,7 +264,7 @@ export function register(program: Command): void {
             openCommand: openCmd,
           });
           emitText(runtime, `  Audit id: ${res.auditId}`);
-          emitText(runtime, `  Re-open: tpm report ${res.auditId.slice(0, 8)}`);
+          emitText(runtime, `  Re-open: pm report ${res.auditId.slice(0, 8)}`);
         }
 
         emit(runtime, {

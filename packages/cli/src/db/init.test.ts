@@ -6,7 +6,7 @@ import { openDatabase, DB_SCHEMA_VERSION } from "./init.js";
 
 function tempDbFile(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tpm-db-test-"));
-  return path.join(dir, "tpm.sqlite");
+  return path.join(dir, "pm.sqlite");
 }
 
 describe("openDatabase", () => {

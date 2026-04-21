@@ -3,7 +3,7 @@
 // into their system/user messages.
 //
 // Motivation — from a real user review of an early 1.2.0 audit:
-//   "The TPM assumed Daily Ledger is a distributable product for a
+//   "The tool assumed Daily Ledger is a distributable product for a
 //    target persona and then graded it against that imagined spec.
 //    It isn't. It's a personal tool, and the entire report is built
 //    on a misread of the product's purpose."
