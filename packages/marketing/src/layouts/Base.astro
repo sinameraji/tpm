@@ -4,6 +4,8 @@ interface Props {
   description?: string;
 }
 const { title, description = "PM — open-source Product Manager CLI. Audits software products via a deterministic six-stage pipeline." } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
 ---
 <!doctype html>
 <html lang="en">
@@ -15,8 +17,8 @@ const { title, description = "PM — open-source Product Manager CLI. Audits sof
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://pm-init.pages.dev/" />
-  <link rel="canonical" href="https://pm-init.pages.dev/" />
+  <meta property="og:url" content={canonical} />
+  <link rel="canonical" href={canonical} />
   <style>
     :root {
       --bg: #fafaf7;
@@ -118,10 +120,10 @@ const { title, description = "PM — open-source Product Manager CLI. Audits sof
 </head>
 <body>
   <header>
-    <a href="/" class="brand">PM · Product Manager</a>
+    <a href={base} class="brand">PM · Product Manager</a>
     <nav>
-      <a href="/docs">Docs</a>
-      <a href="/self-host">Self-host</a>
+      <a href={`${base}docs`}>Docs</a>
+      <a href={`${base}self-host`}>Self-host</a>
       <a href="https://github.com/sinameraji/tpm">GitHub</a>
     </nav>
   </header>
@@ -136,8 +138,8 @@ const { title, description = "PM — open-source Product Manager CLI. Audits sof
       <a href="https://x.com/sinasanm">x.com/sinasanm</a>
       <a href="https://github.com/sinameraji">github.com/sinameraji</a>
       <a href="https://linkedin.com/in/sinameraji">linkedin.com/in/sinameraji</a>
-      <a href="/privacy">Privacy</a>
-      <a href="/terms">Terms</a>
+      <a href={`${base}privacy`}>Privacy</a>
+      <a href={`${base}terms`}>Terms</a>
     </div>
   </footer>
 </body>

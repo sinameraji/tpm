@@ -1,0 +1,67 @@
+name: Deploy marketing to GitHub Pages
+
+# Ships packages/marketing/ (Astro) to https://sinameraji.github.io/tpm/
+# whenever that package changes. Separate from CI — no need to rebuild
+# + redeploy the site on unrelated CLI commits. GH Pages is the strangers-
+# friendly host: *.pages.dev is regionally blocked in parts of SEA for
+# phishing-abuse reasons, which bit us in April 2026.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/marketing/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Astro site
+        run: pnpm --filter @tpm/marketing build
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/marketing/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
