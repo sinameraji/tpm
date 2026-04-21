@@ -13,7 +13,9 @@ export function createLogger(opts: LoggerOptions): Logger {
   // "file_path not in seed_files" and reasonably asked what that
   // meant. Those belong behind --verbose, not in the happy path.
   // TPM_LOG_LEVEL env still wins so CI can force any level.
-  const level = opts.verbose ? "debug" : (process.env["TPM_LOG_LEVEL"] ?? "error");
+  const level = opts.verbose
+    ? "debug"
+    : (process.env["PM_LOG_LEVEL"] ?? process.env["TPM_LOG_LEVEL"] ?? "error");
 
   const base = {
     level,

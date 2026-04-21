@@ -1,31 +1,31 @@
 ---
 import Base from "../layouts/Base.astro";
 ---
-<Base title="Self-host — moved (TPM 1.2.0)">
+<Base title="Self-host — moved (PM 1.2.0)">
   <section style="padding: 3rem 0 2rem;">
     <h1>Self-host is no longer a separate thing</h1>
     <p style="max-width: 40rem; color: #4d4d4d;">
-      TPM v1.2.0 runs directly against <strong>your Anthropic account</strong> — there is no
-      TPM-operated backend to self-host around. Bring your own Anthropic API key, everything
+      PM v1.2.0 runs directly against <strong>your Anthropic account</strong> — there is no
+      PM-operated backend to self-host around. Bring your own Anthropic API key, everything
       else is local.
     </p>
-    <pre><code>npm install -g @sinameraji/tpm
+    <pre><code>npm install -g @sinameraji/pm
 
-tpm init       # paste your Anthropic API key
+pm init       # paste your Anthropic API key
 cd your-product-repo
-tpm audit</code></pre>
+pm audit</code></pre>
     <p style="max-width: 40rem;">
-      Your key is stored in <code>~/.tpm/config.yaml</code> (chmod 600) and only ever sent to
+      Your key is stored in <code>~/.pm/config.yaml</code> (chmod 600) and only ever sent to
       <code>api.anthropic.com</code>. No markup on inference. Your rate limits, your bill.
     </p>
     <p style="max-width: 40rem;">
-      Coming from TPM 1.1.x with a self-hosted Cloudflare Worker? Take it down — it's no longer
+      Coming from PM 1.1.x with a self-hosted Cloudflare Worker? Take it down — it's no longer
       referenced. See
       <a href="https://github.com/sinameraji/tpm/blob/main/docs/migration-from-1.1.md">the
       migration notes</a>.
     </p>
     <p style="max-width: 40rem; margin-top: 2rem;">
-      <a href="/" class="button">Back to TPM</a>
+      <a href="/" class="button">Back to PM</a>
       <a href="/docs" class="button secondary" style="margin-left: 0.5rem;">Docs</a>
     </p>
   </section>

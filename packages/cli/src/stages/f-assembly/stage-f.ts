@@ -16,8 +16,8 @@ export const STAGE_F_MODEL = "claude-sonnet-4-6";
 const STAGE_F_MAX_TOKENS = 16_000;
 
 // spec.md is now an ultra-short narrative — one founder-voice essay
-// explaining what TPM saw. The detailed per-solution specs live as
-// separate files (solutions/S001-*.md) that TPM writes
+// explaining what PM saw. The detailed per-solution specs live as
+// separate files (solutions/S001-*.md) that PM writes
 // deterministically from solutions.yaml after Stage F finishes.
 // spec.md links to those + the prototypes prominently; it does not
 // repeat their content.
@@ -60,7 +60,7 @@ TOTAL LENGTH: target 180–280 words for the whole doc. Hard max 350. If you're 
 TONE CHECK:
 - No "structurally broken" / "critical defect" / "does not serve" language.
 - No inventing personas or scope not in the audit data or product context.
-- Do NOT list every problem TPM found. Pick the moves that matter and link to the detailed specs for the rest.
+- Do NOT list every problem PM found. Pick the moves that matter and link to the detailed specs for the rest.
 
 Return only markdown. No code fences around the doc. No preamble.`;
 
@@ -385,7 +385,7 @@ export function renderMarkdownToHtml(md: string): string {
     '<html><head><meta charset="utf-8"><style>',
     css,
     "</style></head><body>",
-    '<div class="brand">TPM · Technical Product Manager</div>',
+    '<div class="brand">PM · Product Manager</div>',
     body.join("\n"),
     "</body></html>",
   ].join("\n");

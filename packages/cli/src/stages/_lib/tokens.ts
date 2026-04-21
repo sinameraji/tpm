@@ -44,7 +44,7 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
 // Fallback is generous because the cost of being wrong (a stage
 // hitting the ceiling late) outweighs the cost of a conservative
 // estimate. 100K is well below Sonnet/Opus 200K but above anything
-// TPM actually sends today.
+// PM actually sends today.
 export function maxContextFor(model: string): number {
   return MODEL_CONTEXT_WINDOWS[model] ?? 100_000;
 }

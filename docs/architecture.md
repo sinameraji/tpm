@@ -1,4 +1,4 @@
-# TPM Architecture
+# PM Architecture
 
 ## Components
 
@@ -6,7 +6,7 @@
 ┌──────────────────────────────┐
 │  User's terminal             │
 │  ┌────────────────────────┐  │
-│  │ tpm CLI (Node 20+)     │  │
+│  │ pm CLI (Node 20+)      │  │
 │  │  - commander commands  │  │
 │  │  - session + logger    │  │
 │  │  - stages A–F          │  │
@@ -22,9 +22,9 @@
 └──────────────────────────────┘
 ```
 
-TPM is a **static analysis tool**. The primary source of truth is the codebase; TPM never runs the user's product, never signs in, never automates a browser against it. Optionally — and only if the user provides a URL — TPM fetches the product's public marketing surfaces (landing / pricing / features / docs) as auxiliary positioning context. Everything else stays offline.
+PM is a **static analysis tool**. The primary source of truth is the codebase; PM never runs the user's product, never signs in, never automates a browser against it. Optionally — and only if the user provides a URL — PM fetches the product's public marketing surfaces (landing / pricing / features / docs) as auxiliary positioning context. Everything else stays offline.
 
-There is no TPM-operated backend. v1.1.x had a Cloudflare Worker for hosted-trial device auth + Workers AI proxy; v1.2.0 removed it entirely. Your Anthropic key is stored in `~/.tpm/config.yaml` (chmod 600) and only ever travels to `api.anthropic.com`.
+There is no PM-operated backend. v1.1.x had a Cloudflare Worker for hosted-trial device auth + Workers AI proxy; v1.2.0 removed it entirely. Your Anthropic key is stored in `~/.pm/config.yaml` (chmod 600) and only ever travels to `api.anthropic.com`.
 
 ## Key interfaces
 
@@ -46,7 +46,7 @@ Per-stage model IDs depend on the configured tier — see [`models.md`](./models
 
 ## Storage
 
-- `~/.tpm/config.yaml` — user-level config (anthropic_api_key masked, model_tier, stage_models overrides). chmod 600.
+- `~/.pm/config.yaml` — user-level config (anthropic_api_key masked, model_tier, stage_models overrides). chmod 600.
 - `.tpm/` per project:
   - `tpm.sqlite` — Postgres-compatible schema. `audits`, `stage_runs`, `model_calls`. Cost columns hold integer micro-USD (`COST_COLUMN_SEMANTIC`).
   - `artifacts/{audit_id}/` — per-audit YAMLs + `prototypes/*.html` + `spec.md` / `spec.html`.
@@ -59,4 +59,4 @@ No data is sent anywhere except `api.anthropic.com`.
 - Every SQLite row with a `session_id` column has it populated.
 - Every YAML artifact carries `schema_version`.
 - No source code ever leaves the user's machine; only inference prompts go over the network.
-- The only outbound traffic from `tpm audit` goes to `api.anthropic.com` (Anthropic SDK) and to the marketing URL if one was given.
+- The only outbound traffic from `pm audit` goes to `api.anthropic.com` (Anthropic SDK) and to the marketing URL if one was given.

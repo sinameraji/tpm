@@ -9,7 +9,7 @@ import { bootstrap, emit, emitText } from "./_runtime.js";
 // Explicitly non-automatic: we tell the user nothing is sent unless
 // they hit enter on the issue form themselves.
 
-const MESSAGE = `We want to hear how TPM worked for you.
+const MESSAGE = `We want to hear how PM worked for you.
 
   Open an issue:  https://github.com/sinameraji/tpm/issues/new
 
@@ -19,7 +19,7 @@ we can debug specific audits. No data is sent automatically.`;
 export function register(program: Command): void {
   program
     .command("feedback")
-    .description("How to send feedback about a TPM audit.")
+    .description("How to send feedback about a PM audit.")
     .action(async function action(this: Command) {
       const runtime = bootstrap(this);
       emitText(runtime, MESSAGE);

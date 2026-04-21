@@ -16,7 +16,7 @@ const SET_HELP =
 export function register(program: Command): void {
   const cfg = program
     .command("config")
-    .description("Get/set TPM config values (user-level ~/.tpm/config.yaml).");
+    .description("Get/set PM config values (user-level ~/.pm/config.yaml).");
 
   cfg
     .command("get <key>")

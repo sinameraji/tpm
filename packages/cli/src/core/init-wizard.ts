@@ -22,9 +22,9 @@ import {
 const DIM = "\x1b[2m";
 const RESET = "\x1b[0m";
 
-const INTRO = `TPM needs an Anthropic API key to run audits.
+const INTRO = `PM needs an Anthropic API key to run audits.
 
-TPM uses Claude (Sonnet 4.6) to read your code and produce a PM-grade
+PM uses Claude (Sonnet 4.6) to read your code and produce a PM-grade
 spec. A typical audit takes 8-12 minutes and costs $1-3 in API credits
 at your account's rates. Large repos take longer.
 
@@ -200,9 +200,9 @@ export async function runKeyWizard(opts: {
 
   saveConfig(cfg);
   write("");
-  write(`${DIM}Saved to ~/.tpm/config.yaml (chmod 600).${RESET}`);
+  write(`${DIM}Saved to ~/.pm/config.yaml (chmod 600).${RESET}`);
   write(
-    `${DIM}Key stored locally only. TPM will never transmit it except to api.anthropic.com.${RESET}`,
+    `${DIM}Key stored locally only. PM will never transmit it except to api.anthropic.com.${RESET}`,
   );
   write("");
   write(

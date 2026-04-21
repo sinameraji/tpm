@@ -44,6 +44,10 @@ function fmtCount(n: number): string {
 }
 
 function isStreamingEnabled(): boolean {
+  // PM_ is the primary name; TPM_ is read for back-compat with users
+  // who set it in their shell before the 1.2.0 rename.
+  if (process.env["PM_NO_STREAM"] === "1") return false;
+  if (process.env["PM_NO_PROGRESS"] === "1") return false;
   if (process.env["TPM_NO_STREAM"] === "1") return false;
   if (process.env["TPM_NO_PROGRESS"] === "1") return false;
   return Boolean(process.stderr.isTTY);

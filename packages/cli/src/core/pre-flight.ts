@@ -23,7 +23,7 @@ const RESET = "\x1b[0m";
 // first-time users know what they're running before they commit to
 // it. Kept short so it's not noise on repeat invocations.
 export function printPitch(): void {
-  process.stderr.write(`\n${BRAND}TPM${RESET} — Technical Product Manager\n`);
+  process.stderr.write(`\n${BRAND}PM${RESET} — Product Manager\n`);
   process.stderr.write(
     `${DIM}Reads your codebase and suggests a few high-leverage improvements (specs + prototypes).${RESET}\n`,
   );

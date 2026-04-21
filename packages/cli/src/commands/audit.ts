@@ -32,11 +32,11 @@ export function register(program: Command): void {
   program
     .command("audit")
     .description(
-      "Audit the current project. TPM reads your codebase (primary source of truth) and optionally your public marketing URL (auxiliary context) to reconstruct intent and imagine the user journey.",
+      "Audit the current project. PM reads your codebase (primary source of truth) and optionally your public marketing URL (auxiliary context) to reconstruct intent and imagine the user journey.",
     )
     .option(
       "--marketing-url <url>",
-      "Your product's public marketing URL. Auxiliary — helps TPM understand positioning. Remembered for subsequent runs.",
+      "Your product's public marketing URL. Auxiliary — helps PM understand positioning. Remembered for subsequent runs.",
     )
     .option(
       "--no-marketing",
@@ -71,12 +71,12 @@ export function register(program: Command): void {
       // Plumb through an env var so the progress module (already
       // imported transitively) can honor the flag without threading
       // yet another option through every stage.
-      if (opts.stream === false) process.env["TPM_NO_STREAM"] = "1";
+      if (opts.stream === false) process.env["PM_NO_STREAM"] = "1";
 
       const projectRoot = process.cwd();
       let projectCfg = loadProjectConfig(projectRoot);
       if (!projectCfg) {
-        emitText(runtime, "No .tpm/ in this directory. Run:  tpm init");
+        emitText(runtime, "No .pm/ in this directory. Run:  pm init");
         emit(runtime, { ok: false, error: "not initialized" });
         process.exitCode = 1;
         return;
@@ -92,7 +92,7 @@ export function register(program: Command): void {
         const hasTTY = process.stdin.isTTY && process.stdout.isTTY;
         emitText(
           runtime,
-          "Cloudflare Workers AI support was removed in 1.2.0. TPM now uses your own Anthropic API key.",
+          "Cloudflare Workers AI support was removed in 1.2.0. PM now uses your own Anthropic API key.",
         );
         if (hasTTY) {
           const ans = (await promptLine("Run tpm init now? [Y/n]: ")) ?? "y";
@@ -155,10 +155,10 @@ export function register(program: Command): void {
       } else if (!runtime.isJson) {
         emitText(
           runtime,
-          "[Step 1/2] Code analysis — TPM reads your repo (primary source of truth).",
+          "[Step 1/2] Code analysis — PM reads your repo (primary source of truth).",
         );
         const answer = await promptLine(
-          "[Step 2/2] Optionally, paste your product's public marketing URL (landing page).\n  This is auxiliary — it helps TPM understand your positioning.\n  Press Enter to skip:\n  > ",
+          "[Step 2/2] Optionally, paste your product's public marketing URL (landing page).\n  This is auxiliary — it helps PM understand your positioning.\n  Press Enter to skip:\n  > ",
         );
         if (answer && isValidHttpUrl(answer)) {
           marketingUrl = answer;

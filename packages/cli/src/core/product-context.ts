@@ -8,10 +8,10 @@
 //    It isn't. It's a personal tool, and the entire report is built
 //    on a misread of the product's purpose."
 //
-// Without explicit context, TPM's Stage A used to invent target
+// Without explicit context, PM's Stage A used to invent target
 // personas from static strings in the codebase (hero copy in a
 // landing page, README phrasing). For a personal tool that has none
-// of that, TPM fell back on generic "knowledge worker" patterns and
+// of that, PM fell back on generic "knowledge worker" patterns and
 // then critiqued missing distribution-readiness as critical defects.
 //
 // The fix is grounding, not a tone patch. When the user tells us

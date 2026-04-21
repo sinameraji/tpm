@@ -7,7 +7,7 @@ import type { AppModel } from "@tpm/shared/schemas/app-model";
 // desktop app, a mobile app?" — the persona walks between screen_ids
 // and the screens themselves carry file_paths + labels.
 
-export const INFERRED_PATH_SYSTEM_PROMPT = `You are TPM, imagining what a user experiences when they use this product.
+export const INFERRED_PATH_SYSTEM_PROMPT = `You are PM, imagining what a user experiences when they use this product.
 
 You are given:
 1. The product's reconstructed intent (Lean Canvas + intended JTBD / value moment / ideal path for one persona).

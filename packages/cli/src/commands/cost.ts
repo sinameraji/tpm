@@ -14,7 +14,7 @@ interface CostRow {
 export function register(program: Command): void {
   program
     .command("cost")
-    .description("Show what your TPM audits cost (reads local SQLite).")
+    .description("Show what your PM audits cost (reads local SQLite).")
     .option("--audit <id>", "Restrict to a single audit id or prefix.")
     .option("--since <iso>", "Only include audits started after this ISO 8601 timestamp.")
     .action(async function action(this: Command) {

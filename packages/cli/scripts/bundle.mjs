@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Bundles the CLI entry point with @tpm/shared inlined, while keeping
-// real npm deps external. Produces a single dist/bin/tpm.js suitable
+// real npm deps external. Produces a single dist/bin/pm.js suitable
 // for `npm publish`.
 import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
@@ -17,12 +17,12 @@ const external = Object.keys(pkg.dependencies ?? {}).filter(
 );
 
 await build({
-  entryPoints: [path.join(cliRoot, "bin/tpm.ts")],
+  entryPoints: [path.join(cliRoot, "bin/pm.ts")],
   bundle: true,
   platform: "node",
   target: "node20",
   format: "esm",
-  outfile: path.join(cliRoot, "dist/bin/tpm.js"),
+  outfile: path.join(cliRoot, "dist/bin/pm.js"),
   external,
   sourcemap: true,
   loader: { ".yaml": "text" },
@@ -31,6 +31,6 @@ await build({
 
 // esbuild preserves the source-level shebang; just mark the bundled
 // output executable so `npm install -g` links it correctly.
-const outfile = path.join(cliRoot, "dist/bin/tpm.js");
+const outfile = path.join(cliRoot, "dist/bin/pm.js");
 fs.chmodSync(outfile, 0o755);
-console.log("✓ bundled dist/bin/tpm.js");
+console.log("✓ bundled dist/bin/pm.js");

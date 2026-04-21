@@ -10,7 +10,7 @@ import type {
 } from "@tpm/shared/schemas/scraped";
 import { ScrapedSurfacesSchema } from "@tpm/shared/schemas/scraped";
 
-const USER_AGENT = "TPM-Auditor/1.0 (+https://tpm-d3h.pages.dev)";
+const USER_AGENT = "PM-Auditor/1.0 (+https://tpm-d3h.pages.dev)";
 
 const CANDIDATE_PATHS: Array<{ path: string; kind: SurfaceKind }> = [
   { path: "/pricing", kind: "pricing" },

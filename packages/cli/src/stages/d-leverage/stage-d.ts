@@ -11,7 +11,7 @@ import type { ValidationResult } from "../_lib/validators.js";
 export const STAGE_D_MODEL = "claude-sonnet-4-6";
 const STAGE_D_MAX_TOKENS = 8_000;
 
-export const STAGE_D_SYSTEM_PROMPT = `You are TPM, prioritizing problems discovered in a product audit by LEVERAGE — expected impact over effort.
+export const STAGE_D_SYSTEM_PROMPT = `You are PM, prioritizing problems discovered in a product audit by LEVERAGE — expected impact over effort.
 
 You are given delta.yaml: per-persona step classifications, intent mismatches, implicit-vs-stated job alignment, and overall health.
 

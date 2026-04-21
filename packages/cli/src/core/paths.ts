@@ -17,7 +17,7 @@ export interface ProjectPaths {
 }
 
 export function userPaths(homeDir: string = os.homedir()): UserPaths {
-  const root = path.join(homeDir, ".tpm");
+  const root = path.join(homeDir, ".pm");
   return {
     root,
     configYaml: path.join(root, "config.yaml"),
@@ -27,10 +27,10 @@ export function userPaths(homeDir: string = os.homedir()): UserPaths {
 }
 
 export function projectPaths(projectRoot: string = process.cwd()): ProjectPaths {
-  const root = path.join(projectRoot, ".tpm");
+  const root = path.join(projectRoot, ".pm");
   return {
     root,
-    dbFile: path.join(root, "tpm.sqlite"),
+    dbFile: path.join(root, "pm.sqlite"),
     artifactsDir: path.join(root, "artifacts"),
     configYaml: path.join(root, "config.yaml"),
   };

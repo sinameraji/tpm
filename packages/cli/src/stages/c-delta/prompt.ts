@@ -6,11 +6,11 @@ import type { Paths } from "@tpm/shared/schemas/paths";
 // block gets cached via cache_control: ephemeral (buildStageCSystem
 // Prompt below). This keeps the pattern library out of the user
 // message so cache hits aren't busted by audit-specific content.
-const STAGE_C_SYSTEM_BASE = `You are TPM, analyzing the delta between what the product's builder INTENDED and what users actually experience.
+const STAGE_C_SYSTEM_BASE = `You are PM, analyzing the delta between what the product's builder INTENDED and what users actually experience.
 
 You are given:
 1. lean_canvas — the builder's reconstructed intent (problem, segments, UVP, intended JTBD/value moment/critical path per persona).
-2. paths — what actually happened when TPM's navigator attempted each persona's job on the live product.
+2. paths — what actually happened when PM's navigator attempted each persona's job on the live product.
 3. pattern_library — curated product-design patterns with works_when / fails_when / exemplars (in this system prompt).
 
 Your job is to produce a structured delta analysis. You must:

@@ -20,7 +20,7 @@ import { isValidHtmlDocument, type ValidationResult } from "../_lib/validators.j
 export const STAGE_E_SPEC_MODEL = "claude-sonnet-4-6";
 export const STAGE_E_PROTOTYPE_MODEL = "claude-sonnet-4-6";
 
-const SOLUTION_SYSTEM = `You are TPM's solution designer. For ONE problem from the prioritized audit, produce a concrete, implementable solution spec.
+const SOLUTION_SYSTEM = `You are PM's solution designer. For ONE problem from the prioritized audit, produce a concrete, implementable solution spec.
 
 Requirements:
 - The change is SPECIFIC, not "improve onboarding". E.g., "Replace demo-request form with self-serve signup that lands on a pre-populated template canvas."
@@ -33,13 +33,13 @@ Requirements:
 
 Respond with ONE JSON object matching the Solution schema. Do NOT include prototype; that comes separately.`;
 
-const PROTOTYPE_SYSTEM = `You are TPM's prototype designer. Produce a SINGLE complete, self-contained HTML wireframe that shows the STRUCTURE of the proposed change — like a pencil-on-napkin sketch, not a polished design.
+const PROTOTYPE_SYSTEM = `You are PM's prototype designer. Produce a SINGLE complete, self-contained HTML wireframe that shows the STRUCTURE of the proposed change — like a pencil-on-napkin sketch, not a polished design.
 
 THIS IS A WIREFRAME, NOT A DESIGN.
 You are not designing the product. You are showing where things go. A wireframe conveys intent with the lowest-fidelity visual treatment that still makes the structure clear. The goal is "I can see what the flow is and where the UI elements live" — not "this looks shippable."
 
 OUTPUT SHAPE — non-negotiable:
-Your response MUST be a full HTML5 document starting with <!doctype html> and containing <html>, <head>, and <body> elements. TPM's semantic check rejects HTML fragments and retries, so include the full document structure on the first attempt.
+Your response MUST be a full HTML5 document starting with <!doctype html> and containing <html>, <head>, and <body> elements. PM's semantic check rejects HTML fragments and retries, so include the full document structure on the first attempt.
 
 Template:
 <!doctype html>

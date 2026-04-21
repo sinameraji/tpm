@@ -1,36 +1,36 @@
 ---
 import Base from "../layouts/Base.astro";
 ---
-<Base title="Docs — TPM">
+<Base title="Docs — PM">
   <section style="padding: 3rem 0 2rem;">
     <h1>Docs</h1>
 
     <h2>Quick start</h2>
-    <pre><code>npm install -g @sinameraji/tpm
+    <pre><code>npm install -g @sinameraji/pm
 
-tpm init       # paste your Anthropic API key
+pm init       # paste your Anthropic API key
 cd your-product-repo
-tpm audit</code></pre>
+pm audit</code></pre>
     <p style="max-width: 44rem; color: #4d4d4d; font-size: 0.9rem;">
-      Don't want to install globally? <code>npx @sinameraji/tpm@latest audit</code> works without
+      Don't want to install globally? <code>npx @sinameraji/pm@latest audit</code> works without
       any install. macOS users hitting EACCES on global install:
       <a href="https://github.com/sinameraji/tpm/blob/main/packages/cli/README.md#if-npm-install--g-fails-with-eacces-macos-default">one-time prefix fix</a>.
     </p>
     <p style="max-width: 44rem; color: #4d4d4d;">
-      TPM runs on the source code in your current directory (primary source of truth). No
-      browser automation, no fake signups. Step 2 of <code>tpm audit</code> optionally asks for
+      PM runs on the source code in your current directory (primary source of truth). No
+      browser automation, no fake signups. Step 2 of <code>pm audit</code> optionally asks for
       your public marketing URL (landing/pricing/features) — auxiliary context that helps with
       positioning. Skip with Enter.
     </p>
     <p style="max-width: 44rem; color: #4d4d4d;">
-      TPM uses <strong>Claude (Sonnet 4.6 by default, Opus 4.7 on the deep tier)</strong>. You
+      PM uses <strong>Claude (Sonnet 4.6 by default, Opus 4.7 on the deep tier)</strong>. You
       bring your own Anthropic API key — your key, your rate limits, your bill. A typical audit
       takes 8–12 minutes and costs roughly $1–3 at your account's rates. Nothing is transmitted
       anywhere except <code>api.anthropic.com</code>.
     </p>
 
     <h2>The six-stage method</h2>
-    <p>TPM runs a deterministic pipeline. Each stage checkpoints to disk and can be replayed independently. Artifacts live in <code>.tpm/artifacts/&lbrace;audit_id&rbrace;/</code>:</p>
+    <p>PM runs a deterministic pipeline. Each stage checkpoints to disk and can be replayed independently. Artifacts live in <code>.pm/artifacts/&lbrace;audit_id&rbrace;/</code>:</p>
     <ul>
       <li><code>map.yaml</code> — the static code map (routes, forms, components, nav)</li>
       <li><code>lean-canvas.yaml</code> — Stage A: what the builder intended</li>
@@ -43,21 +43,21 @@ tpm audit</code></pre>
 
     <h2>Commands</h2>
     <ul>
-      <li><code>tpm init</code> — initialize <code>.tpm/</code> and walk you through Anthropic key + tier</li>
-      <li><code>tpm audit</code> — run the full audit on this codebase</li>
-      <li><code>tpm audit --no-stream</code> — disable the streaming progress UI for CI</li>
-      <li><code>tpm report [audit_id]</code> — show a prior spec.md / spec.html</li>
-      <li><code>tpm config get/set/unset/show</code> — inspect or change config</li>
-      <li><code>tpm cost</code> — show what your audits cost, aggregated locally</li>
-      <li><code>tpm feedback</code> — how to send feedback about an audit</li>
+      <li><code>pm init</code> — initialize <code>.tpm/</code> and walk you through Anthropic key + tier</li>
+      <li><code>pm audit</code> — run the full audit on this codebase</li>
+      <li><code>pm audit --no-stream</code> — disable the streaming progress UI for CI</li>
+      <li><code>pm report [audit_id]</code> — show a prior spec.md / spec.html</li>
+      <li><code>pm config get/set/unset/show</code> — inspect or change config</li>
+      <li><code>pm cost</code> — show what your audits cost, aggregated locally</li>
+      <li><code>pm feedback</code> — how to send feedback about an audit</li>
     </ul>
 
     <h2>Privacy &amp; security</h2>
     <p style="max-width: 44rem;">
-      TPM runs on your machine. Prompts go directly to <code>api.anthropic.com</code> using your
-      API key. There is no TPM-operated backend; no analytics; no phone-home. Your source code
+      PM runs on your machine. Prompts go directly to <code>api.anthropic.com</code> using your
+      API key. There is no PM-operated backend; no analytics; no phone-home. Your source code
       never leaves your machine except as inference prompts you can inspect in
-      <code>tpm audit --verbose</code>.
+      <code>pm audit --verbose</code>.
     </p>
 
     <h2>More</h2>

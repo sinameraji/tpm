@@ -1,7 +1,7 @@
 {
-  "name": "@sinameraji/tpm",
-  "version": "1.2.0-beta.14",
-  "description": "Technical Product Manager CLI — audits software products via a deterministic six-stage pipeline on Claude (BYO Anthropic key).",
+  "name": "@sinameraji/pm",
+  "version": "1.2.0-beta.15",
+  "description": "PM — a Product Manager CLI. Reads your codebase and suggests a few high-leverage improvements (specs + prototypes) on Claude (BYO Anthropic key).",
   "keywords": [
     "pm",
     "audit",
@@ -24,7 +24,7 @@
     "node": ">=20"
   },
   "bin": {
-    "tpm": "dist/bin/tpm.js"
+    "pm": "dist/bin/pm.js"
   },
   "files": [
     "dist",
@@ -37,7 +37,7 @@
     "prepublishOnly": "pnpm run clean && pnpm run build && pnpm run bundle",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "start": "node ./dist/bin/tpm.js"
+    "start": "node ./dist/bin/pm.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

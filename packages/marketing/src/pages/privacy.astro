@@ -1,26 +1,26 @@
 ---
 import Base from "../layouts/Base.astro";
 ---
-<Base title="Privacy — TPM">
+<Base title="Privacy — PM">
   <section style="padding: 3rem 0;">
     <h1>Privacy</h1>
     <p><strong>Last updated: 2026-04-20.</strong></p>
 
-    <h2>Where TPM runs</h2>
-    <p>TPM v1.2.0 runs entirely on your machine as a CLI. There is no TPM-operated backend. The only outbound traffic from <code>tpm audit</code> goes to:</p>
+    <h2>Where PM runs</h2>
+    <p>PM v1.2.0 runs entirely on your machine as a CLI. There is no PM-operated backend. The only outbound traffic from <code>pm audit</code> goes to:</p>
     <ul>
       <li><code>api.anthropic.com</code> — model inference, using your Anthropic API key.</li>
-      <li>The marketing URL you optionally pass to <code>tpm audit</code>, if any.</li>
+      <li>The marketing URL you optionally pass to <code>pm audit</code>, if any.</li>
     </ul>
 
-    <h2>What TPM stores locally</h2>
+    <h2>What PM stores locally</h2>
     <ul>
-      <li><strong><code>~/.tpm/config.yaml</code></strong> — your Anthropic API key (chmod 600), model tier, any per-stage overrides. Masked when displayed via <code>tpm config show</code>.</li>
-      <li><strong><code>.tpm/tpm.sqlite</code></strong> (per project) — audit history and per-stage costs. Integer micro-USD totals; no prompt contents.</li>
-      <li><strong><code>.tpm/artifacts/</code></strong> (per project) — generated YAML / JSON / HTML / spec.md per audit. These are yours; delete any time.</li>
+      <li><strong><code>~/.pm/config.yaml</code></strong> — your Anthropic API key (chmod 600), model tier, any per-stage overrides. Masked when displayed via <code>pm config show</code>.</li>
+      <li><strong><code>.pm/pm.sqlite</code></strong> (per project) — audit history and per-stage costs. Integer micro-USD totals; no prompt contents.</li>
+      <li><strong><code>.pm/artifacts/</code></strong> (per project) — generated YAML / JSON / HTML / spec.md per audit. These are yours; delete any time.</li>
     </ul>
 
-    <h2>What TPM does NOT collect</h2>
+    <h2>What PM does NOT collect</h2>
     <ul>
       <li>Your source code — it never leaves the machine except as inference prompts sent to Anthropic under your API key.</li>
       <li>Analytics, telemetry, or phone-home. No usage counters. No update pings. No device registration.</li>
@@ -29,7 +29,7 @@ import Base from "../layouts/Base.astro";
 
     <h2>Third parties</h2>
     <ul>
-      <li><strong>Anthropic</strong> — receives the inference prompts TPM sends. Subject to <a href="https://www.anthropic.com/legal/privacy">Anthropic's privacy policy</a>.</li>
+      <li><strong>Anthropic</strong> — receives the inference prompts PM sends. Subject to <a href="https://www.anthropic.com/legal/privacy">Anthropic's privacy policy</a>.</li>
       <li><strong>Cloudflare Pages</strong> — hosts this marketing site (not the CLI).</li>
     </ul>
 

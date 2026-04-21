@@ -12,7 +12,7 @@ export function buildProgram(): Command {
   program
     .name("tpm")
     .description(
-      "TPM — Technical Product Manager. Audits software products via a deterministic six-stage pipeline.",
+      "PM — Product Manager. Audits software products via a deterministic six-stage pipeline.",
     )
     .version(TPM_VERSION)
     .option("--json", "Emit structured JSON on stdout; logs remain on stderr.")

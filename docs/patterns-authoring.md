@@ -1,6 +1,6 @@
 # Authoring Patterns
 
-Patterns are curated knowledge that TPM uses in Stage C (delta analysis) to recognize recurring friction modes. The built-in library ships with the CLI (`packages/cli/src/patterns/built-in.yaml`). In v2, projects and orgs will add their own.
+Patterns are curated knowledge that PM uses in Stage C (delta analysis) to recognize recurring friction modes. The built-in library ships with the CLI (`packages/cli/src/patterns/built-in.yaml`). In v2, projects and orgs will add their own.
 
 ## Anatomy of a good pattern
 

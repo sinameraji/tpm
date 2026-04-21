@@ -1,7 +1,29 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
+import * as path from "node:path";
 import yaml from "js-yaml";
 import { userPaths, ensureDir } from "./paths.js";
+
+// One-shot migration from the old ~/.tpm/ directory (used by
+// 1.2.0-beta.1 through 1.2.0-beta.14) to ~/.pm/. Copies config.yaml
+// over so users who configured their Anthropic key pre-rename don't
+// get re-prompted on the first `pm audit`. Idempotent: if ~/.pm/
+// already exists, no-op. Leaves ~/.tpm/ on disk untouched — user
+// decides when to delete it.
+function migrateUserConfigFromTpm(homeDir: string): void {
+  const newRoot = path.join(homeDir, ".pm");
+  if (fs.existsSync(newRoot)) return;
+  const oldRoot = path.join(homeDir, ".tpm");
+  const oldConfig = path.join(oldRoot, "config.yaml");
+  if (!fs.existsSync(oldConfig)) return;
+  try {
+    ensureDir(newRoot, 0o700);
+    fs.copyFileSync(oldConfig, path.join(newRoot, "config.yaml"));
+    fs.chmodSync(path.join(newRoot, "config.yaml"), 0o600);
+  } catch {
+    /* best-effort; if copy fails loadConfig will just return DEFAULT */
+  }
+}
 
 export type ModelTier = "fast" | "deep";
 
@@ -84,6 +106,7 @@ function parseStageModelsKey(key: string): StageModelKey | null {
 // ---- load / save -----------------------------------------------------
 
 export function loadConfig(homeDir: string = os.homedir()): UserConfig {
+  migrateUserConfigFromTpm(homeDir);
   const p = userPaths(homeDir).configYaml;
   if (!fs.existsSync(p)) return structuredClone(DEFAULT);
   try {

@@ -15,13 +15,13 @@ import { bootstrap, emit, emitText } from "./_runtime.js";
 //      project config yaml. Safe to re-run; everything here uses
 //      {recursive: true} / open-or-create semantics.
 //   2. Key wizard — sets / replaces the Anthropic key in
-//      ~/.tpm/config.yaml. The wizard itself handles "key already
+//      ~/.pm/config.yaml. The wizard itself handles "key already
 //      set, replace? [y/N]" so we don't guard it here.
 
 export function register(program: Command): void {
   program
     .command("init")
-    .description("Initialize TPM for the current project and set up your Anthropic API key.")
+    .description("Initialize PM for the current project and set up your Anthropic API key.")
     .action(async function action(this: Command) {
       const runtime = bootstrap(this);
       if (!runtime.isJson) printPitch();
@@ -48,10 +48,10 @@ export function register(program: Command): void {
       if (already) {
         emitText(
           runtime,
-          `TPM project dir already set up at ${path.relative(cwd, paths.root)}/ — existing audits preserved.`,
+          `PM project dir already set up at ${path.relative(cwd, paths.root)}/ — existing audits preserved.`,
         );
       } else {
-        emitText(runtime, `Initialized TPM at ${paths.root}`);
+        emitText(runtime, `Initialized PM at ${paths.root}`);
         emitText(runtime, ` - db:        ${path.relative(cwd, paths.dbFile)}`);
         emitText(runtime, ` - artifacts: ${path.relative(cwd, paths.artifactsDir)}/`);
         emitText(runtime, ` - config:    ${path.relative(cwd, paths.configYaml)}`);

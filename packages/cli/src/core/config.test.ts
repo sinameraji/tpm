@@ -18,8 +18,12 @@ function tempHome(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "tpm-cfg-"));
 }
 
+// Writes an in-place .pm/config.yaml with pre-1.2.0-era keys (gateway,
+// api_endpoint, byo.*) so detectLegacyConfig sees them. (Previously this
+// wrote to .tpm/, but after the 1.2.0-beta.15 rename the primary path
+// is .pm/. The migration from .tpm/ → .pm/ is tested separately.)
 function writeLegacyConfigFile(home: string, body: unknown): void {
-  const dir = path.join(home, ".tpm");
+  const dir = path.join(home, ".pm");
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "config.yaml"), yaml.dump(body));
 }
@@ -169,7 +173,7 @@ describe("legacy detection", () => {
     expect(detectLegacyConfig(cfg)).toBe(true);
     saveConfig(cfg, home);
     const rewritten = yaml.load(
-      fs.readFileSync(path.join(home, ".tpm", "config.yaml"), "utf8"),
+      fs.readFileSync(path.join(home, ".pm", "config.yaml"), "utf8"),
     ) as Record<string, unknown>;
     expect(rewritten.gateway).toBeUndefined();
     expect(rewritten.api_endpoint).toBeUndefined();

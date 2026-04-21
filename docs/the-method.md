@@ -1,6 +1,6 @@
-# The TPM Method
+# The PM Method
 
-TPM's differentiation isn't "AI looks at your app and gives feedback." It's a deterministic six-stage analytical pipeline that separates **intent** from **execution** and finds the highest-leverage gaps between them. Each stage has a defined input, a defined output schema, and a specific model call.
+PM's differentiation isn't "AI looks at your app and gives feedback." It's a deterministic six-stage analytical pipeline that separates **intent** from **execution** and finds the highest-leverage gaps between them. Each stage has a defined input, a defined output schema, and a specific model call.
 
 ## Stage A — Intent Extraction → `lean-canvas.yaml`
 
@@ -42,7 +42,7 @@ For every required step, explicitly answer the **necessity test**: "If I skipped
 2. "Nothing breaks; a sensible default would be fine" → `cuttable`
 3. "A softer version could exist post-value-moment" → `cuttable_with_care`
 
-**The intentional-vs-uneducated distinction** is where TPM beats naive auditors. Friction is _working_ when surrounding copy explains it in user-benefit terms, invites agency, has a visible payoff later, and filters for fit when fit matters. Friction is _uneducated_ when it's demanded without explanation, uses "help us serve you better" business-speak, or when selections don't affect the experience.
+**The intentional-vs-uneducated distinction** is where PM beats naive auditors. Friction is _working_ when surrounding copy explains it in user-benefit terms, invites agency, has a visible payoff later, and filters for fit when fit matters. Friction is _uneducated_ when it's demanded without explanation, uses "help us serve you better" business-speak, or when selections don't affect the experience.
 
 ## Stage D — Leverage Prioritization → `problems.yaml`
 
