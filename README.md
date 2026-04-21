@@ -82,7 +82,7 @@ CLI on your machine (Node 20+). No backend. No Playwright. No live-product autom
 packages/
   shared/     Zod schemas + TS types — single source of truth
   cli/        the `pm` command-line tool
-  marketing/  tpm-d3h.pages.dev landing (Astro on Cloudflare Pages)
+  marketing/  pm-init.pages.dev landing (Astro on Cloudflare Pages)
 ```
 
 ## Development

@@ -115,7 +115,7 @@ PM runs entirely on your machine. Prompts go directly to `api.anthropic.com` usi
 
 ## Links
 
-- Website: [tpm-d3h.pages.dev](https://tpm-d3h.pages.dev)
+- Website: [pm-init.pages.dev](https://pm-init.pages.dev)
 - Source: [github.com/sinameraji/tpm](https://github.com/sinameraji/tpm)
 - Issues: [github.com/sinameraji/tpm/issues](https://github.com/sinameraji/tpm/issues)
 
