@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
-import type { Delta } from "@tpm/shared/schemas/delta";
+import type { Delta } from "@pm/shared/schemas/delta";
 import { runStageD } from "./stage-d.js";
 
 const nullLogger: Logger = {

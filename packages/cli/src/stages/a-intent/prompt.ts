@@ -1,4 +1,4 @@
-import type { Map as MapNs, Scraped as ScrapedNs } from "@tpm/shared";
+import type { Map as MapNs, Scraped as ScrapedNs } from "@pm/shared";
 
 export const STAGE_A_SYSTEM_PROMPT = `You are PM, a Technical Product Manager that reconstructs product intent.
 

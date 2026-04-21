@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Bundles the CLI entry point with @tpm/shared inlined, while keeping
+// Bundles the CLI entry point with @pm/shared inlined, while keeping
 // real npm deps external. Produces a single dist/bin/pm.js suitable
 // for `npm publish`.
 import { build } from "esbuild";
@@ -13,7 +13,7 @@ const cliRoot = path.resolve(here, "..");
 // Read package.json to pin external deps exactly.
 const pkg = JSON.parse(fs.readFileSync(path.join(cliRoot, "package.json"), "utf8"));
 const external = Object.keys(pkg.dependencies ?? {}).filter(
-  (d) => d !== "@tpm/shared", // inline shared; everything else stays external
+  (d) => d !== "@pm/shared", // inline shared; everything else stays external
 );
 
 await build({

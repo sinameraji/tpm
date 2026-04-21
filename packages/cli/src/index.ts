@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { TPM_VERSION } from "@tpm/shared";
+import { PM_VERSION } from "@pm/shared";
 import { register as registerInit } from "./commands/init.js";
 import { register as registerAudit } from "./commands/audit.js";
 import { register as registerReport } from "./commands/report.js";
@@ -14,7 +14,7 @@ export function buildProgram(): Command {
     .description(
       "PM — Product Manager. Audits software products via a deterministic six-stage pipeline.",
     )
-    .version(TPM_VERSION)
+    .version(PM_VERSION)
     .option("--json", "Emit structured JSON on stdout; logs remain on stderr.")
     .option("--verbose", "Enable debug-level logs.")
     .option(

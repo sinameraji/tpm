@@ -1,6 +1,6 @@
 {
   "name": "@sinameraji/pm",
-  "version": "1.2.0-beta.18",
+  "version": "1.2.0-beta.19",
   "description": "PM — a Product Manager CLI. Reads your codebase and suggests a few high-leverage improvements (specs + prototypes) on Claude (BYO Anthropic key).",
   "keywords": [
     "pm",
@@ -51,7 +51,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@tpm/shared": "workspace:*",
+    "@pm/shared": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
     "@types/js-yaml": "^4.0.9",
     "@types/uuid": "^11.0.0",

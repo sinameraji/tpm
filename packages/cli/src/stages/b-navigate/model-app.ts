@@ -14,8 +14,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import yaml from "js-yaml";
-import { AppModelSchema, type AppModel } from "@tpm/shared/schemas/app-model";
-import type { ProjectProfile } from "@tpm/shared/schemas/project-profile";
+import { AppModelSchema, type AppModel } from "@pm/shared/schemas/app-model";
+import type { ProjectProfile } from "@pm/shared/schemas/project-profile";
 import type { Logger } from "../../core/logger.js";
 import type { ModelGateway } from "../../gateway/index.js";
 import { runStage, jsonParse, zodValidate, type StageSpec } from "../_lib/stage-runner.js";

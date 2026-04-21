@@ -1,5 +1,5 @@
-import type { LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
-import type { AppModel } from "@tpm/shared/schemas/app-model";
+import type { LeanCanvas } from "@pm/shared/schemas/lean-canvas";
+import type { AppModel } from "@pm/shared/schemas/app-model";
 
 // B-walk prompt: imagine a persona's journey using the verified
 // AppModel, NOT the raw code map. The prompt is app-type-agnostic

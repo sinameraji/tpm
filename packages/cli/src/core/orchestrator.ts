@@ -10,7 +10,7 @@ import yaml from "js-yaml";
 import { buildStaticMap, writeMapYaml } from "../stages/a-intent/static-map.js";
 import { scrapeMarketingSurfaces } from "../stages/a-intent/scraper.js";
 import { runStageA } from "../stages/a-intent/stage-a.js";
-import type { Scraped as ScrapedNs } from "@tpm/shared";
+import type { Scraped as ScrapedNs } from "@pm/shared";
 import { runStageB } from "../stages/b-navigate/stage-b.js";
 import { runStageC } from "../stages/c-delta/stage-c.js";
 import { runStageD } from "../stages/d-leverage/stage-d.js";
@@ -18,7 +18,7 @@ import { runStageE } from "../stages/e-solutions/stage-e.js";
 import { runStageF } from "../stages/f-assembly/stage-f.js";
 import { loadBuiltInPatterns, summarizePatternLibrary } from "../patterns/loader.js";
 import { withProgress, withStageProgress, wrapGatewayForProgress } from "./progress.js";
-import { TPM_VERSION } from "@tpm/shared";
+import { PM_VERSION } from "@pm/shared";
 
 export interface OrchestratorDeps {
   logger: Logger;
@@ -75,7 +75,7 @@ export class Orchestrator {
       projectRoot,
       projectRoot,
       new Date().toISOString(),
-      TPM_VERSION,
+      PM_VERSION,
     );
     db.close();
 

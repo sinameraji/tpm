@@ -4,8 +4,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
-import type { Problems } from "@tpm/shared/schemas/problems";
-import type { Delta } from "@tpm/shared/schemas/delta";
+import type { Problems } from "@pm/shared/schemas/problems";
+import type { Delta } from "@pm/shared/schemas/delta";
 import { runStageE, STAGE_E_SPEC_MODEL } from "./stage-e.js";
 
 const nullLogger: Logger = {

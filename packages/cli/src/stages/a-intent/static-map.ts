@@ -2,8 +2,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
 import yaml from "js-yaml";
-import type { Map as MapNamespace } from "@tpm/shared";
-import { MapSchema } from "@tpm/shared/schemas/map";
+import type { Map as MapNamespace } from "@pm/shared";
+import { MapSchema } from "@pm/shared/schemas/map";
 import { isCodeFile, walkProject } from "./walker.js";
 import {
   detectAuthProviders,

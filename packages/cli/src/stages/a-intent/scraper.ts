@@ -7,8 +7,8 @@ import type {
   ScrapedSurfaces,
   SurfaceDocument,
   SurfaceKind,
-} from "@tpm/shared/schemas/scraped";
-import { ScrapedSurfacesSchema } from "@tpm/shared/schemas/scraped";
+} from "@pm/shared/schemas/scraped";
+import { ScrapedSurfacesSchema } from "@pm/shared/schemas/scraped";
 
 const USER_AGENT = "PM-Auditor/1.0 (+https://pm-init.pages.dev)";
 

@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import yaml from "js-yaml";
-import type { Delta } from "@tpm/shared/schemas/delta";
-import { ProblemsSchema, type Problems } from "@tpm/shared/schemas/problems";
+import type { Delta } from "@pm/shared/schemas/delta";
+import { ProblemsSchema, type Problems } from "@pm/shared/schemas/problems";
 import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
 import { runStage, jsonParse, zodValidate, type StageSpec } from "../_lib/stage-runner.js";

@@ -7,7 +7,7 @@ import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
 import { runStageA } from "./stage-a.js";
 import { buildStaticMap } from "./static-map.js";
-import { LeanCanvasSchema } from "@tpm/shared/schemas/lean-canvas";
+import { LeanCanvasSchema } from "@pm/shared/schemas/lean-canvas";
 
 const nullLogger: Logger = {
   info: () => {},

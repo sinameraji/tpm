@@ -11,8 +11,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import yaml from "js-yaml";
 import { z } from "zod";
-import type { LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
-import type { AppModel } from "@tpm/shared/schemas/app-model";
+import type { LeanCanvas } from "@pm/shared/schemas/lean-canvas";
+import type { AppModel } from "@pm/shared/schemas/app-model";
 import {
   FrictionFlag,
   OutcomeStatus,
@@ -20,7 +20,7 @@ import {
   type Paths,
   type PersonaPath,
   type Step,
-} from "@tpm/shared/schemas/paths";
+} from "@pm/shared/schemas/paths";
 import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
 import {

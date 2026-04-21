@@ -1,5 +1,5 @@
-import type { LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
-import type { Paths } from "@tpm/shared/schemas/paths";
+import type { LeanCanvas } from "@pm/shared/schemas/lean-canvas";
+import type { Paths } from "@pm/shared/schemas/paths";
 
 // Base system prompt. Audit-agnostic. Concatenated with the pattern
 // library at runtime to form the full system message — the combined

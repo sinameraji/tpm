@@ -12,7 +12,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { ClassifierResponse, type ProjectProfile } from "@tpm/shared/schemas/project-profile";
+import { ClassifierResponse, type ProjectProfile } from "@pm/shared/schemas/project-profile";
 import type { CompleteOptionsExt, ModelGateway, Message } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
 import {

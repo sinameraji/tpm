@@ -5,11 +5,11 @@ import * as path from "node:path";
 import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
 import { runStageF, renderMarkdownToHtml } from "./stage-f.js";
-import type { LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
-import type { Paths } from "@tpm/shared/schemas/paths";
-import type { Delta } from "@tpm/shared/schemas/delta";
-import type { Problems } from "@tpm/shared/schemas/problems";
-import type { Solutions } from "@tpm/shared/schemas/solutions";
+import type { LeanCanvas } from "@pm/shared/schemas/lean-canvas";
+import type { Paths } from "@pm/shared/schemas/paths";
+import type { Delta } from "@pm/shared/schemas/delta";
+import type { Problems } from "@pm/shared/schemas/problems";
+import type { Solutions } from "@pm/shared/schemas/solutions";
 
 const nullLogger: Logger = {
   info: () => {},

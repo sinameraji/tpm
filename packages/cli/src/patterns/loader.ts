@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
-import { PatternsSchema, type Pattern, type Patterns } from "@tpm/shared/schemas/patterns";
+import { PatternsSchema, type Pattern, type Patterns } from "@pm/shared/schemas/patterns";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 

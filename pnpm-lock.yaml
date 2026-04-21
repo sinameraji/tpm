@@ -72,7 +72,7 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
-      '@tpm/shared':
+      '@pm/shared':
         specifier: workspace:*
         version: link:../shared
       '@types/better-sqlite3':

@@ -1,4 +1,4 @@
-import type { ProjectProfile } from "@tpm/shared/schemas/project-profile";
+import type { ProjectProfile } from "@pm/shared/schemas/project-profile";
 import type { RequestedFile } from "./classify-project-prompt.js";
 
 // B-model system prompt. Single call (v1.2.0) — collapsed from

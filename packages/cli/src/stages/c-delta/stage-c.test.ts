@@ -4,8 +4,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
-import type { LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
-import type { Paths } from "@tpm/shared/schemas/paths";
+import type { LeanCanvas } from "@pm/shared/schemas/lean-canvas";
+import type { Paths } from "@pm/shared/schemas/paths";
 import { runStageC } from "./stage-c.js";
 
 const nullLogger: Logger = {

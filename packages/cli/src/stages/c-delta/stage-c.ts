@@ -1,9 +1,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import yaml from "js-yaml";
-import type { LeanCanvas } from "@tpm/shared/schemas/lean-canvas";
-import type { Paths } from "@tpm/shared/schemas/paths";
-import { DeltaSchema, type Delta } from "@tpm/shared/schemas/delta";
+import type { LeanCanvas } from "@pm/shared/schemas/lean-canvas";
+import type { Paths } from "@pm/shared/schemas/paths";
+import { DeltaSchema, type Delta } from "@pm/shared/schemas/delta";
 import type { ModelGateway } from "../../gateway/index.js";
 import type { Logger } from "../../core/logger.js";
 import { buildStageCSystemPrompt, buildStageCUserPrompt } from "./prompt.js";

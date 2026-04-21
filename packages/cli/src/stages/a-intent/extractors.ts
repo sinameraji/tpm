@@ -6,7 +6,7 @@ import type {
   RouteInfo,
   TrackingEvent,
   VisibleString,
-} from "@tpm/shared/schemas/map";
+} from "@pm/shared/schemas/map";
 
 interface NavItem {
   label: string;
